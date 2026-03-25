@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Train Booking System ERD</title>
+
+  <style>
+    body {
+      margin: 0;
+      font-family: Inter, Arial, sans-serif;
+      background: #f3f4f6;
+    }
+
+    #erd {
+      padding: 2rem;
+      background: #ffffff;
+    }
+
+    #erd svg {
+      width: 100%;
+      height: auto;
+    }
+
+    #erd svg .node rect {
+      fill: #ffffff !important;
+      stroke: #2563eb !important;
+      stroke-width: 2px !important;
+      rx: 10;
+    }
+
+    #erd svg text {
+      fill: #1f2937 !important;
+      font-size: 13px;
+    }
+
+    #erd svg .edgePath path {
+      stroke: #374151 !important;
+      stroke-width: 1.5px;
+    }
+  </style>
+</head>
+
+<body>
+
+<div id="erd"></div>
+
+<script type="module">
+import mermaid from 'https://esm.sh/mermaid@11/dist/mermaid.esm.min.mjs';
+
+await document.fonts.ready;
+
+mermaid.initialize({
+  startOnLoad: false,
+  theme: 'base'
+});
+
+const diagram = `erDiagram
+
+  USERS {
+    uuid id PK
+    string email
+    string phone
+    string role
+    string password_digest
+    timestamp created_at
+    timestamp updated_at
+  }
+
+  CITIES {
+    uuid id PK
+    string name
+    string state
+    string country
+  }
+
+  STATIONS {
+    uuid id PK
+    uuid city_id FK
+    string name
+    string code
+    decimal latitude
+    decimal longitude
+  }
+
+  TRAINS {
+    uuid id PK
+    string train_number
+    string name
+    string train_type
+    boolean is_active
+    timestamp created_at
+  }
+
+  TRAIN_STOPS {
+    uuid id PK
+    uuid train_id FK
+    uuid station_id FK
+    integer stop_order
+    time arrival_time
+    time departure_time
+    integer distance_from_origin_km
+  }
+
+  SCHEDULES {
+    uuid id PK
+    uuid train_id FK
+    date travel_date
+    time departure_time
+    time expected_arrival_time
+    string status
+    integer delay_minutes
+    timestamp created_at
+  }
+
+  COACHES {
+    uuid id PK
+    uuid train_id FK
+    string coach_number
+    string coach_type
+    integer total_seats
+  }
+
+  SEATS {
+    uuid id PK
+    uuid coach_id FK
+    string seat_number
+    string seat_type
+    boolean is_active
+  }
+
+  FARE_RULES {
+    uuid id PK
+    uuid train_id FK
+    string coach_type
+    decimal base_fare_per_km
+    decimal dynamic_multiplier
+    date valid_from
+    date valid_to
+  }
+
+  BOOKINGS {
+    uuid id PK
+    uuid user_id FK
+    uuid schedule_id FK
+    uuid src_station_id FK
+    uuid dst_station_id FK
+    string booking_ref
+    string status
+    decimal total_fare
+    timestamp booked_at
+  }
+
+  PASSENGERS {
+    uuid id PK
+    uuid booking_id FK
+    string first_name
+    string last_name
+    integer age
+    string gender
+    string id_type
+    string id_number
+  }
+
+  TICKET_ALLOCATIONS {
+    uuid id PK
+    uuid booking_id FK
+    uuid passenger_id FK
+    uuid seat_id FK
+    uuid schedule_id FK
+    uuid src_station_id FK
+    uuid dst_station_id FK
+    string pnr
+    decimal fare
+    string status
+  }
+
+  PAYMENTS {
+    uuid id PK
+    uuid booking_id FK
+    decimal amount
+    string currency
+    string payment_method
+    string gateway_txn_id
+    string status
+    timestamp paid_at
+  }
+
+  CANCELLATIONS {
+    uuid id PK
+    uuid booking_id FK
+    uuid ticket_allocation_id FK
+    uuid requested_by FK
+    text reason
+    decimal refund_amount
+    string status
+    timestamp cancelled_at
+  }
+
+  CITIES ||--o{ STATIONS : has
+  TRAINS ||--o{ TRAIN_STOPS : has
+  STATIONS ||--o{ TRAIN_STOPS : appears_in
+  TRAINS ||--o{ SCHEDULES : runs_on
+  TRAINS ||--o{ COACHES : has
+  TRAINS ||--o{ FARE_RULES : priced_by
+  COACHES ||--o{ SEATS : contains
+  USERS ||--o{ BOOKINGS : makes
+  USERS ||--o{ CANCELLATIONS : requests
+  SCHEDULES ||--o{ BOOKINGS : booked_for
+  STATIONS ||--o{ BOOKINGS : origin
+  STATIONS ||--o{ BOOKINGS : destination
+  BOOKINGS ||--o{ PASSENGERS : includes
+  BOOKINGS ||--o{ TICKET_ALLOCATIONS : has
+  BOOKINGS ||--|| PAYMENTS : paid_via
+  BOOKINGS ||--o{ CANCELLATIONS : cancelled_by
+  PASSENGERS ||--o{ TICKET_ALLOCATIONS : assigned
+  SEATS ||--o{ TICKET_ALLOCATIONS : used_in
+  SCHEDULES ||--o{ TICKET_ALLOCATIONS : allocated_in
+  TICKET_ALLOCATIONS ||--o{ CANCELLATIONS : cancelled
+`;
+
+const { svg } = await mermaid.render('erd-svg', diagram);
+document.getElementById('erd').innerHTML = svg;
+</script>
+
+</body>
+</html>
