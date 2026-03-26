@@ -1,0 +1,13 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  train_number: MyString
+  name: MyString
+  train_type: MyString
+  is_active: false
+
+two:
+  train_number: MyString
+  name: MyString
+  train_type: MyString
+  is_active: false

@@ -7,6 +7,8 @@ Rails.application.routes.draw do
 
       
       get "profile", to: "auth#profile"
+
+      resources :trains, only: [:index, :show, :create]
     end
   end
 end
