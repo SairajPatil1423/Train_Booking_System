@@ -1,28 +1,23 @@
 class TrainPolicy < ApplicationPolicy
-  class Scope
-    def initialize(user, scope)
-      @user  = user
-      @scope = scope
-    end
 
-    def resolve
-      if user.role == "admin"
-        scope.all
-      else
-        scope.none
-      end
-    end
+  def index?
+    true
+  end
 
-    private
-
-    attr_reader :user, :scope
+  def show?
+    true
   end
 
   def create?
-    user.role == "admin"
+    user.admin?
   end
 
   def update?
-    user.role == "admin" or not record.published?
+    user.admin?
   end
+
+  def destroy?
+    user.admin?
+  end
+
 end

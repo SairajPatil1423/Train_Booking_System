@@ -1,0 +1,13 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  booking: one
+  name: MyString
+  age: 1
+  gender: MyString
+
+two:
+  booking: two
+  name: MyString
+  age: 1
+  gender: MyString

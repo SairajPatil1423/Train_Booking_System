@@ -9,4 +9,10 @@ class User < ApplicationRecord
     user: "user",
     admin: "admin"
   }
+  
+  has_many :bookings, dependent: :destroy
+
+  validates :email, presence: true, uniqueness: true
+  validates :phone, presence: true
+  validates :password, presence: true, length: { minimum: 6 }, if: :password_required?
 end

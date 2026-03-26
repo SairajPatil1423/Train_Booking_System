@@ -1,0 +1,17 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  train: one
+  station: one
+  stop_order: 1
+  arrival_time: 2026-03-26 16:47:20
+  departure_time: 2026-03-26 16:47:20
+  distance_from_origin_km: 1
+
+two:
+  train: two
+  station: two
+  stop_order: 1
+  arrival_time: 2026-03-26 16:47:20
+  departure_time: 2026-03-26 16:47:20
+  distance_from_origin_km: 1

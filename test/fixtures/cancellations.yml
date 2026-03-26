@@ -1,0 +1,13 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  booking: one
+  refund_amount: 9.99
+  status: MyString
+  cancelled_at: 2026-03-26 17:42:26
+
+two:
+  booking: two
+  refund_amount: 9.99
+  status: MyString
+  cancelled_at: 2026-03-26 17:42:26

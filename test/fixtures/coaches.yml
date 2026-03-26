@@ -1,0 +1,13 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  schedule: one
+  coach_number: MyString
+  coach_type: MyString
+  total_seats: 1
+
+two:
+  schedule: two
+  coach_number: MyString
+  coach_type: MyString
+  total_seats: 1
