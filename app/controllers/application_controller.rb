@@ -1,4 +1,5 @@
 class ApplicationController < ActionController::API
+  include Pundit
 
   def current_user
     return nil unless request.headers["Authorization"]
@@ -8,7 +9,7 @@ class ApplicationController < ActionController::API
     begin
       decoded = JWT.decode(token, Rails.application.credentials.secret_key_base)[0]
       @current_user ||= User.find(decoded["user_id"])
-    rescue JWT::DecodeError
+    rescue
       nil
     end
   end
@@ -17,4 +18,12 @@ class ApplicationController < ActionController::API
     render json: { error: "Unauthorized" }, status: :unauthorized unless current_user
   end
 
+  # 🔥 Pundit error handling
+  rescue_from Pundit::NotAuthorizedError, with: :user_not_authorized
+
+  private
+
+  def user_not_authorized
+    render json: { error: "You are not authorized" }, status: :forbidden
+  end
 end

@@ -51,3 +51,4 @@ gem "devise", "~> 5.0"
 
 gem 'devise-jwt'
 gem 'jwt'
+gem 'pundit'
