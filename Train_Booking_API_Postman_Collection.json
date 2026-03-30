@@ -1,0 +1,284 @@
+{
+  "info": {
+    "name": "Train Booking API - Dev Environment",
+    "description": "Postman Collection for the Train Booking System. \n\n**Note**: Make sure your local Rails server is running on `http://localhost:3000/`.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "1. User Registration",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"user\": {\n        \"email\": \"new_postman_user@example.com\",\n        \"password\": \"password123\",\n        \"password_confirmation\": \"password123\"\n    }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:3000/users",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "3000",
+              "path": [
+                "users"
+              ]
+            },
+            "description": "Registers a new user in the system. The response body will contain your `token` representing your JWT."
+          }
+        },
+        {
+          "name": "2. User Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"user\": {\n        \"email\": \"user@example.com\",\n        \"password\": \"password123\"\n    }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:3000/users/sign_in",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "3000",
+              "path": [
+                "users",
+                "sign_in"
+              ]
+            },
+            "description": "Logs in the seeded dummy user. Grab the `token` from the JSON response or the `Authorization` header to use in future requests."
+          }
+        },
+        {
+          "name": "3. User Logout",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:3000/users/sign_out",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "3000",
+              "path": [
+                "users",
+                "sign_out"
+              ]
+            },
+            "description": "Logs out the user currently identified by the {{jwt_token}} variable."
+          }
+        }
+      ]
+    },
+    {
+      "name": "System",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/up",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "3000",
+              "path": [
+                "up"
+              ]
+            },
+            "description": "Pings the rails environment to ensure database and webserver are active."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin - Train Management",
+      "item": [
+        {
+          "name": "1. Get All Trains",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/trains",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "trains"
+              ]
+            }
+          }
+        },
+        {
+          "name": "2. Create Train",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"train\": {\n    \"train_number\": \"T100\",\n    \"name\": \"Express 100\",\n    \"train_type\": \"Express\",\n    \"is_active\": true\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/admin/trains",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "trains"
+              ]
+            }
+          }
+        },
+        {
+          "name": "3. Update Train",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"train\": {\n    \"is_active\": false\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/admin/trains/TRAIN_ID_HERE",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "trains",
+                "TRAIN_ID_HERE"
+              ]
+            }
+          }
+        },
+        {
+          "name": "4. Delete Train",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/trains/TRAIN_ID_HERE",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "trains",
+                "TRAIN_ID_HERE"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "jwt_token",
+      "value": "YOUR_JWT_TOKEN_GOES_HERE",
+      "type": "string"
+    }
+  ]
+}
