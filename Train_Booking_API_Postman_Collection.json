@@ -37,7 +37,7 @@
               "raw": "http://localhost:3000/users",
               "protocol": "http",
               "host": [
-                "localhost"
+                "http://localhost:3000"
               ],
               "port": "3000",
               "path": [
@@ -45,7 +45,22 @@
               ]
             },
             "description": "Registers a new user in the system. The response body will contain your `token` representing your JWT."
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    let res = pm.response.json();",
+                  "    pm.collectionVariables.set(\"jwt_token\", res.token);",
+                  "    console.log(\"Saved JWT token from registration!\");",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "2. User Login",
@@ -85,7 +100,22 @@
               ]
             },
             "description": "Logs in the seeded dummy user. Grab the `token` from the JSON response or the `Authorization` header to use in future requests."
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    let res = pm.response.json();",
+                  "    pm.collectionVariables.set(\"jwt_token\", res.token);",
+                  "    console.log(\"Automatically saved JWT token!\");",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "3. User Logout",
@@ -107,7 +137,7 @@
               "raw": "http://localhost:3000/users/sign_out",
               "protocol": "http",
               "host": [
-                "localhost"
+                "http://localhost:3000"
               ],
               "port": "3000",
               "path": [
@@ -116,6 +146,82 @@
               ]
             },
             "description": "Logs out the user currently identified by the {{jwt_token}} variable."
+          }
+        },
+        {
+          "name": "Admin- Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user\": {\n    \"email\": \"admin@example.com\",\n    \"password\": \"password123\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:3000/users/sign_in",
+              "host": [
+                "http://localhost:3000"
+              ],
+              "path": [
+                "users",
+                "sign_in"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    let res = pm.response.json();",
+                  "    pm.collectionVariables.set(\"jwt_token\", res.token);",
+                  "    console.log(\"Saved ADMIN token!\");",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin- Logout",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:3000/users/sign_out",
+              "host": [
+                "http://localhost:3000"
+              ],
+              "path": [
+                "users",
+                "sign_out"
+              ]
+            }
           }
         }
       ]
@@ -162,7 +268,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/admin/trains",
+              "raw": "http://localhost:3000/admin/trains",
               "host": [
                 "{{base_url}}"
               ],
@@ -189,7 +295,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"train\": {\n    \"train_number\": \"T100\",\n    \"name\": \"Express 100\",\n    \"train_type\": \"Express\",\n    \"is_active\": true\n  }\n}",
+              "raw": "{\n  \"train\": {\n    \"train_number\": \"T101\",\n    \"name\": \"Super Express\",\n    \"train_type\": \"High Speed\",\n    \"is_active\": true\n  }\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -197,7 +303,7 @@
               }
             },
             "url": {
-              "raw": "{{base_url}}/admin/trains",
+              "raw": "http://localhost:3000/admin/trains",
               "host": [
                 "{{base_url}}"
               ],
@@ -206,7 +312,22 @@
                 "trains"
               ]
             }
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    let res = pm.response.json();",
+                  "    pm.collectionVariables.set(\"train_id\", res.train.id);",
+                  "    console.log(\"Saved train_id: \" + res.train.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "3. Update Train",
@@ -224,7 +345,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"train\": {\n    \"is_active\": false\n  }\n}",
+              "raw": "{\n  \"train\": {\n    \"train_type\": \"Updated Train Profile\",\n    \"is_active\": false\n  }\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -232,7 +353,7 @@
               }
             },
             "url": {
-              "raw": "{{base_url}}/admin/trains/TRAIN_ID_HERE",
+              "raw": "http://localhost:3000/admin/trains/TRAIN_ID_HERE",
               "host": [
                 "{{base_url}}"
               ],
@@ -259,7 +380,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/admin/trains/TRAIN_ID_HERE",
+              "raw": "http://localhost:3000/admin/trains/TRAIN_ID_HERE",
               "host": [
                 "{{base_url}}"
               ],
@@ -267,6 +388,427 @@
                 "admin",
                 "trains",
                 "TRAIN_ID_HERE"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin - User Management",
+      "item": [
+        {
+          "name": "1. Create New Admin",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user\": {\n    \"email\": \"newadmin@example.com\",\n    \"password\": \"supersecurepassword\",\n    \"phone\": \"9998887776\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:3000/admin/users",
+              "host": [
+                "http://localhost:3000"
+              ],
+              "path": [
+                "admin",
+                "users"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin - Station Management",
+      "item": [
+        {
+          "name": "1. Get All Stations",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:3000/admin/stations",
+              "host": [
+                "http://localhost:3000"
+              ],
+              "path": [
+                "admin",
+                "stations"
+              ]
+            }
+          }
+        },
+        {
+          "name": "2. Create Station",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"station\": {\n    \"city_name\": \"Shanghai\",\n    \"name\": \"Shanghai Railway Station\",\n    \"code\": \"SHG\",\n    \"latitude\": 31.25,\n    \"longitude\": 121.45\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:3000/admin/stations",
+              "host": [
+                "http://localhost:3000"
+              ],
+              "path": [
+                "admin",
+                "stations"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if(pm.response.code===201){ pm.collectionVariables.set(\"station_id\", pm.response.json().station.id); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "3. Update Station",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"station\": {\n    \"name\": \"Shanghai Hongqiao Updated\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:3000/admin/stations/{{station_id}}",
+              "host": [
+                "http://localhost:3000"
+              ],
+              "path": [
+                "admin",
+                "stations",
+                "{{station_id}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "4. Delete Station",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:3000/admin/stations/{{station_id}}",
+              "host": [
+                "http://localhost:3000"
+              ],
+              "path": [
+                "admin",
+                "stations",
+                "{{station_id}}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin - FareRule Management",
+      "item": [
+        {
+          "name": "1. Get All Fare Rules",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:3000/admin/fare_rules",
+              "host": [
+                "http://localhost:3000"
+              ],
+              "path": [
+                "admin",
+                "fare_rules"
+              ]
+            }
+          }
+        },
+        {
+          "name": "2. Create FareRule",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fare_rule\": {\n    \"train_id\": \"{{train_id}}\",\n    \"coach_type\": \"Business\",\n    \"base_fare_per_km\": 1.25,\n    \"dynamic_multiplier\": 1.5,\n    \"valid_from\": \"2023-01-01\",\n    \"valid_to\": \"2030-12-31\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:3000/admin/fare_rules",
+              "host": [
+                "http://localhost:3000"
+              ],
+              "path": [
+                "admin",
+                "fare_rules"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if(pm.response.code===201){ pm.collectionVariables.set(\"fare_rule_id\", pm.response.json().fare_rule.id); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "3. Update FareRule",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fare_rule\": {\n    \"dynamic_multiplier\": 2.0\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:3000/admin/fare_rules/{{fare_rule_id}}",
+              "host": [
+                "http://localhost:3000"
+              ],
+              "path": [
+                "admin",
+                "fare_rules",
+                "{{fare_rule_id}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "4. Delete FareRule",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:3000/admin/fare_rules/{{fare_rule_id}}",
+              "host": [
+                "http://localhost:3000"
+              ],
+              "path": [
+                "admin",
+                "fare_rules",
+                "{{fare_rule_id}}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "User - Booking Management",
+      "item": [
+        {
+          "name": "1. Get My Bookings",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:3000/bookings",
+              "host": [
+                "http://localhost:3000"
+              ],
+              "path": [
+                "bookings"
+              ]
+            }
+          }
+        },
+        {
+          "name": "2. Create Booking",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"booking\": {\n    \"schedule_id\": \"PASTE_SCHEDULE_ID\",\n    \"src_station_id\": \"{{station_id}}\",\n    \"dst_station_id\": \"PASTE_DEST_STATION_ID\",\n    \"coach_type\": \"Second Class\",\n    \"passengers\": [\n      {\n        \"first_name\": \"John\",\n        \"last_name\": \"Doe\",\n        \"age\": 34,\n        \"gender\": \"M\",\n        \"id_type\": \"Passport\",\n        \"id_number\": \"X1234567\"\n      }\n    ]\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:3000/bookings",
+              "host": [
+                "http://localhost:3000"
+              ],
+              "path": [
+                "bookings"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if(pm.response.code===201){ pm.collectionVariables.set(\"booking_id\", pm.response.json().booking.id); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "3. View Specific Booking",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:3000/bookings/{{booking_id}}",
+              "host": [
+                "http://localhost:3000"
+              ],
+              "path": [
+                "bookings",
+                "{{booking_id}}"
               ]
             }
           }

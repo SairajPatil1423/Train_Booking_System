@@ -1,11 +1,13 @@
 class Admin::TrainsController < Admin::BaseController
   def index
-
-    @trains = Train.all.order(:train_number)
-    render json: { trains: @trains }, status: :ok
+    authorize Train
+    trains = Train.order(:train_number)
+    render json: { trains: trains }, status: :ok
   end
 
   def create
+    authorize Train
+
     result = Admin::Train::Operation::Create.call(
       current_user: current_user,
       params: train_params
@@ -19,6 +21,9 @@ class Admin::TrainsController < Admin::BaseController
   end
 
   def update
+    train = Train.find(params[:id])
+    authorize train
+
     result = Admin::Train::Operation::Update.call(
       current_user: current_user,
       id: params[:id],
@@ -33,6 +38,9 @@ class Admin::TrainsController < Admin::BaseController
   end
 
   def destroy
+    train = Train.find(params[:id])
+    authorize train
+
     result = Admin::Train::Operation::Destroy.call(
       current_user: current_user,
       id: params[:id]

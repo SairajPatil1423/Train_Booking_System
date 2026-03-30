@@ -12,7 +12,7 @@ class BookingPolicy < ApplicationPolicy
   end
 
   def update?
-    user&.admin?
+    cancel?
   end
 
   def cancel?
@@ -21,11 +21,10 @@ class BookingPolicy < ApplicationPolicy
 
   class Scope < Scope
     def resolve
-      if user&.admin?
-        scope.all
-      else
-        scope.where(user_id: user&.id)
-      end
+      return scope.none unless user
+      return scope.all if user.admin?
+
+      scope.where(user_id: user.id)
     end
   end
 end
