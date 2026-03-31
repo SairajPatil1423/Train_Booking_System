@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useDispatch, useSelector } from "react-redux";
@@ -16,7 +16,7 @@ import {
 import { searchSchedules } from "@/features/trains/trainService";
 import { buildScheduleViewModel } from "@/utils/view-models";
 
-export default function SearchResultsPage() {
+function SearchResultsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const dispatch = useDispatch();
@@ -262,7 +262,7 @@ export default function SearchResultsPage() {
                         type="button"
                         onClick={() =>
                           router.push(
-                            `/booking?schedule_id=${schedule.id}&src_station_id=${fromStationId}&dst_station_id=${toStationId}`,
+                            `/booking?schedule_id=${schedule.id}&src_station_id=${fromStationId}&dst_station_id=${toStationId}&travel_date=${encodeURIComponent(journeyDate)}&from_label=${encodeURIComponent(fromLabel)}&to_label=${encodeURIComponent(toLabel)}`,
                           )
                         }
                         className="primary-button w-full px-5 py-3 text-sm lg:w-auto"
@@ -278,5 +278,19 @@ export default function SearchResultsPage() {
         </section>
       </div>
     </PageShell>
+  );
+}
+
+export default function SearchResultsPage() {
+  return (
+    <Suspense fallback={
+      <PageShell className="max-w-6xl px-6 py-10 sm:px-10 lg:px-12">
+        <div className="w-full">
+          <LoadingState label="Preparing search results..." />
+        </div>
+      </PageShell>
+    }>
+      <SearchResultsPageContent />
+    </Suspense>
   );
 }

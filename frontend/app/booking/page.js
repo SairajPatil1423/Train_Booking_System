@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSelector } from "react-redux";
@@ -20,6 +20,28 @@ import {
 } from "@/utils/formatters";
 
 const stepLabels = ["Review", "Passengers", "Seats", "Payment", "Confirm"];
+const paymentOptions = [
+  {
+    value: "upi",
+    label: "UPI",
+    description: "Fast payment using any supported UPI app.",
+  },
+  {
+    value: "card",
+    label: "Credit / Debit Card",
+    description: "Use Visa, Mastercard, RuPay, or other supported cards.",
+  },
+  {
+    value: "netbanking",
+    label: "Net Banking",
+    description: "Complete payment directly from your bank account.",
+  },
+  {
+    value: "razorpay",
+    label: "Razorpay",
+    description: "Gateway slot prepared for live Razorpay integration.",
+  },
+];
 
 const passengerTemplate = () => ({
   first_name: "",
@@ -30,13 +52,16 @@ const passengerTemplate = () => ({
   id_number: "",
 });
 
-export default function BookingPage() {
+function BookingPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { isAuthenticated, hydrated } = useSelector((state) => state.auth);
+  const { isAuthenticated, hydrated, user } = useSelector((state) => state.auth);
   const scheduleId = searchParams.get("schedule_id");
   const srcStationId = searchParams.get("src_station_id");
   const dstStationId = searchParams.get("dst_station_id");
+  const initialFromLabel = searchParams.get("from_label") || "Source";
+  const initialToLabel = searchParams.get("to_label") || "Destination";
+  const initialTravelDate = searchParams.get("travel_date") || "";
 
   const [status, setStatus] = useState("idle");
   const [error, setError] = useState("");
@@ -47,11 +72,11 @@ export default function BookingPage() {
   const [passengers, setPassengers] = useState([passengerTemplate()]);
   const [selectedSeatIds, setSelectedSeatIds] = useState([]);
   const [paymentMethod, setPaymentMethod] = useState("upi");
+  const [contactEmail, setContactEmail] = useState("");
+  const [contactPhone, setContactPhone] = useState("");
+  const [agreeToTerms, setAgreeToTerms] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [confirmation, setConfirmation] = useState(null);
-  const resultsHref = `/search/results?src_station_id=${srcStationId || ""}&dst_station_id=${dstStationId || ""}&travel_date=${
-    details?.schedule?.travel_date || ""
-  }&from_label=${encodeURIComponent(fromLabel)}&to_label=${encodeURIComponent(toLabel)}`;
 
   useEffect(() => {
     if (!isAuthenticated || !scheduleId || !srcStationId || !dstStationId) {
@@ -95,6 +120,11 @@ export default function BookingPage() {
     };
   }, [dstStationId, isAuthenticated, scheduleId, srcStationId]);
 
+  useEffect(() => {
+    setContactEmail(user?.email || "");
+    setContactPhone(user?.phone || "");
+  }, [user?.email, user?.phone]);
+
   const routeStops = useMemo(() => {
     const stops = details?.stops || [];
     const srcIndex = stops.findIndex((stop) => stop.station?.id === srcStationId);
@@ -125,8 +155,11 @@ export default function BookingPage() {
   }, [details?.coaches, selectedSeatIds]);
 
   const selectedSeatLabels = selectedSeats.map((seat) => seat.seat_number);
-  const fromLabel = routeStops[0]?.station?.name || "Source";
-  const toLabel = routeStops[routeStops.length - 1]?.station?.name || "Destination";
+  const fromLabel = routeStops[0]?.station?.name || initialFromLabel;
+  const toLabel = routeStops[routeStops.length - 1]?.station?.name || initialToLabel;
+  const resultsHref = `/search/results?src_station_id=${srcStationId || ""}&dst_station_id=${dstStationId || ""}&travel_date=${
+    encodeURIComponent(details?.schedule?.travel_date || initialTravelDate)
+  }&from_label=${encodeURIComponent(fromLabel)}&to_label=${encodeURIComponent(toLabel)}`;
 
   function updatePassengerCount(nextCount) {
     const normalized = Math.max(1, Math.min(6, Number(nextCount) || 1));
@@ -189,7 +222,7 @@ export default function BookingPage() {
     }
 
     if (currentStep === 3) {
-      return Boolean(paymentMethod);
+      return Boolean(paymentMethod && contactEmail && contactPhone && agreeToTerms);
     }
 
     return true;
@@ -444,6 +477,11 @@ export default function BookingPage() {
                       onToggleSeat={toggleSeat}
                     />
                   </div>
+                  <div className="mt-6 rounded-[1.4rem] bg-[var(--color-surface-soft)] px-5 py-4 text-sm text-[var(--color-muted-strong)]">
+                    {selectedSeatLabels.length
+                      ? `Selected seats: ${selectedSeatLabels.join(", ")}`
+                      : "Choose one seat for each passenger to continue."}
+                  </div>
                 </section>
               ) : null}
 
@@ -456,26 +494,59 @@ export default function BookingPage() {
                   />
                   <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_0.9fr]">
                     <div className="space-y-4">
-                      {[
-                        ["upi", "UPI"],
-                        ["card", "Credit / Debit Card"],
-                        ["netbanking", "Net Banking"],
-                        ["razorpay", "Razorpay"],
-                      ].map(([value, label]) => (
+                      {paymentOptions.map((option) => (
                         <button
-                          key={value}
+                          key={option.value}
                           type="button"
-                          onClick={() => setPaymentMethod(value)}
+                          onClick={() => setPaymentMethod(option.value)}
                           className={`flex w-full items-center justify-between rounded-[1.4rem] border px-5 py-4 text-left transition ${
-                            paymentMethod === value
+                            paymentMethod === option.value
                               ? "border-[#84b7df] bg-[#edf5fd] text-[var(--color-panel-dark)]"
                               : "border-[var(--color-line)] bg-white text-[var(--color-ink)] hover:bg-[var(--color-surface-soft)]"
                           }`}
                         >
-                          <span className="font-semibold">{label}</span>
-                          <span className="text-sm">{paymentMethod === value ? "Selected" : "Choose"}</span>
+                          <div>
+                            <div className="font-semibold">{option.label}</div>
+                            <div className="mt-1 text-sm text-[var(--color-muted)]">
+                              {option.description}
+                            </div>
+                          </div>
+                          <span className="text-sm">
+                            {paymentMethod === option.value ? "Selected" : "Choose"}
+                          </span>
                         </button>
                       ))}
+
+                      <div className="rounded-[1.6rem] border border-[var(--color-line)] bg-[linear-gradient(180deg,_#ffffff_0%,_#f9fcff_100%)] p-5">
+                        <p className="text-sm font-semibold text-[var(--color-ink)]">
+                          Contact details for this booking
+                        </p>
+                        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                          <Field
+                            label="Email"
+                            type="email"
+                            value={contactEmail}
+                            onChange={setContactEmail}
+                          />
+                          <Field
+                            label="Phone"
+                            type="tel"
+                            value={contactPhone}
+                            onChange={setContactPhone}
+                          />
+                        </div>
+                        <label className="mt-4 flex items-start gap-3 rounded-[1.2rem] bg-[var(--color-surface-soft)] px-4 py-3 text-sm text-[var(--color-muted-strong)]">
+                          <input
+                            type="checkbox"
+                            checked={agreeToTerms}
+                            onChange={(event) => setAgreeToTerms(event.target.checked)}
+                            className="mt-1 h-4 w-4 rounded border-[var(--color-line)]"
+                          />
+                          <span>
+                            I confirm that the passenger details are correct and I agree to continue with this payment.
+                          </span>
+                        </label>
+                      </div>
                     </div>
 
                     <div className="rounded-[1.6rem] bg-[var(--color-surface-soft)] p-5">
@@ -490,8 +561,22 @@ export default function BookingPage() {
                           <span>{passengerCount}</span>
                         </div>
                         <div className="flex items-center justify-between">
+                          <span>Coach class</span>
+                          <span>{selectedCoachType || "Not selected"}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
                           <span>Fare per passenger</span>
                           <span>{formatCurrency(selectedFare)}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span>Selected seats</span>
+                          <span>{selectedSeatLabels.length ? selectedSeatLabels.join(", ") : "Pending"}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span>Payment method</span>
+                          <span>
+                            {paymentOptions.find((option) => option.value === paymentMethod)?.label || "Pending"}
+                          </span>
                         </div>
                         <div className="flex items-center justify-between border-t border-[var(--color-line)] pt-3 font-semibold text-[var(--color-ink)]">
                           <span>Total fare</span>
@@ -510,7 +595,13 @@ export default function BookingPage() {
                     title="Your train booking has been created"
                     description="Your confirmation details are ready below."
                   />
-                  <div className="mt-8 grid gap-4 sm:grid-cols-2">
+                  <div className="mt-8 rounded-[1.6rem] bg-[linear-gradient(180deg,_#145f97_0%,_#0e4770_100%)] p-6 text-white shadow-[0_24px_60px_rgba(12,79,129,0.16)]">
+                    <p className="text-sm text-white/76">
+                      Booking successful. Please keep the booking reference and seat details ready for travel.
+                    </p>
+                  </div>
+
+                  <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     <DetailInfo
                       label="Booking reference"
                       value={confirmation?.booking?.booking_ref || confirmation?.booking?.booking_reference || "Not available"}
@@ -519,6 +610,41 @@ export default function BookingPage() {
                       label="Total fare"
                       value={formatCurrency(confirmation?.total_fare)}
                     />
+                    <DetailInfo
+                      label="Payment method"
+                      value={paymentOptions.find((option) => option.value === paymentMethod)?.label || "Not available"}
+                    />
+                  </div>
+                  <div className="mt-6 rounded-[1.4rem] bg-[var(--color-surface-soft)] p-5">
+                    <p className="text-sm font-semibold text-[var(--color-ink)]">
+                      Passenger seat details
+                    </p>
+                    <div className="mt-4 space-y-3">
+                      {(confirmation?.booking?.ticket_allocations || []).map((allocation, index) => {
+                        const passenger = confirmation?.booking?.passengers?.[index];
+
+                        return (
+                          <div
+                            key={allocation.id}
+                            className="flex flex-col gap-2 rounded-[1.2rem] bg-white px-4 py-4 ring-1 ring-[var(--color-line)] sm:flex-row sm:items-center sm:justify-between"
+                          >
+                            <div>
+                              <p className="font-semibold text-[var(--color-ink)]">
+                                {passenger
+                                  ? `${passenger.first_name} ${passenger.last_name}`
+                                  : `Passenger ${index + 1}`}
+                              </p>
+                              <p className="mt-1 text-sm text-[var(--color-muted)]">
+                                Seat {allocation.seat?.seat_number || "NA"} • {allocation.pnr || "PNR pending"}
+                              </p>
+                            </div>
+                            <div className="rounded-full bg-[#edf5fd] px-4 py-2 text-sm font-medium text-[var(--color-panel-dark)]">
+                              {formatCurrency(allocation.fare)}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                   <div className="mt-6 flex flex-wrap gap-3">
                     <Link href="/bookings" className="primary-button px-5 py-3 text-sm">
@@ -576,6 +702,8 @@ export default function BookingPage() {
             passengerCount={passengerCount}
             selectedSeatLabels={selectedSeatLabels}
             farePerSeat={selectedFare}
+            currentStep={currentStep}
+            paymentMethod={paymentMethod}
           />
 
           {details?.availability ? (
@@ -604,6 +732,20 @@ export default function BookingPage() {
         </div>
       </div>
     </PageShell>
+  );
+}
+
+export default function BookingPage() {
+  return (
+    <Suspense fallback={
+      <PageShell className="items-center px-6 py-12 sm:px-10">
+        <div className="w-full">
+          <LoadingState label="Preparing booking flow..." />
+        </div>
+      </PageShell>
+    }>
+      <BookingPageContent />
+    </Suspense>
   );
 }
 
