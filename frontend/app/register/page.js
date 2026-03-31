@@ -57,14 +57,14 @@ export default function RegisterPage() {
 
   return (
     <AuthShell
-      eyebrow="Create account"
-      title="Book faster with your own RailYatra profile."
-      description="Register once, keep your booking history in one place, and move quickly through future journeys."
+      eyebrow="Passenger registration"
+      title="Create your account to search and book train tickets."
+      description="Register once to manage journeys, check availability, and continue future bookings more quickly."
       footer={
         <>
           Already have an account?{" "}
           <Link href="/login" className="font-semibold text-[var(--color-accent)]">
-            Sign in here
+            Login here
           </Link>
         </>
       }
@@ -72,11 +72,10 @@ export default function RegisterPage() {
       <div>
         <div className="mb-6">
           <h2 className="text-2xl font-semibold tracking-tight text-[var(--color-ink)]">
-            Register
+            Create account
           </h2>
           <p className="mt-2 text-sm leading-7 text-[var(--color-muted)]">
-            Create your account to search trains, book tickets, and manage your
-            journeys.
+            Enter your details to start booking and managing train journeys.
           </p>
         </div>
 
@@ -88,7 +87,7 @@ export default function RegisterPage() {
             <input
               type="email"
               {...register("email")}
-              className="w-full rounded-2xl border border-black/10 bg-[#fffdf8] px-4 py-3 outline-none transition focus:border-[var(--color-accent)] focus:ring-4 focus:ring-[rgba(214,111,34,0.15)]"
+              className="field-input"
               placeholder="you@example.com"
             />
             {errors.email ? (
@@ -103,7 +102,7 @@ export default function RegisterPage() {
             <input
               type="tel"
               {...register("phone")}
-              className="w-full rounded-2xl border border-black/10 bg-[#fffdf8] px-4 py-3 outline-none transition focus:border-[var(--color-accent)] focus:ring-4 focus:ring-[rgba(214,111,34,0.15)]"
+              className="field-input"
               placeholder="9876543210"
             />
             {errors.phone ? (
@@ -119,7 +118,7 @@ export default function RegisterPage() {
               <input
                 type="password"
                 {...register("password")}
-                className="w-full rounded-2xl border border-black/10 bg-[#fffdf8] px-4 py-3 outline-none transition focus:border-[var(--color-accent)] focus:ring-4 focus:ring-[rgba(214,111,34,0.15)]"
+                className="field-input"
                 placeholder="Minimum 6 characters"
               />
               {errors.password ? (
@@ -136,7 +135,7 @@ export default function RegisterPage() {
               <input
                 type="password"
                 {...register("passwordConfirmation")}
-                className="w-full rounded-2xl border border-black/10 bg-[#fffdf8] px-4 py-3 outline-none transition focus:border-[var(--color-accent)] focus:ring-4 focus:ring-[rgba(214,111,34,0.15)]"
+                className="field-input"
                 placeholder="Repeat your password"
               />
               {errors.passwordConfirmation ? (
@@ -148,7 +147,7 @@ export default function RegisterPage() {
           </div>
 
           {error ? (
-            <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <div className="rounded-[1.2rem] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
               {error}
             </div>
           ) : null}
@@ -156,7 +155,7 @@ export default function RegisterPage() {
           <button
             type="submit"
             disabled={status === "loading"}
-            className="inline-flex w-full items-center justify-center rounded-2xl bg-[var(--color-accent)] px-5 py-3 font-semibold text-white transition hover:opacity-92 disabled:cursor-not-allowed disabled:opacity-60"
+            className="danger-button w-full px-5 py-3.5 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {status === "loading" ? "Creating account..." : "Create account"}
           </button>

@@ -54,12 +54,12 @@ export default function LoginPage() {
 
   return (
     <AuthShell
-      eyebrow="Welcome back"
-      title="Sign in to continue your journey."
-      description="Access train search, booking history, cancellations, and upcoming journeys with your secure account."
+      eyebrow="Passenger login"
+      title="Sign in to search routes and continue your booking."
+      description="Access your journeys, booking history, and live train search with your account."
       footer={
         <>
-          New here?{" "}
+          New passenger?{" "}
           <Link href="/register" className="font-semibold text-[var(--color-accent)]">
             Create an account
           </Link>
@@ -72,7 +72,7 @@ export default function LoginPage() {
             Login
           </h2>
           <p className="mt-2 text-sm leading-7 text-[var(--color-muted)]">
-            Use your registered email and password to access the platform.
+            Enter your registered email address and password to continue.
           </p>
         </div>
 
@@ -84,8 +84,8 @@ export default function LoginPage() {
             <input
               type="email"
               {...register("email")}
-              className="w-full rounded-2xl border border-black/10 bg-[#fffdf8] px-4 py-3 outline-none transition focus:border-[var(--color-accent)] focus:ring-4 focus:ring-[rgba(214,111,34,0.15)]"
-              placeholder="admin1@trainbooking.com"
+              className="field-input"
+              placeholder="you@example.com"
             />
             {errors.email ? (
               <p className="mt-2 text-sm text-red-600">{errors.email.message}</p>
@@ -99,8 +99,8 @@ export default function LoginPage() {
             <input
               type="password"
               {...register("password")}
-              className="w-full rounded-2xl border border-black/10 bg-[#fffdf8] px-4 py-3 outline-none transition focus:border-[var(--color-accent)] focus:ring-4 focus:ring-[rgba(214,111,34,0.15)]"
-              placeholder="password123"
+              className="field-input"
+              placeholder="Enter your password"
             />
             {errors.password ? (
               <p className="mt-2 text-sm text-red-600">
@@ -110,7 +110,7 @@ export default function LoginPage() {
           </div>
 
           {error ? (
-            <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <div className="rounded-[1.2rem] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
               {error}
             </div>
           ) : null}
@@ -118,7 +118,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={status === "loading"}
-            className="inline-flex w-full items-center justify-center rounded-2xl bg-[var(--color-ink)] px-5 py-3 font-semibold text-white transition hover:opacity-92 disabled:cursor-not-allowed disabled:opacity-60"
+            className="primary-button w-full px-5 py-3.5 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {status === "loading" ? "Signing in..." : "Sign in"}
           </button>

@@ -1,14 +1,28 @@
 @import "tailwindcss";
 
 :root {
-  --background: #fffdf7;
-  --foreground: #162128;
-  --color-surface: #fffdf7;
-  --color-panel: #f7efdf;
-  --color-panel-strong: #f2e4c6;
-  --color-ink: #162128;
-  --color-muted: #58656d;
-  --color-accent: #d66f22;
+  --background: #f4f8fd;
+  --foreground: #102131;
+  --color-surface: #f4f8fd;
+  --color-surface-soft: #fbfdff;
+  --color-surface-strong: #ffffff;
+  --color-panel: #e7f0fb;
+  --color-panel-strong: #d7e7f8;
+  --color-panel-dark: #135f97;
+  --color-panel-dark-strong: #0f4e7d;
+  --color-ink: #102131;
+  --color-muted: #62768b;
+  --color-muted-strong: #41576e;
+  --color-accent: #1b74b4;
+  --color-accent-strong: #145d91;
+  --color-success: #1f7a57;
+  --color-danger: #c44e45;
+  --color-line: rgba(16, 33, 49, 0.1);
+  --color-line-strong: rgba(16, 33, 49, 0.16);
+  --color-glow: rgba(27, 116, 180, 0.15);
+  --shadow-card: 0 18px 48px rgba(16, 33, 49, 0.08);
+  --shadow-panel: 0 26px 72px rgba(16, 33, 49, 0.08);
+  --shadow-soft: 0 10px 28px rgba(16, 33, 49, 0.06);
 }
 
 @theme inline {
@@ -27,7 +41,11 @@ html {
 }
 
 body {
-  background: var(--background);
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top left, rgba(27, 116, 180, 0.08), transparent 24%),
+    radial-gradient(circle at top right, rgba(19, 95, 151, 0.08), transparent 26%),
+    linear-gradient(180deg, #f4f8fd 0%, #fbfdff 48%, #eff5fc 100%);
   color: var(--foreground);
   font-family: var(--font-geist-sans), sans-serif;
 }
@@ -42,4 +60,148 @@ input,
 select,
 textarea {
   font: inherit;
+}
+
+::selection {
+  background: rgba(27, 116, 180, 0.18);
+}
+
+.surface-card {
+  border: 1px solid var(--color-line);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: var(--shadow-card);
+  backdrop-filter: blur(14px);
+}
+
+.surface-panel {
+  border: 1px solid var(--color-line);
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: var(--shadow-panel);
+  backdrop-filter: blur(16px);
+}
+
+.soft-panel {
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.04));
+  box-shadow: var(--shadow-soft);
+}
+
+.primary-button,
+.secondary-button,
+.ghost-button,
+.danger-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 9999px;
+  font-weight: 600;
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    color 180ms ease,
+    transform 180ms ease;
+}
+
+.primary-button:hover,
+.secondary-button:hover,
+.ghost-button:hover,
+.danger-button:hover {
+  transform: translateY(-1px);
+}
+
+.primary-button {
+  background: var(--color-panel-dark);
+  color: white;
+  box-shadow: 0 12px 30px rgba(19, 95, 151, 0.18);
+}
+
+.primary-button:hover {
+  background: var(--color-panel-dark-strong);
+}
+
+.secondary-button {
+  border: 1px solid var(--color-line);
+  background: rgba(255, 255, 255, 0.94);
+  color: var(--color-ink);
+}
+
+.secondary-button:hover {
+  background: var(--color-surface-soft);
+  border-color: var(--color-line-strong);
+}
+
+.ghost-button {
+  background: transparent;
+  color: var(--color-panel-dark);
+}
+
+.ghost-button:hover {
+  background: rgba(12, 79, 129, 0.06);
+}
+
+.danger-button {
+  background: #f17f22;
+  color: white;
+  box-shadow: 0 12px 30px rgba(241, 127, 34, 0.18);
+}
+
+.danger-button:hover {
+  background: #d86a12;
+}
+
+.field-input {
+  width: 100%;
+  border-radius: 1.1rem;
+  border: 1px solid var(--color-line);
+  background: rgba(248, 251, 255, 0.96);
+  padding: 0.95rem 1rem;
+  outline: none;
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    background-color 180ms ease;
+}
+
+.field-input:hover {
+  background: white;
+  border-color: var(--color-line-strong);
+}
+
+.field-input:focus {
+  border-color: var(--color-panel-dark);
+  box-shadow: 0 0 0 4px var(--color-glow);
+}
+
+.field-input:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.page-shell {
+  position: relative;
+  margin-inline: auto;
+  display: flex;
+  min-height: calc(100vh - 81px);
+  width: 100%;
+  max-width: 72rem;
+  flex: 1;
+  padding: 2.5rem 1.5rem;
+}
+
+.section-title {
+  font-size: 2rem;
+  line-height: 1.1;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  color: var(--color-ink);
+}
+
+.eyebrow {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--color-accent);
 }

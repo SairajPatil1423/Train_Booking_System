@@ -16,3 +16,14 @@ export async function searchSchedules(payload) {
 
   return response.data;
 }
+
+export async function fetchScheduleDetails(scheduleId, payload) {
+  const response = await api.get(`/schedules/${scheduleId}`, {
+    params: {
+      src_station_id: payload.srcStationId,
+      dst_station_id: payload.dstStationId,
+    },
+  });
+
+  return response.data;
+}

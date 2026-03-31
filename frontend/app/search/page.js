@@ -4,25 +4,30 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useDispatch, useSelector } from "react-redux";
+import StationAutocomplete from "@/components/station-autocomplete";
 import {
   resetSearch,
   setSearchError,
   setSearchFilters,
-  setSearchResults,
-  startSearch,
 } from "@/features/trains/searchSlice";
-import { fetchStations, searchSchedules } from "@/features/trains/trainService";
+import { fetchStations } from "@/features/trains/trainService";
+
+const searchTips = [
+  "Search by station name or station code",
+  "Choose a journey date before continuing",
+  "Review matching trains on the next page",
+];
 
 export default function SearchPage() {
   const router = useRouter();
   const dispatch = useDispatch();
   const { isAuthenticated, user } = useSelector((state) => state.auth);
-  const { filters, results, status, error } = useSelector(
-    (state) => state.trainsSearch,
-  );
+  const { filters, error } = useSelector((state) => state.trainsSearch);
   const [stations, setStations] = useState([]);
   const [stationStatus, setStationStatus] = useState("idle");
   const [stationError, setStationError] = useState("");
+  const [fromQuery, setFromQuery] = useState("");
+  const [toQuery, setToQuery] = useState("");
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -77,31 +82,76 @@ export default function SearchPage() {
     dispatch(setSearchFilters({ [key]: value }));
   }
 
-  async function handleSearch(event) {
-    event.preventDefault();
-
-    if (!filters.fromStationId || !filters.toStationId || !filters.journeyDate) {
-      dispatch(setSearchError("Source, destination, and journey date are required."));
-      return;
+  function resolveStationOption(query, selectedId) {
+    if (selectedId) {
+      return stationOptions.find((option) => option.value === selectedId) || null;
     }
 
-    if (filters.fromStationId === filters.toStationId) {
-      dispatch(setSearchError("Source and destination must be different stations."));
-      return;
+    const normalizedQuery = query.trim().toLowerCase();
+
+    if (!normalizedQuery) {
+      return null;
     }
 
-    dispatch(startSearch());
+    const exactMatch = stationOptions.find((option) => {
+      const label = option.label.toLowerCase();
+      const code = option.label.match(/\(([^)]+)\)$/)?.[1]?.toLowerCase() || "";
 
-    try {
-      const data = await searchSchedules(filters);
-      dispatch(setSearchResults(data.schedules || []));
-    } catch (requestError) {
-      dispatch(
-        setSearchError(
-          requestError?.response?.data?.error || "Unable to search trains right now.",
-        ),
+      return (
+        label === normalizedQuery ||
+        code === normalizedQuery ||
+        label.startsWith(normalizedQuery)
       );
+    });
+
+    if (exactMatch) {
+      return exactMatch;
     }
+
+    const partialMatches = stationOptions.filter((option) => {
+      const haystack = `${option.label} ${option.city}`.toLowerCase();
+      return haystack.includes(normalizedQuery);
+    });
+
+    return partialMatches.length === 1 ? partialMatches[0] : null;
+  }
+
+  function handleStationInputChange(type, query) {
+    if (type === "from") {
+      setFromQuery(query);
+      updateFilter("fromStationId", "");
+      return;
+    }
+
+    setToQuery(query);
+    updateFilter("toStationId", "");
+  }
+
+  function handleStationSelect(type, option) {
+    if (type === "from") {
+      setFromQuery(option.label);
+      updateFilter("fromStationId", option.value);
+      return;
+    }
+
+    setToQuery(option.label);
+    updateFilter("toStationId", option.value);
+  }
+
+  function handleSwapStations() {
+    const nextFromQuery = toQuery;
+    const nextToQuery = fromQuery;
+    const nextFromId = filters.toStationId;
+    const nextToId = filters.fromStationId;
+
+    setFromQuery(nextFromQuery);
+    setToQuery(nextToQuery);
+    dispatch(
+      setSearchFilters({
+        fromStationId: nextFromId,
+        toStationId: nextToId,
+      }),
+    );
   }
 
   function handleReset() {
@@ -113,27 +163,63 @@ export default function SearchPage() {
         journeyDate: "",
       }),
     );
+    setFromQuery("");
+    setToQuery("");
+  }
+
+  function handleSubmit(event) {
+    event.preventDefault();
+
+    const fromStation = resolveStationOption(fromQuery, filters.fromStationId);
+    const toStation = resolveStationOption(toQuery, filters.toStationId);
+
+    if (!fromStation || !toStation || !filters.journeyDate) {
+      dispatch(
+        setSearchError(
+          "Please choose source and destination from the suggestions and select a journey date.",
+        ),
+      );
+      return;
+    }
+
+    if (fromStation.value === toStation.value) {
+      dispatch(setSearchError("Source and destination must be different stations."));
+      return;
+    }
+
+    dispatch(
+      setSearchFilters({
+        fromStationId: fromStation.value,
+        toStationId: toStation.value,
+      }),
+    );
+
+    const params = new URLSearchParams({
+      src_station_id: fromStation.value,
+      dst_station_id: toStation.value,
+      travel_date: filters.journeyDate,
+      from_label: fromStation.label,
+      to_label: toStation.label,
+    });
+
+    router.push(`/search/results?${params.toString()}`);
   }
 
   if (!isAuthenticated) {
     return (
       <main className="mx-auto flex min-h-[calc(100vh-81px)] w-full max-w-5xl flex-1 items-center px-6 py-12 sm:px-10">
-        <div className="w-full rounded-[2rem] border border-amber-200 bg-amber-50 p-8 shadow-sm">
-          <p className="text-sm font-semibold uppercase tracking-[0.25em] text-amber-700">
+        <div className="surface-panel w-full rounded-[2rem] p-8">
+          <p className="text-sm font-semibold uppercase tracking-[0.25em] text-[var(--color-accent)]">
             Protected area
           </p>
-          <h1 className="mt-3 text-3xl font-semibold tracking-tight text-amber-950">
+          <h1 className="mt-3 text-3xl font-semibold tracking-tight text-[var(--color-ink)]">
             Sign in before searching trains.
           </h1>
-          <p className="mt-4 max-w-2xl text-base leading-8 text-amber-900/80">
-            We’ll add route search in the next step. For now, this page confirms
-            that JWT-based sign in is connected to the UI and controls access.
+          <p className="mt-4 max-w-2xl text-base leading-8 text-[var(--color-muted)]">
+            Login first to search routes, view availability, and continue to booking.
           </p>
           <div className="mt-6">
-            <Link
-              href="/login"
-              className="inline-flex rounded-full bg-amber-700 px-5 py-3 font-semibold text-white transition hover:opacity-90"
-            >
+            <Link href="/login" className="primary-button px-5 py-3 text-sm">
               Go to login
             </Link>
           </div>
@@ -143,224 +229,120 @@ export default function SearchPage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-[calc(100vh-81px)] w-full max-w-6xl flex-1 px-6 py-12 sm:px-10 lg:px-12">
-      <div className="grid w-full gap-6 xl:grid-cols-[0.82fr_1.18fr]">
-        <section className="rounded-[2rem] border border-black/8 bg-white p-8 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-[0.32em] text-[var(--color-accent)]">
-            Search trains
-          </p>
-          <h1 className="mt-4 text-3xl font-semibold tracking-tight text-[var(--color-ink)]">
-            Find the right schedule for your journey.
-          </h1>
-          <p className="mt-4 max-w-2xl text-base leading-8 text-[var(--color-muted)]">
-            Choose your source station, destination station, and travel date to
-            view live schedules and current seat availability.
-          </p>
+    <main className="relative mx-auto flex min-h-[calc(100vh-81px)] w-full max-w-6xl flex-1 px-6 py-10 sm:px-10 lg:px-12">
+      <div className="pointer-events-none absolute inset-x-6 top-0 h-72 rounded-[3rem] bg-[radial-gradient(circle_at_top_left,_rgba(27,116,180,0.1),_transparent_34%),radial-gradient(circle_at_top_right,_rgba(19,95,151,0.1),_transparent_34%)] sm:inset-x-10 lg:inset-x-12" />
+      <div className="relative z-10 flex w-full items-start justify-center">
+        <section className="surface-panel w-full max-w-5xl rounded-[2.25rem] p-6 sm:p-8 lg:p-10">
+          <div className="flex flex-col gap-6 border-b border-[var(--color-line)] pb-6">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="max-w-3xl">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.34em] text-[var(--color-accent)]">
+                  Plan your journey
+                </p>
+                <h1 className="mt-3 text-3xl font-semibold tracking-tight text-[var(--color-ink)] sm:text-4xl">
+                  Search trains between stations
+                </h1>
+                <p className="mt-3 text-base leading-8 text-[var(--color-muted)]">
+                  Enter your source, destination, and journey date to review
+                  matching trains on the next page.
+                </p>
+              </div>
 
-          <form className="mt-8 space-y-5" onSubmit={handleSearch}>
-            <div>
-              <label className="mb-2 block text-sm font-medium text-[var(--color-ink)]">
-                From station
-              </label>
-              <select
-                value={filters.fromStationId}
-                onChange={(event) => updateFilter("fromStationId", event.target.value)}
-                className="w-full rounded-2xl border border-black/10 bg-[#fffdf8] px-4 py-3 outline-none transition focus:border-[var(--color-accent)] focus:ring-4 focus:ring-[rgba(214,111,34,0.15)]"
-                disabled={stationStatus === "loading"}
-              >
-                <option value="">Select source station</option>
-                {stationOptions.map((station) => (
-                  <option key={station.value} value={station.value}>
-                    {station.label}{station.city ? ` • ${station.city}` : ""}
-                  </option>
-                ))}
-              </select>
+              <div className="rounded-[1.5rem] bg-[linear-gradient(180deg,_#145f97_0%,_#0e4770_100%)] px-5 py-4 text-white shadow-[0_18px_46px_rgba(12,79,129,0.16)]">
+                <p className="text-xs font-medium uppercase tracking-[0.2em] text-white/68">
+                  Traveller
+                </p>
+                <p className="mt-2 text-sm font-semibold sm:text-base">{user?.email}</p>
+              </div>
             </div>
 
-            <div>
-              <label className="mb-2 block text-sm font-medium text-[var(--color-ink)]">
-                To station
-              </label>
-              <select
-                value={filters.toStationId}
-                onChange={(event) => updateFilter("toStationId", event.target.value)}
-                className="w-full rounded-2xl border border-black/10 bg-[#fffdf8] px-4 py-3 outline-none transition focus:border-[var(--color-accent)] focus:ring-4 focus:ring-[rgba(214,111,34,0.15)]"
-                disabled={stationStatus === "loading"}
-              >
-                <option value="">Select destination station</option>
-                {stationOptions.map((station) => (
-                  <option key={station.value} value={station.value}>
-                    {station.label}{station.city ? ` • ${station.city}` : ""}
-                  </option>
-                ))}
-              </select>
+            <div className="grid gap-3 sm:grid-cols-3">
+              {searchTips.map((tip) => (
+                <div
+                  key={tip}
+                  className="rounded-[1.25rem] border border-[var(--color-line)] bg-[var(--color-surface-soft)] px-4 py-3 text-sm text-[var(--color-muted-strong)]"
+                >
+                  {tip}
+                </div>
+              ))}
             </div>
+          </div>
 
-            <div>
-              <label className="mb-2 block text-sm font-medium text-[var(--color-ink)]">
-                Journey date
-              </label>
-              <input
-                type="date"
-                value={filters.journeyDate}
-                onChange={(event) => updateFilter("journeyDate", event.target.value)}
-                className="w-full rounded-2xl border border-black/10 bg-[#fffdf8] px-4 py-3 outline-none transition focus:border-[var(--color-accent)] focus:ring-4 focus:ring-[rgba(214,111,34,0.15)]"
+          <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
+            <div className="grid gap-4 lg:grid-cols-[1fr_auto_1fr_0.85fr] lg:items-end">
+              <StationAutocomplete
+                label="From station"
+                placeholder="Type source station"
+                value={fromQuery}
+                options={stationOptions}
+                disabled={stationStatus === "loading"}
+                onInputChange={(query) => handleStationInputChange("from", query)}
+                onSelect={(option) => handleStationSelect("from", option)}
               />
+
+              <div className="flex justify-center lg:pb-[0.35rem]">
+                <button
+                  type="button"
+                  onClick={handleSwapStations}
+                    className="secondary-button h-12 w-12 text-lg text-[var(--color-panel-dark)] hover:bg-[#eef6ff]"
+                  aria-label="Swap source and destination"
+                >
+                  ↔
+                </button>
+              </div>
+
+              <StationAutocomplete
+                label="To station"
+                placeholder="Type destination station"
+                value={toQuery}
+                options={stationOptions}
+                disabled={stationStatus === "loading"}
+                onInputChange={(query) => handleStationInputChange("to", query)}
+                onSelect={(option) => handleStationSelect("to", option)}
+              />
+
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-[var(--color-ink)]">
+                  Journey date
+                </label>
+                <input
+                  type="date"
+                  value={filters.journeyDate}
+                  onChange={(event) => updateFilter("journeyDate", event.target.value)}
+                  className="field-input"
+                />
+              </div>
             </div>
 
             {stationError ? (
-              <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              <div className="rounded-[1.2rem] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
                 {stationError}
               </div>
             ) : null}
 
             {error ? (
-              <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              <div className="rounded-[1.2rem] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
                 {error}
               </div>
             ) : null}
 
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap items-center gap-3 pt-2">
               <button
                 type="submit"
-                disabled={status === "loading" || stationStatus === "loading"}
-                className="inline-flex rounded-full bg-[var(--color-ink)] px-5 py-3 font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={stationStatus === "loading"}
+                className="primary-button px-6 py-3 text-sm disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {status === "loading" ? "Searching..." : "Search trains"}
+                Search trains
               </button>
               <button
                 type="button"
                 onClick={handleReset}
-                className="inline-flex rounded-full border border-black/10 bg-white px-5 py-3 font-semibold text-[var(--color-ink)] transition hover:bg-black/5"
+                className="secondary-button px-6 py-3 text-sm"
               >
                 Reset
               </button>
             </div>
           </form>
-        </section>
-
-        <section className="space-y-4">
-          <div className="rounded-[2rem] bg-[var(--color-panel)] p-6 shadow-sm">
-            <p className="text-sm font-medium text-[var(--color-muted)]">
-              Signed in as
-            </p>
-            <p className="mt-2 text-lg font-semibold text-[var(--color-ink)]">
-              {user?.email}
-            </p>
-            <p className="mt-1 text-sm text-[var(--color-muted)]">
-              Role: {user?.role || "user"}
-            </p>
-          </div>
-
-          <div className="rounded-[2rem] border border-black/8 bg-white p-6 shadow-sm">
-            <div className="flex items-center justify-between gap-4 border-b border-black/8 pb-4">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[var(--color-accent)]">
-                  Search results
-                </p>
-                <h2 className="mt-2 text-2xl font-semibold tracking-tight text-[var(--color-ink)]">
-                  Available schedules
-                </h2>
-              </div>
-              <div className="rounded-full bg-[#f8f3e8] px-4 py-2 text-sm font-medium text-[var(--color-muted)]">
-                {results.length} found
-              </div>
-            </div>
-
-            <div className="mt-5 space-y-4">
-              {status === "loading" ? (
-                <div className="rounded-2xl border border-dashed border-black/10 bg-[#fcfbf8] px-5 py-8 text-sm text-[var(--color-muted)]">
-                  Fetching schedules and current availability...
-                </div>
-              ) : null}
-
-              {status !== "loading" && results.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-black/10 bg-[#fcfbf8] px-5 py-8">
-                  <p className="text-lg font-semibold text-[var(--color-ink)]">
-                    No schedules yet.
-                  </p>
-                  <p className="mt-2 text-sm leading-7 text-[var(--color-muted)]">
-                    Search for a route to view trains running on your selected
-                    date.
-                  </p>
-                </div>
-              ) : null}
-
-              {results.map((schedule) => (
-                <article
-                  key={schedule.id}
-                  className="rounded-[1.5rem] border border-black/8 bg-[#fffdfa] p-5 shadow-sm"
-                >
-                  <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[var(--color-accent)]">
-                        {schedule.train?.train_number}
-                      </p>
-                      <h3 className="mt-2 text-xl font-semibold text-[var(--color-ink)]">
-                        {schedule.train?.name}
-                      </h3>
-                      <p className="mt-1 text-sm text-[var(--color-muted)]">
-                        {schedule.train?.train_type} • Status: {schedule.status}
-                      </p>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() =>
-                        router.push(
-                          `/booking?schedule_id=${schedule.id}&src_station_id=${filters.fromStationId}&dst_station_id=${filters.toStationId}`,
-                        )
-                      }
-                      className="inline-flex rounded-full bg-[var(--color-ink)] px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90"
-                    >
-                      Continue booking
-                    </button>
-                  </div>
-
-                  <div className="mt-5 grid gap-4 sm:grid-cols-3">
-                    <div className="rounded-2xl bg-white px-4 py-3 ring-1 ring-black/5">
-                      <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--color-muted)]">
-                        Departure
-                      </p>
-                      <p className="mt-2 text-sm font-semibold text-[var(--color-ink)]">
-                        {new Date(schedule.departure_time).toLocaleString()}
-                      </p>
-                    </div>
-                    <div className="rounded-2xl bg-white px-4 py-3 ring-1 ring-black/5">
-                      <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--color-muted)]">
-                        Expected arrival
-                      </p>
-                      <p className="mt-2 text-sm font-semibold text-[var(--color-ink)]">
-                        {new Date(schedule.expected_arrival_time).toLocaleString()}
-                      </p>
-                    </div>
-                    <div className="rounded-2xl bg-white px-4 py-3 ring-1 ring-black/5">
-                      <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--color-muted)]">
-                        Total available
-                      </p>
-                      <p className="mt-2 text-sm font-semibold text-[var(--color-ink)]">
-                        {schedule.availability?.available_seats ?? 0} seats
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="mt-5 flex flex-wrap gap-3">
-                    {Object.entries(
-                      schedule.availability?.coach_type_availability || {},
-                    ).map(([coachType, data]) => (
-                      <div
-                        key={coachType}
-                        className="rounded-full bg-[var(--color-panel)] px-4 py-2 text-sm text-[var(--color-ink)]"
-                      >
-                        <span className="font-semibold">{coachType}</span>
-                        {`: ${data.available_seats}/${data.total_active_seats}`}
-                      </div>
-                    ))}
-                  </div>
-                </article>
-              ))}
-            </div>
-          </div>
         </section>
       </div>
     </main>

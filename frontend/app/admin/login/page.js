@@ -64,11 +64,11 @@ export default function AdminLoginPage() {
   return (
     <AuthShell
       eyebrow="Admin access"
-      title="Sign in to the operations console."
-      description="This login is reserved for administrators managing trains, schedules, bookings, coaches, and fare rules."
+      title="Sign in to manage trains, schedules, and bookings."
+      description="This area is reserved for authorised railway operations users."
       footer={
         <>
-          Regular user?{" "}
+          Regular passenger?{" "}
           <Link href="/login" className="font-semibold text-[var(--color-accent)]">
             Go to user login
           </Link>
@@ -81,7 +81,7 @@ export default function AdminLoginPage() {
             Admin login
           </h2>
           <p className="mt-2 text-sm leading-7 text-[var(--color-muted)]">
-            Use an administrator account to access the backend management area.
+            Use your administrator account to access the operations area.
           </p>
         </div>
 
@@ -93,7 +93,7 @@ export default function AdminLoginPage() {
             <input
               type="email"
               {...register("email")}
-              className="w-full rounded-2xl border border-black/10 bg-[#fffdf8] px-4 py-3 outline-none transition focus:border-[var(--color-accent)] focus:ring-4 focus:ring-[rgba(214,111,34,0.15)]"
+              className="field-input"
               placeholder="admin1@trainbooking.com"
             />
             {errors.email ? (
@@ -108,8 +108,8 @@ export default function AdminLoginPage() {
             <input
               type="password"
               {...register("password")}
-              className="w-full rounded-2xl border border-black/10 bg-[#fffdf8] px-4 py-3 outline-none transition focus:border-[var(--color-accent)] focus:ring-4 focus:ring-[rgba(214,111,34,0.15)]"
-              placeholder="password123"
+              className="field-input"
+              placeholder="Enter your password"
             />
             {errors.password ? (
               <p className="mt-2 text-sm text-red-600">
@@ -119,7 +119,7 @@ export default function AdminLoginPage() {
           </div>
 
           {error ? (
-            <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <div className="rounded-[1.2rem] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
               {error}
             </div>
           ) : null}
@@ -127,7 +127,7 @@ export default function AdminLoginPage() {
           <button
             type="submit"
             disabled={status === "loading"}
-            className="inline-flex w-full items-center justify-center rounded-2xl bg-[var(--color-ink)] px-5 py-3 font-semibold text-white transition hover:opacity-92 disabled:cursor-not-allowed disabled:opacity-60"
+            className="primary-button w-full px-5 py-3.5 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {status === "loading" ? "Signing in..." : "Login as admin"}
           </button>
