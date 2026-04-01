@@ -36,7 +36,7 @@ export default function StationAutocomplete({
 
   return (
     <div className="relative">
-      <label className="mb-2 block text-sm font-semibold text-[var(--color-ink)]">
+      <label className="field-label">
         {label}
       </label>
       <input
@@ -55,11 +55,11 @@ export default function StationAutocomplete({
             setIsOpen(false);
           }, 120);
         }}
-        className="field-input"
+        className="field-input ui-focus-ring"
       />
 
       {isOpen && filteredOptions.length > 0 ? (
-        <div className="absolute left-0 right-0 top-[calc(100%+0.6rem)] z-30 overflow-hidden rounded-[1.35rem] border border-[var(--color-line)] bg-white shadow-[0_22px_46px_rgba(19,36,47,0.12)]">
+        <div className="absolute left-0 right-0 top-[calc(100%+0.6rem)] z-30 overflow-hidden rounded-[1.35rem] border border-[var(--color-line)] bg-white/98 shadow-[0_22px_46px_rgba(19,36,47,0.12)] backdrop-blur-xl">
           <ul className="py-2">
             {filteredOptions.map((option) => (
               <li key={option.value}>

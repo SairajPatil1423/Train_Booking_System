@@ -1,4 +1,19 @@
-import { createSlice } from "@reduxjs/toolkit";
+import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
+import { searchSchedules } from "./trainService";
+
+export const searchSchedulesThunk = createAsyncThunk(
+  "trainsSearch/search",
+  async (payload, { rejectWithValue }) => {
+    try {
+      const data = await searchSchedules(payload);
+      return data.schedules || [];
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.error || "Unable to fetch matching schedules."
+      );
+    }
+  }
+);
 
 const initialState = {
   filters: {
@@ -21,18 +36,9 @@ const searchSlice = createSlice({
         ...(action.payload || {}),
       };
     },
-    startSearch(state) {
-      state.status = "loading";
-      state.error = null;
-    },
-    setSearchResults(state, action) {
-      state.results = action.payload || [];
-      state.status = "succeeded";
-      state.error = null;
-    },
     setSearchError(state, action) {
-      state.status = "failed";
-      state.error = action.payload || "Unable to fetch trains.";
+      state.error = action.payload || null;
+      state.status = action.payload ? "failed" : "idle";
     },
     resetSearch(state) {
       state.results = [];
@@ -40,14 +46,23 @@ const searchSlice = createSlice({
       state.error = null;
     },
   },
+  extraReducers: (builder) => {
+    builder
+      .addCase(searchSchedulesThunk.pending, (state) => {
+        state.status = "loading";
+        state.error = null;
+      })
+      .addCase(searchSchedulesThunk.fulfilled, (state, action) => {
+        state.results = action.payload;
+        state.status = "succeeded";
+      })
+      .addCase(searchSchedulesThunk.rejected, (state, action) => {
+        state.status = "failed";
+        state.error = action.payload;
+      });
+  },
 });
 
-export const {
-  setSearchFilters,
-  startSearch,
-  setSearchResults,
-  setSearchError,
-  resetSearch,
-} = searchSlice.actions;
+export const { setSearchFilters, setSearchError, resetSearch } = searchSlice.actions;
 
 export default searchSlice.reducer;

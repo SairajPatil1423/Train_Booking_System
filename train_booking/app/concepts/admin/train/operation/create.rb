@@ -32,6 +32,8 @@ module Admin
             train_number: params[:train_number],
             name: params[:name],
             train_type: params[:train_type],
+            rating: params[:rating],
+            grade: params[:grade],
             is_active: params.fetch(:is_active, true)
           )
           true

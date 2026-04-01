@@ -4,6 +4,7 @@ module Admin
       class Create < Trailblazer::Operation
         step :validate_authorization
         step :validate_presence
+        step :normalize_coach_type
         step :validate_train_exists
         step :validate_no_duplicate_coach
         step :persist_coach_and_seats
@@ -13,16 +14,24 @@ module Admin
         end
 
         def validate_presence(ctx, params:, **)
-          required = %i[train_id coach_number coach_type total_seats]
+          required = %i[train_id coach_number coach_type]
           missing = required.select { |f| params[f].blank? }
           if missing.any?
             ctx[:errors] = ["Missing required fields: #{missing.join(', ')}"]
             return false
           end
-          if params[:total_seats].to_i <= 0
-            ctx[:errors] = ['total_seats must be a positive integer']
+          true
+        end
+
+        def normalize_coach_type(ctx, params:, **)
+          normalized_type = params[:coach_type].to_s.strip.downcase
+
+          unless ::Coach::COACH_LAYOUTS.key?(normalized_type)
+            ctx[:errors] = ["coach_type must be one of: #{::Coach::COACH_LAYOUTS.keys.join(', ')}"]
             return false
           end
+
+          params[:coach_type] = normalized_type
           true
         end
 
@@ -47,19 +56,10 @@ module Admin
             coach = ::Coach.create!(
               train_id: params[:train_id],
               coach_number: params[:coach_number],
-              coach_type: params[:coach_type],
-              total_seats: params[:total_seats].to_i
+              coach_type: params[:coach_type]
             )
 
-            seat_type = params[:seat_type] || default_seat_type(params[:coach_type])
-            params[:total_seats].to_i.times do |i|
-              ::Seat.create!(
-                coach_id: coach.id,
-                seat_number: format('%02d', i + 1),
-                seat_type: seat_type,
-                is_active: true
-              )
-            end
+            ::CoachSeatLayoutSync.new(coach: coach).call
 
             ctx[:model] = coach.reload
           end
@@ -67,16 +67,6 @@ module Admin
         rescue StandardError => e
           ctx[:errors] = [e.message]
           false
-        end
-
-        private
-
-        def default_seat_type(coach_type)
-          case coach_type.to_s.downcase
-          when 'sleeper'    then 'berth'
-          when 'first class' then 'cabin'
-          else 'seat'
-          end
         end
       end
     end

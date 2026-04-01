@@ -2,7 +2,8 @@ import {
   formatBookingStatus,
   formatCurrency,
   formatDateTime,
-  formatDuration,
+  formatScheduleDateTime,
+  formatScheduleDuration,
 } from "@/utils/formatters";
 
 export function buildScheduleViewModel(schedule, context = {}) {
@@ -21,13 +22,16 @@ export function buildScheduleViewModel(schedule, context = {}) {
     trainType: schedule?.train?.train_type || "Scheduled",
     statusLabel: formatBookingStatus(schedule?.status),
     routeLabel: `${context.fromLabel || "Source"} to ${context.toLabel || "Destination"}`,
-    departureLabel: formatDateTime(schedule?.departure_time),
-    arrivalLabel: formatDateTime(schedule?.expected_arrival_time),
-    durationLabel: formatDuration(
+    departureLabel: formatScheduleDateTime(schedule?.travel_date, schedule?.departure_time),
+    arrivalLabel: formatScheduleDateTime(schedule?.travel_date, schedule?.expected_arrival_time),
+    durationLabel: formatScheduleDuration(
+      schedule?.travel_date,
       schedule?.departure_time,
       schedule?.expected_arrival_time,
     ),
     availableSeats: schedule?.availability?.available_seats ?? 0,
+    rating: schedule?.train?.rating || null,
+    grade: schedule?.train?.grade || null,
     coachAvailability,
   };
 }

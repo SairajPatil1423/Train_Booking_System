@@ -4,6 +4,7 @@ module Admin
       class Update < Trailblazer::Operation
         step :validate_authorization
         step :find_model
+        step :normalize_coach_type
         step :validate_valid_to_greater_than_from
         step :validate_no_overlap
         step :update_model
@@ -18,6 +19,20 @@ module Admin
             ctx[:errors] = ['FareRule not found']
             return false
           end
+          true
+        end
+
+        def normalize_coach_type(ctx, params:, **)
+          return true unless params.key?(:coach_type)
+
+          normalized_type = params[:coach_type].to_s.strip.downcase
+
+          unless ::Coach::COACH_LAYOUTS.key?(normalized_type)
+            ctx[:errors] = ["coach_type must be one of: #{::Coach::COACH_LAYOUTS.keys.join(', ')}"]
+            return false
+          end
+
+          params[:coach_type] = normalized_type
           true
         end
 

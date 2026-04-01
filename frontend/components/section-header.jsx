@@ -1,6 +1,6 @@
 export default function SectionHeader({ eyebrow, title, description, actions }) {
   return (
-    <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+    <div className="flex flex-col gap-5 border-b border-[var(--color-line)] pb-5 lg:flex-row lg:items-start lg:justify-between">
       <div className="max-w-3xl">
         {eyebrow ? <p className="eyebrow">{eyebrow}</p> : null}
         <h1 className="mt-3 section-title">{title}</h1>

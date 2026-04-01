@@ -144,6 +144,8 @@ train_blueprints = [
     number: "12951",
     name: "Western Capital Express",
     train_type: "Superfast",
+    rating: 4.6,
+    grade: "Premium",
     route: [
       ["BCT", nil, "06:00", 0],
       ["ST", "08:15", "08:20", 265],
@@ -155,6 +157,8 @@ train_blueprints = [
     number: "12952",
     name: "Western Capital Return",
     train_type: "Superfast",
+    rating: 4.5,
+    grade: "Premium",
     route: [
       ["ADI", nil, "06:10", 0],
       ["BRC", "07:45", "07:50", 100],
@@ -166,6 +170,8 @@ train_blueprints = [
     number: "12953",
     name: "Rajputana Arrow",
     train_type: "Express",
+    rating: 4.4,
+    grade: "Premier",
     route: [
       ["ADI", nil, "05:45", 0],
       ["JP", "11:40", "11:50", 660],
@@ -176,6 +182,8 @@ train_blueprints = [
     number: "12954",
     name: "Rajputana Arrow Return",
     train_type: "Express",
+    rating: 4.3,
+    grade: "Premier",
     route: [
       ["NDLS", nil, "05:30", 0],
       ["JP", "11:10", "11:20", 275],
@@ -186,6 +194,8 @@ train_blueprints = [
     number: "12621",
     name: "Dakshin Link",
     train_type: "Superfast",
+    rating: 4.2,
+    grade: "Business",
     route: [
       ["MAS", nil, "06:20", 0],
       ["BZA", "11:00", "11:10", 431],
@@ -196,6 +206,8 @@ train_blueprints = [
     number: "12622",
     name: "Dakshin Link Return",
     train_type: "Superfast",
+    rating: 4.1,
+    grade: "Business",
     route: [
       ["SC", nil, "06:10", 0],
       ["BZA", "11:25", "11:35", 285],
@@ -206,6 +218,8 @@ train_blueprints = [
     number: "12701",
     name: "Central Crown",
     train_type: "Express",
+    rating: 4.0,
+    grade: "Classic",
     route: [
       ["LTT", nil, "07:00", 0],
       ["BPL", "14:15", "14:25", 779],
@@ -216,6 +230,8 @@ train_blueprints = [
     number: "12702",
     name: "Central Crown Return",
     train_type: "Express",
+    rating: 4.0,
+    grade: "Classic",
     route: [
       ["NDLS", nil, "07:15", 0],
       ["BPL", "15:50", "16:00", 765],
@@ -226,6 +242,8 @@ train_blueprints = [
     number: "12811",
     name: "Deccan Meridian",
     train_type: "Mail",
+    rating: 3.9,
+    grade: "Saver",
     route: [
       ["BCT", nil, "05:50", 0],
       ["NGP", "16:10", "16:20", 837],
@@ -236,6 +254,8 @@ train_blueprints = [
     number: "12812",
     name: "Deccan Meridian Return",
     train_type: "Mail",
+    rating: 3.9,
+    grade: "Saver",
     route: [
       ["SC", nil, "05:40", 0],
       ["NGP", "13:00", "13:10", 548],
@@ -245,9 +265,9 @@ train_blueprints = [
 ]
 
 coach_templates = [
-  { coach_type: "Sleeper", prefix: "S", total_seats: 24, seat_type: "Lower" },
-  { coach_type: "AC", prefix: "A", total_seats: 18, seat_type: "Upper" },
-  { coach_type: "Chair Car", prefix: "C", total_seats: 20, seat_type: "Window" }
+  { coach_type: "sleeper", prefix: "S" },
+  { coach_type: "1ac", prefix: "H" },
+  { coach_type: "2ac", prefix: "C" }
 ]
 
 train_blueprints.each_with_index do |blueprint, index|
@@ -255,6 +275,8 @@ train_blueprints.each_with_index do |blueprint, index|
     train_number: blueprint[:number],
     name: blueprint[:name],
     train_type: blueprint[:train_type],
+    rating: blueprint[:rating],
+    grade: blueprint[:grade],
     is_active: true
   )
 
@@ -273,26 +295,18 @@ train_blueprints.each_with_index do |blueprint, index|
     coach = Coach.create!(
       train: train,
       coach_number: "#{coach_template[:prefix]}#{coach_index + 1}",
-      coach_type: coach_template[:coach_type],
-      total_seats: coach_template[:total_seats]
+      coach_type: coach_template[:coach_type]
     )
-
-    1.upto(coach_template[:total_seats]) do |seat_number|
-      Seat.create!(
-        coach: coach,
-        seat_number: format("%02d", seat_number),
-        seat_type: coach_template[:seat_type],
-        is_active: true
-      )
-    end
+    CoachSeatLayoutSync.new(coach: coach).call
 
     FareRule.create!(
       train: train,
       coach_type: coach_template[:coach_type],
       base_fare_per_km: case coach_template[:coach_type]
-                        when "Sleeper" then 1.20 + (index * 0.03)
-                        when "AC" then 2.10 + (index * 0.04)
-                        else 1.75 + (index * 0.03)
+                        when "sleeper" then 1.2 + (index * 0.03)
+                        when "1ac" then 2.6 + (index * 0.04)
+                        when "2ac" then 1.85 + (index * 0.03)
+                        else 1.5 + (index * 0.03)
                         end.round(2),
       dynamic_multiplier: (1.0 + ((index % 3) * 0.05)).round(2),
       valid_from: Date.current,

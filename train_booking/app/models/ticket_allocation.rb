@@ -9,6 +9,7 @@ class TicketAllocation < ApplicationRecord
   has_many :cancellations, dependent: :restrict_with_exception
 
   enum :status, {
+    booked: "booked",
     confirmed: "confirmed",
     cancelled: "cancelled"
   }, default: :confirmed

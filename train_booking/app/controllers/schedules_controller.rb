@@ -26,10 +26,12 @@ class SchedulesController < ApplicationController
       return render json: { schedules: [], message: 'No trains found for this route' }, status: :ok
     end
 
+    Schedule.ensure_daily_schedules!(travel_date: travel_date, train_ids: valid_train_ids)
+
     schedules = Schedule
       .includes(:train)
-      .where(train_id: valid_train_ids, travel_date: travel_date)
-      .where.not(status: 'cancelled')
+      .where(train_id: valid_train_ids)
+      .active_for_date(travel_date)
       .order(:departure_time)
 
     schedules_with_availability = schedules.map do |schedule|
