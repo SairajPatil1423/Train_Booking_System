@@ -9,32 +9,17 @@ class Admin::SeatsController < Admin::BaseController
 
   def create
     authorize Seat
-    seat = @coach.seats.create!(
-      seat_number: seat_params[:seat_number],
-      seat_type: seat_params[:seat_type] || 'seat',
-      is_active: true
-    )
-    render json: { message: 'Seat added', seat: seat }, status: :created
-  rescue ActiveRecord::RecordInvalid => e
-    render json: { errors: [e.message] }, status: :unprocessable_entity
+    render json: { errors: ['Manual seat creation is disabled. Seats are generated from coach_type layout.'] }, status: :unprocessable_entity
   end
 
   def update
     authorize @seat
-    @seat.update!(seat_params)
-    render json: { message: 'Seat updated', seat: @seat }, status: :ok
-  rescue ActiveRecord::RecordInvalid => e
-    render json: { errors: [e.message] }, status: :unprocessable_entity
+    render json: { errors: ['Manual seat updates are disabled. Change the coach layout instead.'] }, status: :unprocessable_entity
   end
 
   def destroy
     authorize @seat
-    if TicketAllocation.where(seat_id: @seat.id).where.not(status: 'cancelled').exists?
-      render json: { errors: ['Cannot delete seat with active allocations'] }, status: :unprocessable_entity
-    else
-      @seat.destroy!
-      render json: { message: 'Seat removed' }, status: :ok
-    end
+    render json: { errors: ['Manual seat deletion is disabled. Seats are controlled by coach layout.'] }, status: :unprocessable_entity
   end
 
   private
@@ -45,9 +30,5 @@ class Admin::SeatsController < Admin::BaseController
 
   def set_seat
     @seat = @coach.seats.find(params[:id])
-  end
-
-  def seat_params
-    params.require(:seat).permit(:seat_number, :seat_type, :is_active)
   end
 end

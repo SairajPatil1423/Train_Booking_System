@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_03_29_162917) do
+ActiveRecord::Schema[7.1].define(version: 2026_04_01_113000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pgcrypto"
   enable_extension "plpgsql"
@@ -171,6 +171,8 @@ ActiveRecord::Schema[7.1].define(version: 2026_03_29_162917) do
     t.string "train_type", limit: 50, null: false
     t.boolean "is_active", default: true, null: false
     t.datetime "created_at", default: -> { "now()" }, null: false
+    t.decimal "rating", precision: 4, scale: 2
+    t.string "grade"
     t.index ["train_number"], name: "idx_trains_number", unique: true
   end
 

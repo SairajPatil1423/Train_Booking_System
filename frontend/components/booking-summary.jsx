@@ -1,3 +1,5 @@
+import Badge from "@/components/ui/badge";
+import { formatCoachType } from "@/utils/coach-formatters";
 import { formatCurrency } from "@/utils/formatters";
 
 export default function BookingSummary({
@@ -7,6 +9,7 @@ export default function BookingSummary({
   selectedCoachType,
   passengerCount,
   selectedSeatLabels,
+  allocatedSeatLabels = [],
   farePerSeat,
   currentStep = 0,
   paymentMethod = "",
@@ -15,13 +18,16 @@ export default function BookingSummary({
   const stepLabel = ["Review", "Passengers", "Seats", "Payment", "Confirm"][currentStep] || "Booking";
 
   return (
-    <aside className="surface-panel rounded-[2rem] p-6">
+    <aside className="surface-panel rounded-[2rem] p-6 lg:sticky lg:top-24">
       <p className="eyebrow">Booking summary</p>
       <h2 className="mt-3 text-2xl font-semibold tracking-tight text-[var(--color-ink)]">
         Journey details
       </h2>
-      <div className="mt-4 rounded-[1.2rem] bg-[#edf5fd] px-4 py-3 text-sm font-medium text-[var(--color-panel-dark)]">
-        Current step: {stepLabel}
+      <div className="mt-4 flex items-center justify-between gap-3 rounded-[1.2rem] bg-[#edf5fd] px-4 py-3">
+        <span className="text-sm font-medium text-[var(--color-panel-dark)]">Current step</span>
+        <Badge variant="primary" className="px-3 py-1.5 text-[11px]">
+          {stepLabel}
+        </Badge>
       </div>
 
       <div className="mt-6 space-y-4">
@@ -40,7 +46,7 @@ export default function BookingSummary({
               Coach class
             </p>
             <p className="mt-2 text-sm font-semibold text-[var(--color-ink)]">
-              {selectedCoachType || "Choose a coach class"}
+              {selectedCoachType ? formatCoachType(selectedCoachType) : "Choose a coach class"}
             </p>
           </div>
           <div className="rounded-[1.2rem] bg-[var(--color-surface-soft)] px-4 py-3">
@@ -53,10 +59,14 @@ export default function BookingSummary({
           </div>
           <div className="rounded-[1.2rem] bg-[var(--color-surface-soft)] px-4 py-3">
             <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--color-muted)]">
-              Selected seats
+              {allocatedSeatLabels.length ? "Allocated seats" : "Seat preview"}
             </p>
-            <p className="mt-2 text-sm font-semibold text-[var(--color-ink)]">
-              {selectedSeatLabels.length ? selectedSeatLabels.join(", ") : "No seats selected"}
+            <p className="mt-2 text-sm font-semibold leading-6 text-[var(--color-ink)]">
+              {allocatedSeatLabels.length
+                ? allocatedSeatLabels.join(", ")
+                : selectedSeatLabels.length
+                  ? selectedSeatLabels.join(", ")
+                  : "Seats will be allocated automatically"}
             </p>
           </div>
           <div className="rounded-[1.2rem] bg-[#edf5fd] px-4 py-3">

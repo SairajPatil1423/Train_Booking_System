@@ -6,9 +6,9 @@ export default function AuthShell({
   children,
 }) {
   return (
-    <main className="relative flex min-h-[calc(100vh-81px)] flex-1 overflow-hidden">
+    <main className="relative flex min-h-screen flex-1 overflow-hidden">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(239,126,28,0.1),_transparent_24%),radial-gradient(circle_at_bottom_right,_rgba(12,79,129,0.1),_transparent_34%)]" />
-      <div className="relative z-10 mx-auto grid w-full max-w-7xl flex-1 gap-8 px-6 py-10 sm:px-10 lg:grid-cols-[0.95fr_1.05fr] lg:px-12 lg:py-14">
+      <div className="relative z-10 mx-auto grid min-h-screen w-full max-w-7xl flex-1 items-center gap-8 px-6 py-8 sm:px-10 lg:grid-cols-[0.95fr_1.05fr] lg:px-12 lg:py-12">
         <section className="relative overflow-hidden rounded-[2.25rem] bg-[linear-gradient(180deg,_#0d4d7d_0%,_#0a3658_100%)] p-8 text-white shadow-[0_34px_90px_rgba(12,79,129,0.18)]">
           <div className="pointer-events-none absolute -right-10 top-0 h-44 w-44 rounded-full bg-[rgba(239,126,28,0.18)] blur-3xl" />
           <div className="pointer-events-none absolute bottom-0 left-0 h-32 w-32 rounded-full bg-[rgba(255,255,255,0.08)] blur-2xl" />

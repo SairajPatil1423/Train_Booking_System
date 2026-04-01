@@ -56,6 +56,6 @@ class Admin::TrainsController < Admin::BaseController
   private
 
   def train_params
-    params.require(:train).permit(:train_number, :name, :train_type, :is_active)
+    params.require(:train).permit(:train_number, :name, :train_type, :rating, :grade, :is_active)
   end
 end

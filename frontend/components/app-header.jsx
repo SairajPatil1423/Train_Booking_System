@@ -3,16 +3,24 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useDispatch, useSelector } from "react-redux";
+import Button from "@/components/ui/button";
+import Badge from "@/components/ui/badge";
 import { clearCredentials } from "@/features/auth/authSlice";
 import { logoutUser } from "@/features/auth/authService";
 
 const publicLinks = [{ href: "/", label: "Home" }];
 
 const privateLinks = [
-  { href: "/", label: "Dashboard" },
+  { href: "/dashboard", label: "Dashboard" },
   { href: "/search", label: "Search trains" },
   { href: "/bookings", label: "My bookings" },
   { href: "/account", label: "Profile" },
+];
+
+const adminLinks = [
+  { href: "/admin", label: "Admin Panel" },
+  { href: "/admin/trains", label: "Trains" },
+  { href: "/admin/bookings", label: "Bookings" },
 ];
 
 export default function AppHeader() {
@@ -32,21 +40,118 @@ export default function AppHeader() {
     }
   }
 
-  const links = isAuthenticated ? privateLinks : publicLinks;
+  const isAdminRoute = pathname.startsWith("/admin");
+  const links = isAuthenticated 
+    ? (user?.role === "admin" && isAdminRoute ? [...adminLinks] : [...privateLinks])
+    : [...publicLinks];
+
+  // Add Admin Panel link to private links if user is admin but not on admin route
+  if (isAuthenticated && user?.role === "admin" && !isAdminRoute) {
+    if (!links.find(l => l.href === "/admin")) {
+      links.push({ href: "/admin", label: "Admin Panel" });
+    }
+  }
 
   return (
     <header className="sticky top-0 z-30 border-b border-[var(--color-line)] bg-[rgba(255,255,255,0.92)] backdrop-blur-xl">
-      <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-4 px-6 py-4 sm:px-10 lg:px-12">
-        <Link href="/" className="min-w-0">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.35em] text-[var(--color-accent)]">
-            RailYatra
-          </div>
-          <div className="mt-1 truncate text-sm font-medium text-[var(--color-muted)]">
-            Online train reservation
-          </div>
-        </Link>
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-6 py-4 sm:px-10 lg:px-12">
+        <div className="flex items-center justify-between gap-4">
+          <Link href="/" className="min-w-0">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.35em] text-[var(--color-accent)]">
+              RailYatra
+            </div>
+            <div className="mt-1 truncate text-sm font-medium text-[var(--color-muted)]">
+              Online train reservation
+            </div>
+          </Link>
 
-        <nav className="hidden items-center gap-2 rounded-full border border-[var(--color-line)] bg-[#fdfefe] p-1 shadow-[0_10px_28px_rgba(16,33,49,0.05)] md:flex">
+          <nav className="hidden items-center gap-2 rounded-full border border-[var(--color-line)] bg-[#fdfefe] p-1 shadow-[0_10px_28px_rgba(16,33,49,0.05)] md:flex">
+            {links.map((link) => {
+              const isActive = pathname === link.href;
+
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+                    isActive
+                      ? "bg-[var(--color-panel-dark)] text-white shadow-[0_10px_24px_rgba(12,79,129,0.18)]"
+                      : "text-[var(--color-muted-strong)] hover:bg-[#f2f8fe] hover:text-[var(--color-ink)]"
+                  }`}
+                >
+                  {link.label}
+                </Link>
+              );
+            })}
+          </nav>
+
+          <div className="hidden items-center gap-3 md:flex">
+            {isAuthenticated ? (
+              <>
+                <div className="hidden rounded-full border border-[var(--color-line)] bg-[#fdfefe] px-4 py-2 text-sm text-[var(--color-ink)] shadow-[0_10px_26px_rgba(16,33,49,0.04)] md:block">
+                  {user?.email || "Signed in"}
+                </div>
+                <Button
+                  type="button"
+                  onClick={handleLogout}
+                  variant="danger"
+                  size="sm"
+                >
+                  Logout
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button as={Link} href="/register" variant="secondary" size="sm">
+                  Register
+                </Button>
+                <Button as={Link} href="/login" size="sm">
+                  Login
+                </Button>
+              </>
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between gap-3 md:hidden">
+          <div className="min-w-0">
+            {isAuthenticated ? (
+              <Badge variant="neutral" className="max-w-full truncate px-3 py-2 normal-case tracking-normal">
+                {user?.email || "Signed in"}
+              </Badge>
+            ) : (
+              <Badge variant="neutral" className="px-3 py-2 normal-case tracking-normal">
+                Guest view
+              </Badge>
+            )}
+          </div>
+        </div>
+
+        {!isAuthenticated ? (
+          <div className="grid grid-cols-2 gap-3 md:hidden">
+            <Button as={Link} href="/register" variant="secondary" className="w-full">
+              Register
+            </Button>
+            <Button as={Link} href="/login" className="w-full">
+              Login
+            </Button>
+          </div>
+        ) : null}
+
+        {isAuthenticated ? (
+          <div className="md:hidden">
+            <Button
+              type="button"
+              onClick={handleLogout}
+              variant="danger"
+              className="w-full"
+            >
+              Logout
+            </Button>
+          </div>
+        ) : null}
+
+        <nav className="flex gap-2 overflow-x-auto pb-1 md:hidden">
           {links.map((link) => {
             const isActive = pathname === link.href;
 
@@ -54,10 +159,10 @@ export default function AppHeader() {
               <Link
                 key={link.href}
                 href={link.href}
-                className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+                className={`shrink-0 rounded-full px-4 py-2 text-sm font-semibold transition ${
                   isActive
                     ? "bg-[var(--color-panel-dark)] text-white shadow-[0_10px_24px_rgba(12,79,129,0.18)]"
-                    : "text-[var(--color-muted-strong)] hover:bg-[#f2f8fe] hover:text-[var(--color-ink)]"
+                    : "border border-[var(--color-line)] bg-white text-[var(--color-muted-strong)]"
                 }`}
               >
                 {link.label}
@@ -65,32 +170,6 @@ export default function AppHeader() {
             );
           })}
         </nav>
-
-        <div className="flex items-center gap-3">
-          {isAuthenticated ? (
-            <>
-              <div className="hidden rounded-full border border-[var(--color-line)] bg-[#fdfefe] px-4 py-2 text-sm text-[var(--color-ink)] shadow-[0_10px_26px_rgba(16,33,49,0.04)] md:block">
-                {user?.email || "Signed in"}
-              </div>
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="danger-button px-5 py-2.5 text-sm"
-              >
-                Logout
-              </button>
-            </>
-          ) : (
-            <>
-              <Link href="/register" className="secondary-button px-5 py-2.5 text-sm">
-                Register
-              </Link>
-              <Link href="/login" className="primary-button px-5 py-2.5 text-sm">
-                Login
-              </Link>
-            </>
-          )}
-        </div>
       </div>
     </header>
   );

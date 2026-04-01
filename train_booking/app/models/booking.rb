@@ -11,6 +11,7 @@ class Booking < ApplicationRecord
 
   enum :status, {
     pending: "pending",
+    booked: "booked",
     confirmed: "confirmed",
     partially_cancelled: "partially_cancelled",
     cancelled: "cancelled"

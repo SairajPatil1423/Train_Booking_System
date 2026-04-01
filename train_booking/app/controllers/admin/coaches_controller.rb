@@ -70,6 +70,6 @@ class Admin::CoachesController < Admin::BaseController
   end
 
   def coach_params
-    params.require(:coach).permit(:train_id, :coach_number, :coach_type, :total_seats, :seat_type)
+    params.require(:coach).permit(:train_id, :coach_number, :coach_type)
   end
 end

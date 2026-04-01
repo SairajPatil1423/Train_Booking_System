@@ -96,7 +96,7 @@ module Booking::Operation
           dst_station_id: dst_stop.station_id,
           booking_ref: generate_unique_booking_ref,
           total_fare: total_fare,
-          status: :confirmed
+          status: :booked
         )
 
         params[:passengers].each_with_index do |passenger_params, index|
@@ -121,7 +121,7 @@ module Booking::Operation
             dst_stop_order: dst_stop.stop_order,
             pnr: generate_unique_pnr,
             fare: fare_per_seat,
-            status: :confirmed
+            status: :booked
           )
         end
 
@@ -130,7 +130,7 @@ module Booking::Operation
           amount: total_fare,
           payment_method: params.dig(:payment, :payment_method),
           gateway_txn_id: params.dig(:payment, :gateway_txn_id),
-          status: :pending
+          status: :paid
         )
 
         ctx[:booking] = booking.reload

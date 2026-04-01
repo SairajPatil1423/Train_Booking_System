@@ -35,6 +35,8 @@ module Admin
           update_attrs[:train_number] = params[:train_number] if params.key?(:train_number)
           update_attrs[:name] = params[:name] if params.key?(:name)
           update_attrs[:train_type] = params[:train_type] if params.key?(:train_type)
+          update_attrs[:rating] = params[:rating] if params.key?(:rating)
+          update_attrs[:grade] = params[:grade] if params.key?(:grade)
           update_attrs[:is_active] = params[:is_active] if params.key?(:is_active)
 
           model.update!(update_attrs)

@@ -1,28 +1,43 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f4f8fd;
+  --background: #edf4fb;
   --foreground: #102131;
-  --color-surface: #f4f8fd;
-  --color-surface-soft: #fbfdff;
+  --color-surface: #edf4fb;
+  --color-surface-soft: #f8fbff;
   --color-surface-strong: #ffffff;
-  --color-panel: #e7f0fb;
-  --color-panel-strong: #d7e7f8;
-  --color-panel-dark: #135f97;
-  --color-panel-dark-strong: #0f4e7d;
+  --color-panel: #e3eefb;
+  --color-panel-strong: #d0e2f6;
+  --color-panel-dark: #155ea0;
+  --color-panel-dark-strong: #0f4c84;
   --color-ink: #102131;
-  --color-muted: #62768b;
-  --color-muted-strong: #41576e;
-  --color-accent: #1b74b4;
-  --color-accent-strong: #145d91;
-  --color-success: #1f7a57;
-  --color-danger: #c44e45;
-  --color-line: rgba(16, 33, 49, 0.1);
-  --color-line-strong: rgba(16, 33, 49, 0.16);
-  --color-glow: rgba(27, 116, 180, 0.15);
-  --shadow-card: 0 18px 48px rgba(16, 33, 49, 0.08);
-  --shadow-panel: 0 26px 72px rgba(16, 33, 49, 0.08);
-  --shadow-soft: 0 10px 28px rgba(16, 33, 49, 0.06);
+  --color-muted: #64748b;
+  --color-muted-strong: #425466;
+  --color-accent: #2563eb;
+  --color-accent-strong: #1d4ed8;
+  --color-success: #1f8a5b;
+  --color-success-soft: #ebf8f1;
+  --color-danger: #d14343;
+  --color-danger-soft: #fff1f1;
+  --color-warning: #c97a12;
+  --color-warning-soft: #fff7e8;
+  --color-disabled: #94a3b8;
+  --color-disabled-soft: #eef2f7;
+  --color-line: rgba(15, 23, 42, 0.09);
+  --color-line-strong: rgba(15, 23, 42, 0.15);
+  --color-glow: rgba(37, 99, 235, 0.16);
+  --radius-sm: 0.75rem;
+  --radius-md: 1rem;
+  --radius-lg: 1.5rem;
+  --radius-xl: 2rem;
+  --space-2: 0.5rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --shadow-card: 0 20px 55px rgba(15, 23, 42, 0.07);
+  --shadow-panel: 0 26px 80px rgba(15, 23, 42, 0.09);
+  --shadow-soft: 0 12px 32px rgba(15, 23, 42, 0.06);
+  --shadow-focus: 0 0 0 4px var(--color-glow);
 }
 
 @theme inline {
@@ -43,9 +58,9 @@ html {
 body {
   min-height: 100vh;
   background:
-    radial-gradient(circle at top left, rgba(27, 116, 180, 0.08), transparent 24%),
-    radial-gradient(circle at top right, rgba(19, 95, 151, 0.08), transparent 26%),
-    linear-gradient(180deg, #f4f8fd 0%, #fbfdff 48%, #eff5fc 100%);
+    radial-gradient(circle at top left, rgba(37, 99, 235, 0.08), transparent 24%),
+    radial-gradient(circle at top right, rgba(21, 94, 160, 0.08), transparent 26%),
+    linear-gradient(180deg, #edf4fb 0%, #f8fbff 48%, #eef5fb 100%);
   color: var(--foreground);
   font-family: var(--font-geist-sans), sans-serif;
 }
@@ -68,7 +83,7 @@ textarea {
 
 .surface-card {
   border: 1px solid var(--color-line);
-  background: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.94);
   box-shadow: var(--shadow-card);
   backdrop-filter: blur(14px);
 }
@@ -86,6 +101,23 @@ textarea {
   box-shadow: var(--shadow-soft);
 }
 
+.ui-card {
+  border: 1px solid var(--color-line);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: var(--shadow-card);
+  backdrop-filter: blur(16px);
+}
+
+.ui-card-muted {
+  border: 1px solid var(--color-line);
+  background: linear-gradient(180deg, rgba(248, 251, 255, 0.98), rgba(243, 248, 255, 0.96));
+}
+
+.ui-focus-ring:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+
 .primary-button,
 .secondary-button,
 .ghost-button,
@@ -96,6 +128,7 @@ textarea {
   gap: 0.5rem;
   border-radius: 9999px;
   font-weight: 600;
+  white-space: nowrap;
   transition:
     background-color 180ms ease,
     border-color 180ms ease,
@@ -112,18 +145,18 @@ textarea {
 }
 
 .primary-button {
-  background: var(--color-panel-dark);
+  background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-panel-dark) 100%);
   color: white;
-  box-shadow: 0 12px 30px rgba(19, 95, 151, 0.18);
+  box-shadow: 0 14px 34px rgba(37, 99, 235, 0.22);
 }
 
 .primary-button:hover {
-  background: var(--color-panel-dark-strong);
+  background: linear-gradient(135deg, var(--color-accent-strong) 0%, var(--color-panel-dark-strong) 100%);
 }
 
 .secondary-button {
   border: 1px solid var(--color-line);
-  background: rgba(255, 255, 255, 0.94);
+  background: rgba(255, 255, 255, 0.98);
   color: var(--color-ink);
 }
 
@@ -142,21 +175,22 @@ textarea {
 }
 
 .danger-button {
-  background: #f17f22;
+  background: var(--color-danger);
   color: white;
-  box-shadow: 0 12px 30px rgba(241, 127, 34, 0.18);
+  box-shadow: 0 12px 30px rgba(209, 67, 67, 0.2);
 }
 
 .danger-button:hover {
-  background: #d86a12;
+  background: #b73434;
 }
 
 .field-input {
   width: 100%;
-  border-radius: 1.1rem;
+  border-radius: var(--radius-md);
   border: 1px solid var(--color-line);
   background: rgba(248, 251, 255, 0.96);
-  padding: 0.95rem 1rem;
+  min-height: 3rem;
+  padding: 0.9rem 1rem;
   outline: none;
   transition:
     border-color 180ms ease,
@@ -171,12 +205,68 @@ textarea {
 
 .field-input:focus {
   border-color: var(--color-panel-dark);
-  box-shadow: 0 0 0 4px var(--color-glow);
+  box-shadow: var(--shadow-focus);
 }
 
 .field-input:disabled {
   cursor: not-allowed;
   opacity: 0.7;
+}
+
+.field-label {
+  margin-bottom: 0.5rem;
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+.field-hint {
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--color-muted);
+}
+
+.field-error {
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--color-danger);
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 9999px;
+  padding: 0.45rem 0.8rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.status-badge-neutral {
+  background: #f1f5f9;
+  color: var(--color-muted-strong);
+}
+
+.status-badge-primary {
+  background: #e9f0ff;
+  color: var(--color-panel-dark);
+}
+
+.status-badge-success {
+  background: var(--color-success-soft);
+  color: var(--color-success);
+}
+
+.status-badge-danger {
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+}
+
+.status-badge-warning {
+  background: var(--color-warning-soft);
+  color: var(--color-warning);
 }
 
 .page-shell {

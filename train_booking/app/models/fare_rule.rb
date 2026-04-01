@@ -2,6 +2,7 @@ class FareRule < ApplicationRecord
   belongs_to :train
 
   validates :coach_type, :valid_from, :valid_to, presence: true
+  validates :coach_type, inclusion: { in: Coach::COACH_LAYOUTS.keys }
   validates :base_fare_per_km, numericality: { greater_than: 0 }
   validates :dynamic_multiplier, numericality: { greater_than: 0 }
   validate :valid_date_range
