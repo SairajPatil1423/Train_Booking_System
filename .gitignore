@@ -1,2 +1,34 @@
 .codex
 **/.codex
+
+# OS/editor
+.DS_Store
+
+# Frontend
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/build/
+frontend/coverage/
+frontend/.vercel/
+frontend/.env*
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+frontend/.pnpm-debug.log*
+
+# Backend
+train_booking/.bundle/
+train_booking/log/*
+!train_booking/log/.keep
+train_booking/tmp/*
+!train_booking/tmp/.keep
+!train_booking/tmp/pids/
+!train_booking/tmp/pids/.keep
+!train_booking/tmp/storage/
+!train_booking/tmp/storage/.keep
+train_booking/storage/*
+!train_booking/storage/.keep
+train_booking/.env*
+!train_booking/.env*.erb
+train_booking/config/master.key
