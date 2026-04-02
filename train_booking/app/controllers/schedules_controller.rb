@@ -13,6 +13,16 @@ class SchedulesController < ApplicationController
 
     travel_date = params[:travel_date].present? ? Date.parse(params[:travel_date]) : Date.today
 
+    if travel_date < Time.zone.today
+      return render json: {
+        travel_date: travel_date,
+        src_station_id: src_station_id,
+        dst_station_id: dst_station_id,
+        schedules: [],
+        message: 'Past dates are not available for booking'
+      }, status: :ok
+    end
+
     valid_train_ids = TrainStop
       .from("train_stops src_stops")
       .joins("INNER JOIN train_stops dst_stops ON dst_stops.train_id = src_stops.train_id")
@@ -31,7 +41,7 @@ class SchedulesController < ApplicationController
     schedules = Schedule
       .includes(:train)
       .where(train_id: valid_train_ids)
-      .active_for_date(travel_date)
+      .searchable_for_date(travel_date)
       .order(:departure_time)
 
     schedules_with_availability = schedules.map do |schedule|
@@ -69,7 +79,8 @@ class SchedulesController < ApplicationController
       schedule: schedule.as_json(include: { train: { only: %i[id train_number name train_type] } }),
       stops: train_stops.as_json(include: { station: { only: %i[id name code] } }),
       coaches: schedule.train.coaches.order(:coach_number).map do |coach|
-        coach.as_json(only: %i[id coach_number coach_type total_seats]).merge(
+        coach.as_json(only: %i[id coach_number total_seats]).merge(
+          coach_type: coach.api_coach_type,
           seats: coach.seats.order(:seat_number).as_json(only: %i[id seat_number seat_type is_active])
         )
       end,

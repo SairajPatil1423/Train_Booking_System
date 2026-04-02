@@ -27,7 +27,18 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (typeof window !== "undefined" && error?.response?.status === 401) {
-      window.dispatchEvent(new CustomEvent("auth:unauthorized"));
+      const backendMessage =
+        error?.response?.data?.error ||
+        error?.response?.data?.message ||
+        "";
+
+      window.dispatchEvent(
+        new CustomEvent("auth:unauthorized", {
+          detail: {
+            message: backendMessage,
+          },
+        }),
+      );
     }
 
     return Promise.reject(error);

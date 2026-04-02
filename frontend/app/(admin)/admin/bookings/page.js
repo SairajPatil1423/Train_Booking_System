@@ -63,6 +63,9 @@ export default function AdminBookingsPage() {
                       <p className="mt-1 text-sm text-[var(--color-muted)]">
                         Booked on {formatDate(booking.booked_at || booking.created_at)}
                       </p>
+                      <p className="mt-1 text-sm text-[var(--color-muted)]">
+                        {booking.schedule?.train?.name || "Train"} • {booking.src_station?.name || "Source"} to {booking.dst_station?.name || "Destination"}
+                      </p>
                     </div>
 
                     <div className="flex flex-wrap gap-2">
@@ -75,9 +78,18 @@ export default function AdminBookingsPage() {
                     </div>
                   </div>
 
-                  <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                  <div className="mt-4 grid gap-3 sm:grid-cols-4">
                     <AdminInfoBlock label="Passengers" value={`${booking.passengers?.length || 0} travelers`} />
                     <AdminInfoBlock label="Total fare" value={formatCurrency(booking.total_fare)} accent />
+                    <AdminInfoBlock
+                      label="Refunded"
+                      value={formatCurrency(
+                        (booking.cancellations || []).reduce(
+                          (sum, cancellation) => sum + Number(cancellation.refund_amount || 0),
+                          0,
+                        ),
+                      )}
+                    />
                     <AdminInfoBlock label="Status" value={booking.status} />
                   </div>
                 </Card>

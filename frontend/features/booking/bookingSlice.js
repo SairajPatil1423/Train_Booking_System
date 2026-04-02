@@ -2,7 +2,8 @@ import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import { 
   createBooking, 
   fetchUserBookings, 
-  cancelBooking 
+  cancelBooking,
+  cancelTicket,
 } from "./bookingService";
 
 export const fetchUserBookingsThunk = createAsyncThunk(
@@ -21,13 +22,27 @@ export const fetchUserBookingsThunk = createAsyncThunk(
 
 export const cancelBookingThunk = createAsyncThunk(
   "booking/cancel",
-  async (bookingId, { rejectWithValue }) => {
+  async ({ bookingId, reason }, { rejectWithValue }) => {
     try {
-      const data = await cancelBooking(bookingId);
-      return data.booking;
+      const data = await cancelBooking(bookingId, reason);
+      return data;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data?.error || "Cancellation failed."
+        error.response?.data?.errors || error.response?.data?.error || "Cancellation failed."
+      );
+    }
+  }
+);
+
+export const cancelTicketThunk = createAsyncThunk(
+  "booking/cancelTicket",
+  async ({ bookingId, ticketAllocationId, reason }, { rejectWithValue }) => {
+    try {
+      const data = await cancelTicket(bookingId, ticketAllocationId, reason);
+      return data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.errors || error.response?.data?.error || "Ticket cancellation failed."
       );
     }
   }
@@ -57,6 +72,7 @@ const initialState = {
   userBookings: [],
   bookingsStatus: "idle",
   bookingsError: null,
+  refundSummary: null,
   status: "idle",
   error: null,
 };
@@ -93,6 +109,9 @@ const bookingSlice = createSlice({
     setFareSummary(state, action) {
       state.fareSummary = action.payload || null;
     },
+    clearRefundSummary(state) {
+      state.refundSummary = null;
+    },
     resetBooking(state) {
       Object.assign(state, initialState);
     },
@@ -124,11 +143,39 @@ const bookingSlice = createSlice({
         state.bookingsStatus = "failed";
         state.bookingsError = action.payload;
       })
+      .addCase(cancelBookingThunk.pending, (state) => {
+        state.bookingsError = null;
+      })
       .addCase(cancelBookingThunk.fulfilled, (state, action) => {
-        const index = state.userBookings.findIndex(b => b.id === action.payload.id);
+        const index = state.userBookings.findIndex(b => b.id === action.payload.booking?.id);
         if (index !== -1) {
-          state.userBookings[index] = action.payload;
+          state.userBookings[index] = action.payload.booking;
         }
+        state.refundSummary = {
+          bookingId: action.payload.booking?.id,
+          refundAmount: action.payload.refund_amount,
+          type: "booking",
+        };
+      })
+      .addCase(cancelBookingThunk.rejected, (state, action) => {
+        state.bookingsError = action.payload;
+      })
+      .addCase(cancelTicketThunk.pending, (state) => {
+        state.bookingsError = null;
+      })
+      .addCase(cancelTicketThunk.fulfilled, (state, action) => {
+        const index = state.userBookings.findIndex(b => b.id === action.payload.booking?.id);
+        if (index !== -1) {
+          state.userBookings[index] = action.payload.booking;
+        }
+        state.refundSummary = {
+          bookingId: action.payload.booking?.id,
+          refundAmount: action.payload.refund_amount,
+          type: "ticket",
+        };
+      })
+      .addCase(cancelTicketThunk.rejected, (state, action) => {
+        state.bookingsError = action.payload;
       });
   },
 });
@@ -140,6 +187,7 @@ export const {
   toggleSeatSelection,
   clearSeatSelection,
   setFareSummary,
+  clearRefundSummary,
   resetBooking,
 } = bookingSlice.actions;
 

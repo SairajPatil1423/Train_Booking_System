@@ -8,7 +8,7 @@ class Admin::UsersController < Admin::BaseController
     )
 
     if result.success?
-      user_json = result[:model].as_json(only: %i[id email phone role created_at updated_at])
+      user_json = result[:model].as_json(only: %i[id email phone full_name username address role created_at updated_at])
       render json: { message: 'Administrator created successfully', admin: user_json }, status: :created
     else
       render json: { errors: result[:errors] }, status: :unprocessable_entity

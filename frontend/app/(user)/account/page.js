@@ -63,9 +63,12 @@ export default function AccountPage() {
         <section className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
           <PageSection className="p-8">
             <div className="grid gap-5 sm:grid-cols-2">
+              <DetailCard label="Full name" value={user?.full_name || "Not available"} />
               <DetailCard label="Email" value={user?.email || "Not available"} />
+              <DetailCard label="Username" value={user?.username || "Not available"} />
               <DetailCard label="Phone" value={user?.phone || "Not available"} />
               <DetailCard label="Role" value={user?.role || "user"} capitalize />
+              <DetailCard label="Address" value={user?.address || "Not available"} />
               <DetailCard
                 label="Member since"
                 value={user?.created_at ? formatDate(user.created_at) : "Not available"}

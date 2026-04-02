@@ -5,12 +5,7 @@ class Admin::CoachesController < Admin::BaseController
     authorize Coach
     coaches = Coach.includes(:train, :seats).order(:train_id, :coach_number)
     render json: {
-      coaches: coaches.as_json(
-        include: {
-          train: { only: %i[id train_number name] },
-          seats: { only: %i[id seat_number seat_type is_active] }
-        }
-      )
+      coaches: coaches.map { |coach| serialize_coach(coach) }
     }, status: :ok
   end
 
@@ -23,7 +18,7 @@ class Admin::CoachesController < Admin::BaseController
     if result.success?
       render json: {
         message: 'Coach created with seats',
-        coach: result[:model].as_json(include: { seats: { only: %i[id seat_number seat_type] } })
+        coach: serialize_coach(result[:model])
       }, status: :created
     else
       render json: { errors: result[:errors] }, status: :unprocessable_entity
@@ -38,7 +33,7 @@ class Admin::CoachesController < Admin::BaseController
       params: coach_params
     )
     if result.success?
-      render json: { message: 'Coach updated', coach: result[:model] }, status: :ok
+      render json: { message: 'Coach updated', coach: serialize_coach(result[:model]) }, status: :ok
     else
       render json: { errors: result[:errors] }, status: :unprocessable_entity
     end
@@ -71,5 +66,15 @@ class Admin::CoachesController < Admin::BaseController
 
   def coach_params
     params.require(:coach).permit(:train_id, :coach_number, :coach_type)
+  end
+
+  def serialize_coach(coach)
+    coach.as_json(
+      only: %i[id train_id coach_number total_seats],
+      include: {
+        train: { only: %i[id train_number name] },
+        seats: { only: %i[id seat_number seat_type is_active] }
+      }
+    ).merge(coach_type: coach.api_coach_type)
   end
 end

@@ -10,14 +10,21 @@ COMMON_SEARCH_ROUTES = [
   ["LTT", "NDLS"],
   ["NDLS", "LTT"],
   ["BCT", "SC"],
-  ["SC", "BCT"]
+  ["SC", "BCT"],
+  ["BCT", "BRC"],
+  ["BRC", "NDLS"],
+  ["MAS", "BZA"],
+  ["BPL", "NDLS"],
+  ["NGP", "SC"],
+  ["JP", "ADI"],
+  ["BZA", "MAS"]
 ].freeze
 
 puts "Cleaning existing data..."
+Cancellation.destroy_all
 TicketAllocation.destroy_all
 Passenger.destroy_all
 Payment.destroy_all
-Cancellation.destroy_all
 Booking.destroy_all
 Seat.destroy_all
 Coach.destroy_all
@@ -33,6 +40,9 @@ puts "Creating admin users..."
 2.times do |index|
   User.create!(
     email: "admin#{index + 1}@trainbooking.com",
+    full_name: "Admin Operator #{index + 1}",
+    username: "admin_ops_#{index + 1}",
+    address: "Rail Operations HQ #{index + 1}, Central Admin Block, New Delhi, India",
     password: PASSWORD,
     phone: format("90000000%02d", index + 1),
     role: :admin
@@ -43,6 +53,9 @@ puts "Creating regular users..."
 40.times do |index|
   User.create!(
     email: "user#{index + 1}@trainbooking.com",
+    full_name: "Passenger #{index + 1}",
+    username: "traveler_#{index + 1}",
+    address: "#{100 + index} Passenger Residency, Sector #{(index % 9) + 1}, Mumbai, India",
     password: PASSWORD,
     phone: format("70000000%02d", index + 1),
     role: :user
@@ -123,6 +136,18 @@ city_station_data = [
     city: { name: "Chennai", state: "Tamil Nadu", country: "India" },
     stations: [
       { name: "Chennai Central", code: "MAS", latitude: 13.0827, longitude: 80.2707 }
+    ]
+  },
+  {
+    city: { name: "Pune", state: "Maharashtra", country: "India" },
+    stations: [
+      { name: "Pune Junction", code: "PUNE", latitude: 18.5286, longitude: 73.8743 }
+    ]
+  },
+  {
+    city: { name: "Bengaluru", state: "Karnataka", country: "India" },
+    stations: [
+      { name: "KSR Bengaluru", code: "SBC", latitude: 12.9784, longitude: 77.5714 }
     ]
   }
 ]
@@ -260,6 +285,82 @@ train_blueprints = [
       ["SC", nil, "05:40", 0],
       ["NGP", "13:00", "13:10", 548],
       ["BCT", "23:15", nil, 1385]
+    ]
+  },
+  {
+    number: "12111",
+    name: "Western Deccan Link",
+    train_type: "Express",
+    rating: 4.1,
+    grade: "Business",
+    route: [
+      ["BCT", nil, "06:30", 0],
+      ["PUNE", "10:10", "10:20", 192],
+      ["SBC", "20:15", nil, 982]
+    ]
+  },
+  {
+    number: "12112",
+    name: "Western Deccan Return",
+    train_type: "Express",
+    rating: 4.1,
+    grade: "Business",
+    route: [
+      ["SBC", nil, "06:10", 0],
+      ["PUNE", "15:50", "16:00", 790],
+      ["BCT", "20:05", nil, 982]
+    ]
+  },
+  {
+    number: "12651",
+    name: "Southern Capital Connector",
+    train_type: "Superfast",
+    rating: 4.3,
+    grade: "Premium",
+    route: [
+      ["MAS", nil, "05:55", 0],
+      ["BZA", "10:40", "10:50", 431],
+      ["SC", "15:50", "16:00", 716],
+      ["NDLS", "08:10", nil, 2175]
+    ]
+  },
+  {
+    number: "12652",
+    name: "Southern Capital Return",
+    train_type: "Superfast",
+    rating: 4.2,
+    grade: "Premium",
+    route: [
+      ["NDLS", nil, "06:00", 0],
+      ["SC", "22:25", "22:35", 1459],
+      ["BZA", "03:10", "03:20", 1744],
+      ["MAS", "08:05", nil, 2175]
+    ]
+  },
+  {
+    number: "12961",
+    name: "Capital Corridor",
+    train_type: "Express",
+    rating: 4.2,
+    grade: "Premier",
+    route: [
+      ["BCT", nil, "07:15", 0],
+      ["BRC", "09:40", "09:50", 392],
+      ["JP", "18:10", "18:20", 1052],
+      ["NDLS", "23:40", nil, 1327]
+    ]
+  },
+  {
+    number: "12962",
+    name: "Capital Corridor Return",
+    train_type: "Express",
+    rating: 4.2,
+    grade: "Premier",
+    route: [
+      ["NDLS", nil, "06:50", 0],
+      ["JP", "12:10", "12:20", 275],
+      ["BRC", "20:30", "20:40", 935],
+      ["BCT", "23:05", nil, 1327]
     ]
   }
 ]

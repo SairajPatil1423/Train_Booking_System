@@ -71,12 +71,12 @@ module Booking::Operation
     private
 
     def update_booking_state!(booking)
-      remaining_confirmed_count = booking.ticket_allocations.where(status: :confirmed).count
+      remaining_active_count = booking.ticket_allocations.where.not(status: :cancelled).count
 
-      if remaining_confirmed_count.zero?
+      if remaining_active_count.zero?
         booking.update!(status: :cancelled)
       else
-        updated_total_fare = booking.ticket_allocations.where(status: :confirmed).sum(:fare)
+        updated_total_fare = booking.ticket_allocations.where.not(status: :cancelled).sum(:fare)
         booking.update!(status: :partially_cancelled, total_fare: updated_total_fare)
       end
     end

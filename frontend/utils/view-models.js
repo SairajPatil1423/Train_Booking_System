@@ -5,12 +5,14 @@ import {
   formatScheduleDateTime,
   formatScheduleDuration,
 } from "@/utils/formatters";
+import { formatCoachType, normalizeCoachType } from "@/utils/coach-formatters";
 
 export function buildScheduleViewModel(schedule, context = {}) {
   const coachAvailability = Object.entries(
     schedule?.availability?.coach_type_availability || {},
   ).map(([coachType, value]) => ({
-    coachType,
+    coachType: normalizeCoachType(coachType),
+    coachTypeLabel: formatCoachType(coachType),
     availableSeats: value.available_seats || 0,
     totalSeats: value.total_active_seats || 0,
   }));

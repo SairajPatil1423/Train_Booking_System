@@ -21,6 +21,6 @@ class Users::SessionsController < Devise::SessionsController
   end
 
   def user_payload(user)
-    user.as_json(only: %i[id email phone role created_at updated_at])
+    user.as_json(only: %i[id email phone full_name username address role created_at updated_at])
   end
 end

@@ -10,7 +10,7 @@ import EmptyState from "@/components/ui/empty-state";
 import Input from "@/components/ui/input";
 import LoadingState from "@/components/loading-state";
 import { ADMIN_COACH_CONFIGS } from "@/utils/admin-coach-config";
-import { formatCoachType } from "@/utils/coach-formatters";
+import { formatCoachType, normalizeCoachType } from "@/utils/coach-formatters";
 import {
   createAdminCoachThunk,
   deleteAdminCoachThunk,
@@ -24,6 +24,7 @@ import {
   AdminInfoPill,
   CoachLayoutPreview,
 } from "@/components/admin/admin-ui";
+import { toastError, toastInfo, toastSuccess } from "@/utils/toast";
 
 export default function AdminCoachesPage() {
   const dispatch = useDispatch();
@@ -62,18 +63,23 @@ export default function AdminCoachesPage() {
       if (editingCoach) {
         if (isSameCoachPayload(editingCoach, coachData)) {
           setFormError("No changes to save.");
+          toastInfo("No changes to save.", "Nothing updated");
           return;
         }
 
         await dispatch(updateAdminCoachThunk({ id: editingCoach.id, coachData })).unwrap();
+        toastSuccess("Coach updated successfully.");
       } else {
         await dispatch(createAdminCoachThunk(coachData)).unwrap();
+        toastSuccess("Coach created successfully.");
       }
 
       setEditingCoach(null);
       event.currentTarget.reset();
     } catch (requestError) {
-      setFormError(Array.isArray(requestError) ? requestError.join(", ") : String(requestError));
+      const message = Array.isArray(requestError) ? requestError.join(", ") : String(requestError);
+      setFormError(message);
+      toastError(message, "Coach action failed");
     }
   }
 
@@ -86,8 +92,11 @@ export default function AdminCoachesPage() {
 
     try {
       await dispatch(deleteAdminCoachThunk(id)).unwrap();
+      toastSuccess("Coach deleted successfully.");
     } catch (requestError) {
-      setFormError(Array.isArray(requestError) ? requestError.join(", ") : String(requestError));
+      const message = Array.isArray(requestError) ? requestError.join(", ") : String(requestError);
+      setFormError(message);
+      toastError(message, "Coach deletion failed");
     }
   }
 
@@ -117,7 +126,8 @@ export default function AdminCoachesPage() {
             {coaches.length > 0 ? (
               <div className="space-y-4">
                 {coaches.map((coach) => {
-                  const layout = coachLayouts[coach.coach_type];
+                  const normalizedCoachType = normalizeCoachType(coach.coach_type);
+                  const layout = coachLayouts[normalizedCoachType];
 
                   return (
                     <Card key={coach.id} className="rounded-[1.6rem] p-5">
@@ -132,7 +142,7 @@ export default function AdminCoachesPage() {
                         </div>
 
                         <div className="flex flex-wrap gap-2">
-                          <AdminInfoPill label={formatCoachType(coach.coach_type)} />
+                          <AdminInfoPill label={formatCoachType(normalizedCoachType)} />
                           <AdminInfoPill label={`${coach.total_seats} seats`} variant="success" />
                           {layout ? <AdminInfoPill label={`${layout.rows} x ${layout.columns}`} variant="neutral" /> : null}
                         </div>
@@ -228,7 +238,7 @@ export default function AdminCoachesPage() {
                 <label className="field-label">Coach type</label>
                 <select
                   name="coach_type"
-                  defaultValue={editingCoach?.coach_type || "sleeper"}
+                  defaultValue={normalizeCoachType(editingCoach?.coach_type) || "sleeper"}
                   className="field-input"
                   required
                 >
@@ -272,6 +282,6 @@ function isSameCoachPayload(currentCoach, nextCoach) {
   return (
     String(currentCoach?.train_id || currentCoach?.train?.id || "") === String(nextCoach.train_id || "") &&
     String(currentCoach?.coach_number || "") === String(nextCoach.coach_number || "") &&
-    String(currentCoach?.coach_type || "") === String(nextCoach.coach_type || "")
+    normalizeCoachType(currentCoach?.coach_type) === normalizeCoachType(nextCoach.coach_type)
   );
 }

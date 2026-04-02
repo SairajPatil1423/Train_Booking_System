@@ -15,6 +15,7 @@ import {
 } from "@/features/auth/authSlice";
 import { registerUser } from "@/features/auth/authService";
 import { registerSchema } from "@/features/auth/schemas";
+import { toastError, toastSuccess } from "@/utils/toast";
 
 export default function RegisterPage() {
   const dispatch = useDispatch();
@@ -29,7 +30,10 @@ export default function RegisterPage() {
     resolver: zodResolver(registerSchema),
     defaultValues: {
       email: "",
+      fullName: "",
+      username: "",
       phone: "",
+      address: "",
       password: "",
       passwordConfirmation: "",
     },
@@ -46,14 +50,16 @@ export default function RegisterPage() {
           user: data.user,
         }),
       );
+      toastSuccess("Your account is ready and you are signed in.", "Account created");
       router.push("/");
     } catch (requestError) {
+      const message =
+        requestError?.response?.data?.error ||
+        "Unable to create your account right now.";
       dispatch(
-        setAuthError(
-          requestError?.response?.data?.error ||
-            "Unable to create your account right now.",
-        ),
+        setAuthError(message),
       );
+      toastError(message, "Registration failed");
     }
   }
 
@@ -91,11 +97,35 @@ export default function RegisterPage() {
           />
 
           <Input
+            type="text"
+            label="Full name"
+            {...register("fullName")}
+            placeholder="e.g. Priya Sharma"
+            error={errors.fullName?.message}
+          />
+
+          <Input
+            type="text"
+            label="Username"
+            {...register("username")}
+            placeholder="e.g. railyatra_user"
+            error={errors.username?.message}
+          />
+
+          <Input
             type="tel"
             label="Phone number"
             {...register("phone")}
             placeholder="9876543210"
             error={errors.phone?.message}
+          />
+
+          <Input
+            type="text"
+            label="Address"
+            {...register("address")}
+            placeholder="House no, street, city, state"
+            error={errors.address?.message}
           />
 
           <div className="grid gap-5 sm:grid-cols-2">

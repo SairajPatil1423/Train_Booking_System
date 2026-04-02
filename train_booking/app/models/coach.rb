@@ -41,8 +41,17 @@ class Coach < ApplicationRecord
   validates :total_seats, numericality: { greater_than: 0 }
   validate :coach_type_supported
 
+  def self.normalize_coach_type(value)
+    raw_value = coach_types[value.to_s] || value.to_s
+    raw_value.presence_in(COACH_LAYOUTS.keys)
+  end
+
   def layout_config
     COACH_LAYOUTS.fetch(layout_key)
+  end
+
+  def api_coach_type
+    layout_key
   end
 
   def rows
@@ -53,17 +62,16 @@ class Coach < ApplicationRecord
     layout_config[:columns]
   end
 
+  def layout_key
+    self.class.normalize_coach_type(coach_type)
+  end
+
   private
 
   def assign_total_seats_from_layout
     return if layout_key.blank?
 
     self.total_seats = COACH_LAYOUTS.fetch(layout_key)[:total_seats]
-  end
-
-  def layout_key
-    raw_value = self.class.coach_types[coach_type] || coach_type
-    raw_value.presence_in(COACH_LAYOUTS.keys)
   end
 
   def coach_type_supported

@@ -1,7 +1,7 @@
 import { memo, useMemo } from "react";
 import "./seat-map.css";
 import Badge from "@/components/ui/badge";
-import { formatCoachType } from "@/utils/coach-formatters";
+import { formatCoachType, normalizeCoachType } from "@/utils/coach-formatters";
 
 const COACH_LAYOUTS = {
   "1ac": {
@@ -35,12 +35,13 @@ function SeatMap({
   selectionLimit,
   onToggleSeat,
 }) {
+  const normalizedSelectedCoachType = normalizeCoachType(selectedCoachType);
   const matchingCoaches = useMemo(
-    () => coaches.filter((coach) => coach.coach_type === selectedCoachType),
-    [coaches, selectedCoachType],
+    () => coaches.filter((coach) => normalizeCoachType(coach.coach_type) === normalizedSelectedCoachType),
+    [coaches, normalizedSelectedCoachType],
   );
 
-  if (!selectedCoachType) {
+  if (!normalizedSelectedCoachType) {
     return (
       <div className="rounded-[1.5rem] border border-dashed border-[var(--color-line)] bg-[var(--color-surface-soft)] px-5 py-10 text-sm text-[var(--color-muted)] text-center">
         <p className="font-medium">Please select a travel class</p>
@@ -74,7 +75,7 @@ function SeatMap({
       <div className="space-y-5">
         {matchingCoaches.map((coach) => (
           <div key={coach.id} className="coach-card">
-            {COACH_LAYOUTS[coach.coach_type] ? null : (
+            {COACH_LAYOUTS[normalizeCoachType(coach.coach_type)] ? null : (
               <div className="rounded-[1rem] border border-dashed border-[var(--color-line)] bg-[var(--color-surface-soft)] px-4 py-3 text-sm text-[var(--color-muted)]">
                 Unsupported coach layout for {coach.coach_type}
               </div>
@@ -98,7 +99,7 @@ function SeatMap({
               </div>
             </div>
 
-            <div className={`coach-container ${COACH_LAYOUTS[coach.coach_type]?.gridClassName || "layout-4"}`}>
+            <div className={`coach-container ${COACH_LAYOUTS[normalizeCoachType(coach.coach_type)]?.gridClassName || "layout-4"}`}>
               <div className="coach-aisle" />
               <div className="relative z-10">
                 {buildSeatRows(coach).map((row, rowIndex) => (
@@ -147,7 +148,7 @@ const MemoSeatMap = memo(SeatMap);
 export default MemoSeatMap;
 
 function buildSeatRows(coach) {
-  const layout = COACH_LAYOUTS[coach.coach_type];
+  const layout = COACH_LAYOUTS[normalizeCoachType(coach.coach_type)];
   if (!layout) {
     return [];
   }

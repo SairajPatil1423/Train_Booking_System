@@ -10,7 +10,7 @@ class CoachSeatLayoutSync
       existing_seats = coach.seats.order(:seat_number, :id).to_a
       desired_layout = build_layout
 
-      # Avoid unique key collisions while renumbering seats inside the same coach.
+  
       existing_seats.each_with_index do |seat, index|
         seat.update_columns(seat_number: "#{TEMP_SEAT_PREFIX}#{index + 1}")
       end

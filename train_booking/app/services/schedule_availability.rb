@@ -13,8 +13,9 @@ class ScheduleAvailability
       .group("coaches.coach_type")
       .count
       .each_with_object({}) do |(coach_type, total_seats), result|
+        normalized_coach_type = Coach.normalize_coach_type(coach_type)
         available_seats = seats_for_coach_type(coach_type).count { |seat| available_for_segment?(seat.id) }
-        result[coach_type] = {
+        result[normalized_coach_type] = {
           total_active_seats: total_seats,
           available_seats: available_seats
         }

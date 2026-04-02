@@ -14,6 +14,8 @@ module TrainBooking
 
     config.autoload_lib(ignore: %w(assets tasks))
     config.api_only = true
+    config.time_zone = "Asia/Kolkata"
+    config.active_record.default_timezone = :utc
 
     config.generators do |g|
       g.orm :active_record, primary_key_type: :uuid

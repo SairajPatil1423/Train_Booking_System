@@ -42,7 +42,11 @@ class BookingsController < ApplicationController
     )
 
     if result.success?
-      render json: { message: "Booking cancelled successfully." }, status: :ok
+      render json: {
+        message: "Booking cancelled successfully.",
+        booking: result[:booking].as_json(include: booking_includes),
+        refund_amount: result[:refund_amount]
+      }, status: :ok
     else
       render json: { errors: Array(result[:error] || result[:errors]) }, status: :unprocessable_entity
     end
@@ -98,6 +102,13 @@ class BookingsController < ApplicationController
 
   def booking_includes
     {
+      schedule: {
+        include: {
+          train: { only: %i[id train_number name train_type] }
+        }
+      },
+      src_station: { only: %i[id name code] },
+      dst_station: { only: %i[id name code] },
       passengers: {},
       ticket_allocations: {
         include: {

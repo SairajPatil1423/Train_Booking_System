@@ -15,6 +15,7 @@ import {
 } from "@/features/auth/authSlice";
 import { loginUser } from "@/features/auth/authService";
 import { loginSchema } from "@/features/auth/schemas";
+import { toastError, toastSuccess } from "@/utils/toast";
 
 export default function LoginPage() {
   const dispatch = useDispatch();
@@ -44,13 +45,15 @@ export default function LoginPage() {
           user: data.user,
         }),
       );
+      toastSuccess("Welcome back. You are now signed in.", "Login successful");
       router.push("/");
     } catch (requestError) {
+      const message =
+        requestError?.response?.data?.error || "Unable to log in right now.";
       dispatch(
-        setAuthError(
-          requestError?.response?.data?.error || "Unable to log in right now.",
-        ),
+        setAuthError(message),
       );
+      toastError(message, "Login failed");
     }
   }
 

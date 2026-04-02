@@ -10,6 +10,7 @@ import Badge from "@/components/ui/badge";
 import Button from "@/components/ui/button";
 import Card from "@/components/ui/card";
 import { fetchUserBookingsThunk } from "@/features/booking/bookingSlice";
+import { getUserDisplayName } from "@/utils/user-formatters";
 import { buildBookingViewModel } from "@/utils/view-models";
 
 const quickLinks = [
@@ -45,6 +46,7 @@ export default function Home() {
   const { userBookings: bookings, bookingsStatus: status } = useSelector(
     (state) => state.booking,
   );
+  const displayName = getUserDisplayName(user);
 
   useEffect(() => {
     if (isAuthenticated && status === "idle") {
@@ -123,7 +125,7 @@ export default function Home() {
               <Badge variant="primary">Account overview</Badge>
               <h2 className="mt-3 text-2xl font-semibold tracking-tight text-[var(--color-ink)]">
                 {isAuthenticated
-                  ? `Welcome back, ${user?.email || "traveller"}`
+                  ? `Welcome back, ${displayName}`
                   : "Everything important stays within easy reach"}
               </h2>
               <p className="mt-3 text-base leading-8 text-[var(--color-muted)]">

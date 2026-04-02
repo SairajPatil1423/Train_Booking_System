@@ -9,6 +9,7 @@ import PageSection from "@/components/layout/page-section";
 import StationAutocomplete from "@/components/station-autocomplete";
 import Badge from "@/components/ui/badge";
 import Button from "@/components/ui/button";
+import { getUserDisplayName } from "@/utils/user-formatters";
 import {
   resetSearch,
   setSearchError,
@@ -26,6 +27,7 @@ export default function SearchPage() {
   const router = useRouter();
   const dispatch = useDispatch();
   const { isAuthenticated, user } = useSelector((state) => state.auth);
+  const displayName = getUserDisplayName(user);
   const { filters, error } = useSelector((state) => state.trainsSearch);
   const stations = useSelector((state) => state.stations.items);
   const stationStatus = useSelector((state) => state.stations.status);
@@ -222,7 +224,7 @@ export default function SearchPage() {
                 <p className="text-xs font-medium uppercase tracking-[0.2em] text-white/68">
                   Traveller
                 </p>
-                <p className="mt-2 text-sm font-semibold sm:text-base">{user?.email}</p>
+                <p className="mt-2 text-sm font-semibold sm:text-base">{displayName}</p>
                 <p className="mt-3 text-sm leading-7 text-white/75">
                   Keep your route search focused and compare train options on the next screen.
                 </p>

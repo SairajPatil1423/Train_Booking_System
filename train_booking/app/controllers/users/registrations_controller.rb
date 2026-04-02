@@ -8,7 +8,7 @@ class Users::RegistrationsController < Devise::RegistrationsController
   end
 
   def sign_up_params
-    params.require(:user).permit(:email, :password, :password_confirmation, :phone)
+    params.require(:user).permit(:email, :password, :password_confirmation, :phone, :full_name, :username, :address)
   end
 
   def respond_with(resource, _opts = {})
@@ -21,6 +21,6 @@ class Users::RegistrationsController < Devise::RegistrationsController
   end
 
   def user_payload(user)
-    user.as_json(only: %i[id email phone role created_at updated_at])
+    user.as_json(only: %i[id email phone full_name username address role created_at updated_at])
   end
 end
