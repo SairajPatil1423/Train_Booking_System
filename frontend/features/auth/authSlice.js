@@ -40,6 +40,14 @@ const authSlice = createSlice({
       state.status = "failed";
       state.error = action.payload || "Something went wrong.";
     },
+    expireSession(state, action) {
+      state.token = null;
+      state.user = null;
+      state.isAuthenticated = false;
+      state.status = "failed";
+      state.error = action.payload || "Your session expired. Please sign in again.";
+      state.hydrated = true;
+    },
     clearCredentials(state) {
       state.token = null;
       state.user = null;
@@ -56,6 +64,7 @@ export const {
   setCredentials,
   setAuthLoading,
   setAuthError,
+  expireSession,
   clearCredentials,
 } = authSlice.actions;
 

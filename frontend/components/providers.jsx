@@ -5,6 +5,7 @@ import { Provider, useDispatch, useSelector } from "react-redux";
 import { store } from "@/store";
 import {
   clearCredentials,
+  expireSession,
   hydrateAuth,
 } from "@/features/auth/authSlice";
 import {
@@ -12,6 +13,8 @@ import {
   readAuthState,
   writeAuthState,
 } from "@/utils/authStorage";
+import ToastViewport from "@/components/toast-viewport";
+import { toastError } from "@/utils/toast";
 
 function AuthBootstrap({ children }) {
   const dispatch = useDispatch();
@@ -34,9 +37,19 @@ function AuthBootstrap({ children }) {
   }, [authState.hydrated, authState.token, authState.user]);
 
   useEffect(() => {
-    const handleUnauthorized = () => {
+    const handleUnauthorized = (event) => {
+      const backendMessage = event?.detail?.message || "";
+      const isExpiredMessage = backendMessage.toLowerCase().includes("expired");
+
       clearAuthState();
+      if (isExpiredMessage) {
+        dispatch(expireSession("Your session expired. Please sign in again to continue booking."));
+        toastError("Your session expired. Please sign in again to continue.");
+        return;
+      }
+
       dispatch(clearCredentials());
+      toastError("You were signed out. Please log in again.");
     };
 
     window.addEventListener("auth:unauthorized", handleUnauthorized);
@@ -52,7 +65,10 @@ function AuthBootstrap({ children }) {
 export default function Providers({ children }) {
   return (
     <Provider store={store}>
-      <AuthBootstrap>{children}</AuthBootstrap>
+      <AuthBootstrap>
+        {children}
+        <ToastViewport />
+      </AuthBootstrap>
     </Provider>
   );
 }

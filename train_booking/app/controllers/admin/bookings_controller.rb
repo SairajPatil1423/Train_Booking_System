@@ -22,6 +22,13 @@ class Admin::BookingsController < Admin::BaseController
   def booking_includes
     {
       user: { only: %i[id email phone role] },
+      schedule: {
+        include: {
+          train: { only: %i[id train_number name train_type] }
+        }
+      },
+      src_station: { only: %i[id name code] },
+      dst_station: { only: %i[id name code] },
       passengers: {},
       ticket_allocations: {
         include: {

@@ -18,6 +18,7 @@ import {
   updateAdminScheduleThunk,
 } from "@/features/admin/adminSlice";
 import { AdminErrorBox, AdminInfoBlock, AdminInfoPill } from "@/components/admin/admin-ui";
+import { toastError, toastInfo, toastSuccess } from "@/utils/toast";
 
 const SCHEDULE_STATUS_OPTIONS = [
   { value: "scheduled", label: "Scheduled", variant: "primary" },
@@ -60,10 +61,12 @@ export default function AdminSchedulesPage() {
 
         if (isSameSchedulePayload(editingSchedule, scheduleData)) {
           setFormError("No changes to save.");
+          toastInfo("No changes to save.", "Nothing updated");
           return;
         }
 
         await dispatch(updateAdminScheduleThunk({ id: editingSchedule.id, scheduleData })).unwrap();
+        toastSuccess("Schedule updated successfully.");
       } else {
         const scheduleData = {
           train_id: formData.get("train_id"),
@@ -73,12 +76,15 @@ export default function AdminSchedulesPage() {
         };
 
         await dispatch(createAdminScheduleThunk(scheduleData)).unwrap();
+        toastSuccess("Schedule created successfully.");
       }
 
       setEditingSchedule(null);
       event.currentTarget.reset();
     } catch (requestError) {
-      setFormError(Array.isArray(requestError) ? requestError.join(", ") : String(requestError));
+      const message = Array.isArray(requestError) ? requestError.join(", ") : String(requestError);
+      setFormError(message);
+      toastError(message, "Schedule action failed");
     }
   }
 
@@ -91,8 +97,11 @@ export default function AdminSchedulesPage() {
 
     try {
       await dispatch(deleteAdminScheduleThunk(id)).unwrap();
+      toastSuccess("Schedule deleted successfully.");
     } catch (requestError) {
-      setFormError(Array.isArray(requestError) ? requestError.join(", ") : String(requestError));
+      const message = Array.isArray(requestError) ? requestError.join(", ") : String(requestError);
+      setFormError(message);
+      toastError(message, "Schedule deletion failed");
     }
   }
 

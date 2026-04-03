@@ -16,6 +16,7 @@ import {
 } from "@/features/auth/authSlice";
 import { loginUser } from "@/features/auth/authService";
 import { loginSchema } from "@/features/auth/schemas";
+import { toastError, toastSuccess } from "@/utils/toast";
 
 export default function AdminLoginPage() {
   const dispatch = useDispatch();
@@ -43,6 +44,7 @@ export default function AdminLoginPage() {
       if (data?.user?.role !== "admin") {
         dispatch(clearCredentials());
         dispatch(setAuthError("Admin access required."));
+        toastError("Admin access required.", "Login failed");
         return;
       }
 
@@ -52,14 +54,16 @@ export default function AdminLoginPage() {
           user: data.user,
         }),
       );
+      toastSuccess("Admin session started successfully.", "Welcome back");
       router.push("/admin");
     } catch (requestError) {
+      const message =
+        requestError?.response?.data?.error ||
+        "Unable to log in as admin right now.";
       dispatch(
-        setAuthError(
-          requestError?.response?.data?.error ||
-            "Unable to log in as admin right now.",
-        ),
+        setAuthError(message),
       );
+      toastError(message, "Admin login failed");
     }
   }
 

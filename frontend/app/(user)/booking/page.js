@@ -32,6 +32,7 @@ import {
   checkoutThunk,
   selectSelectedSeatsArray,
 } from "@/features/booking/bookingSlice";
+import { toastError, toastSuccess } from "@/utils/toast";
 
 const stepLabels = ["Review", "Passengers", "Seats", "Confirmation"];
 const paymentOptions = [
@@ -246,6 +247,12 @@ function BookingPageContent() {
     if (checkoutThunk.fulfilled.match(action)) {
       setIsBooked(true);
       setCurrentStep(4);
+      toastSuccess("Your booking was confirmed successfully.", "Booking complete");
+    } else if (checkoutThunk.rejected.match(action)) {
+      const message = Array.isArray(action.payload)
+        ? action.payload.join(", ")
+        : String(action.payload || "Booking failed. Please try again.");
+      toastError(message, "Booking failed");
     }
   }
 

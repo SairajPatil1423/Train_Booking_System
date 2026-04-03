@@ -17,6 +17,7 @@ import Input from "@/components/ui/input";
 import LoadingState from "@/components/loading-state";
 import Badge from "@/components/ui/badge";
 import { AdminErrorBox, AdminInfoBlock, AdminInfoPill } from "@/components/admin/admin-ui";
+import { toastError, toastInfo, toastSuccess } from "@/utils/toast";
 
 const TRAIN_TYPE_OPTIONS = [
   { value: "express", label: "Express" },
@@ -57,18 +58,23 @@ export default function AdminTrainsPage() {
       if (editingTrain) {
         if (isSameTrainPayload(editingTrain, trainData)) {
           setFormError("No changes to save.");
+          toastInfo("No changes to save.", "Nothing updated");
           return;
         }
 
         await dispatch(updateAdminTrainThunk({ id: editingTrain.id, trainData })).unwrap();
+        toastSuccess("Train updated successfully.");
       } else {
         await dispatch(createAdminTrainThunk(trainData)).unwrap();
+        toastSuccess("Train created successfully.");
       }
 
       setEditingTrain(null);
       event.currentTarget.reset();
     } catch (requestError) {
-      setFormError(Array.isArray(requestError) ? requestError.join(", ") : String(requestError));
+      const message = Array.isArray(requestError) ? requestError.join(", ") : String(requestError);
+      setFormError(message);
+      toastError(message, "Train action failed");
     }
   }
 
@@ -81,8 +87,11 @@ export default function AdminTrainsPage() {
 
     try {
       await dispatch(deleteAdminTrainThunk(id)).unwrap();
+      toastSuccess("Train deleted successfully.");
     } catch (requestError) {
-      setFormError(Array.isArray(requestError) ? requestError.join(", ") : String(requestError));
+      const message = Array.isArray(requestError) ? requestError.join(", ") : String(requestError);
+      setFormError(message);
+      toastError(message, "Train deletion failed");
     }
   }
 

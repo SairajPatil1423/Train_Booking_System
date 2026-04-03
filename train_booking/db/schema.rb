@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_04_01_113000) do
+ActiveRecord::Schema[7.1].define(version: 2026_04_02_100000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pgcrypto"
   enable_extension "plpgsql"
@@ -183,7 +183,11 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_01_113000) do
     t.string "encrypted_password", limit: 255, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "username", limit: 50
+    t.text "address"
+    t.string "full_name", limit: 120, null: false
     t.index ["email"], name: "idx_users_email", unique: true
+    t.index ["username"], name: "index_users_on_username", unique: true
   end
 
   add_foreign_key "bookings", "schedules"

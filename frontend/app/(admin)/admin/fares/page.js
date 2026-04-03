@@ -19,6 +19,7 @@ import {
   updateAdminFareRuleThunk,
 } from "@/features/admin/adminSlice";
 import { AdminErrorBox, AdminInfoBlock, AdminInfoPill } from "@/components/admin/admin-ui";
+import { toastError, toastInfo, toastSuccess } from "@/utils/toast";
 
 export default function AdminFaresPage() {
   const dispatch = useDispatch();
@@ -55,18 +56,23 @@ export default function AdminFaresPage() {
       if (editingRule) {
         if (isSameFareRulePayload(editingRule, fareRuleData)) {
           setFormError("No changes to save.");
+          toastInfo("No changes to save.", "Nothing updated");
           return;
         }
 
         await dispatch(updateAdminFareRuleThunk({ id: editingRule.id, fareRuleData })).unwrap();
+        toastSuccess("Fare rule updated successfully.");
       } else {
         await dispatch(createAdminFareRuleThunk(fareRuleData)).unwrap();
+        toastSuccess("Fare rule created successfully.");
       }
 
       setEditingRule(null);
       event.currentTarget.reset();
     } catch (requestError) {
-      setFormError(Array.isArray(requestError) ? requestError.join(", ") : String(requestError));
+      const message = Array.isArray(requestError) ? requestError.join(", ") : String(requestError);
+      setFormError(message);
+      toastError(message, "Fare rule action failed");
     }
   }
 
@@ -79,8 +85,11 @@ export default function AdminFaresPage() {
 
     try {
       await dispatch(deleteAdminFareRuleThunk(id)).unwrap();
+      toastSuccess("Fare rule deleted successfully.");
     } catch (requestError) {
-      setFormError(Array.isArray(requestError) ? requestError.join(", ") : String(requestError));
+      const message = Array.isArray(requestError) ? requestError.join(", ") : String(requestError);
+      setFormError(message);
+      toastError(message, "Fare rule deletion failed");
     }
   }
 

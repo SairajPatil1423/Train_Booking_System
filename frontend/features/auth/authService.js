@@ -5,6 +5,9 @@ export async function registerUser(payload) {
     user: {
       email: payload.email,
       phone: payload.phone,
+      full_name: payload.fullName,
+      username: payload.username,
+      address: payload.address,
       password: payload.password,
       password_confirmation: payload.passwordConfirmation,
     },

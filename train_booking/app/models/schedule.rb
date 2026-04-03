@@ -14,6 +14,15 @@ class Schedule < ApplicationRecord
   validates :travel_date, :departure_time, :expected_arrival_time, presence: true
 
   scope :active_for_date, ->(date) { where(travel_date: date).where.not(status: "cancelled") }
+  scope :searchable_for_date, lambda { |date|
+    relation = active_for_date(date)
+
+    if date == Time.zone.today
+      relation = relation.where("departure_time > ?", Time.zone.now.strftime("%H:%M:%S"))
+    end
+
+    relation
+  }
 
   def self.ensure_daily_schedules!(travel_date:, train_ids:)
     return if travel_date.blank? || train_ids.blank?

@@ -7,6 +7,9 @@ class User < ApplicationRecord
   has_many :bookings, dependent: :restrict_with_exception
   has_many :requested_cancellations, class_name: "Cancellation", foreign_key: :requested_by_id, dependent: :restrict_with_exception
 
+  validates :full_name, presence: true, length: { maximum: 120 }
+  validates :username, presence: true, uniqueness: { case_sensitive: false }, length: { maximum: 50 }
+  validates :address, presence: true, length: { maximum: 500 }
   validates :phone, length: { maximum: 20 }, allow_blank: true
 
   def self.jwt_revoked?(_payload, _user)

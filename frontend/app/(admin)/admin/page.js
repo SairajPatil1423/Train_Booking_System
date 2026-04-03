@@ -11,7 +11,6 @@ const adminModules = [
   { name: "Schedules", href: "/admin/schedules", icon: "📅" },
   { name: "Coaches and seats", href: "/admin/coaches", icon: "💺" },
   { name: "Fare rules", href: "/admin/fares", icon: "💰" },
-  { name: "Booking overview", href: "/admin/bookings", icon: "📋" },
 ];
 
 export default function AdminPage() {
@@ -38,7 +37,7 @@ export default function AdminPage() {
           </h1>
           <p className="mt-4 max-w-2xl text-base leading-8 text-[var(--color-muted)]">
             This route is reserved for operations users handling trains, schedules,
-            seats, and bookings.
+            seats, and fares.
           </p>
           <div className="mt-6">
             <Link href="/login" className="primary-button px-5 py-3 text-sm">
@@ -50,10 +49,25 @@ export default function AdminPage() {
     );
   }
 
+  const grossRevenue = bookings.reduce(
+    (sum, booking) => sum + Number(booking.payment?.amount || booking.total_fare || 0),
+    0,
+  );
+  const totalRefunds = bookings.reduce(
+    (sum, booking) =>
+      sum +
+      (booking.cancellations || []).reduce(
+        (refundSum, cancellation) => refundSum + Number(cancellation.refund_amount || 0),
+        0,
+      ),
+    0,
+  );
+  const netRevenue = grossRevenue - totalRefunds;
+
   const stats = [
-    { label: "Active Trains", value: trains.filter(t => t.is_active).length, color: "text-blue-600" },
-    { label: "Total Bookings", value: bookings.length, color: "text-purple-600" },
-    { label: "Revenue", value: `₹${bookings.reduce((sum, b) => sum + (b.total_fare || 0), 0).toLocaleString("en-IN")}`, color: "text-green-600" },
+    { label: "Active Trains", value: trains.filter((t) => t.is_active).length, color: "text-blue-600" },
+    { label: "Total Refunds", value: `₹${totalRefunds.toLocaleString("en-IN")}`, color: "text-amber-600" },
+    { label: "Net Revenue", value: `₹${netRevenue.toLocaleString("en-IN")}`, color: "text-green-600" },
   ];
 
   return (
@@ -89,6 +103,38 @@ export default function AdminPage() {
                 <span>{module.name}</span>
               </Link>
             ))}
+          </div>
+
+          <div className="mt-8 rounded-[1.6rem] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-5">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[var(--color-accent)]">
+              Revenue snapshot
+            </p>
+            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+              <div className="rounded-[1.2rem] bg-white px-4 py-3 ring-1 ring-[var(--color-line)]">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--color-muted)]">
+                  Gross bookings
+                </p>
+                <p className="mt-2 text-sm font-semibold text-[var(--color-ink)]">
+                  ₹{grossRevenue.toLocaleString("en-IN")}
+                </p>
+              </div>
+              <div className="rounded-[1.2rem] bg-white px-4 py-3 ring-1 ring-[var(--color-line)]">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--color-muted)]">
+                  Refunds issued
+                </p>
+                <p className="mt-2 text-sm font-semibold text-[var(--color-ink)]">
+                  ₹{totalRefunds.toLocaleString("en-IN")}
+                </p>
+              </div>
+              <div className="rounded-[1.2rem] bg-white px-4 py-3 ring-1 ring-[var(--color-line)]">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--color-muted)]">
+                  Net retained
+                </p>
+                <p className="mt-2 text-sm font-semibold text-[var(--color-ink)]">
+                  ₹{netRevenue.toLocaleString("en-IN")}
+                </p>
+              </div>
+            </div>
           </div>
 
           <div className="mt-8 rounded-[1.6rem] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-5">

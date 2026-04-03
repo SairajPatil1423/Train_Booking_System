@@ -7,6 +7,7 @@ import Button from "@/components/ui/button";
 import Badge from "@/components/ui/badge";
 import { clearCredentials } from "@/features/auth/authSlice";
 import { logoutUser } from "@/features/auth/authService";
+import { getUserDisplayName } from "@/utils/user-formatters";
 
 const publicLinks = [{ href: "/", label: "Home" }];
 
@@ -20,7 +21,9 @@ const privateLinks = [
 const adminLinks = [
   { href: "/admin", label: "Admin Panel" },
   { href: "/admin/trains", label: "Trains" },
-  { href: "/admin/bookings", label: "Bookings" },
+  { href: "/admin/schedules", label: "Schedules" },
+  { href: "/admin/coaches", label: "Coaches" },
+  { href: "/admin/fares", label: "Fares" },
 ];
 
 export default function AppHeader() {
@@ -28,6 +31,7 @@ export default function AppHeader() {
   const router = useRouter();
   const dispatch = useDispatch();
   const { isAuthenticated, user } = useSelector((state) => state.auth);
+  const displayName = getUserDisplayName(user);
 
   async function handleLogout() {
     try {
@@ -41,16 +45,9 @@ export default function AppHeader() {
   }
 
   const isAdminRoute = pathname.startsWith("/admin");
-  const links = isAuthenticated 
-    ? (user?.role === "admin" && isAdminRoute ? [...adminLinks] : [...privateLinks])
+  const links = isAuthenticated
+    ? (user?.role === "admin" ? [...adminLinks] : [...privateLinks])
     : [...publicLinks];
-
-  // Add Admin Panel link to private links if user is admin but not on admin route
-  if (isAuthenticated && user?.role === "admin" && !isAdminRoute) {
-    if (!links.find(l => l.href === "/admin")) {
-      links.push({ href: "/admin", label: "Admin Panel" });
-    }
-  }
 
   return (
     <header className="sticky top-0 z-30 border-b border-[var(--color-line)] bg-[rgba(255,255,255,0.92)] backdrop-blur-xl">
@@ -89,7 +86,7 @@ export default function AppHeader() {
             {isAuthenticated ? (
               <>
                 <div className="hidden rounded-full border border-[var(--color-line)] bg-[#fdfefe] px-4 py-2 text-sm text-[var(--color-ink)] shadow-[0_10px_26px_rgba(16,33,49,0.04)] md:block">
-                  {user?.email || "Signed in"}
+                  {displayName}
                 </div>
                 <Button
                   type="button"
@@ -117,7 +114,7 @@ export default function AppHeader() {
           <div className="min-w-0">
             {isAuthenticated ? (
               <Badge variant="neutral" className="max-w-full truncate px-3 py-2 normal-case tracking-normal">
-                {user?.email || "Signed in"}
+                {displayName}
               </Badge>
             ) : (
               <Badge variant="neutral" className="px-3 py-2 normal-case tracking-normal">

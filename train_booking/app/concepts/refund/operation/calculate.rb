@@ -35,8 +35,19 @@ module Refund
       private
 
       def hours_until_departure(schedule)
-        departure_at = Time.zone.parse("#{schedule.travel_date} #{schedule.departure_time}")
+        departure_at = departure_time_for(schedule)
         ((departure_at - Time.zone.now) / 1.hour).floor
+      end
+
+      def departure_time_for(schedule)
+        date = schedule.travel_date
+        time = schedule.departure_time
+
+        hours = time.hour
+        minutes = time.min
+        seconds = time.sec
+
+        Time.zone.local(date.year, date.month, date.day, hours, minutes, seconds)
       end
     end
   end
