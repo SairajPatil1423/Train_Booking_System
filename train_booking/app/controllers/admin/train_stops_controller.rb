@@ -4,7 +4,7 @@ class Admin::TrainStopsController < Admin::BaseController
   def index
     authorize TrainStop
     stops = TrainStop.includes(:train, :station).order(:train_id, :stop_order)
-    render json: { train_stops: stops.as_json(include: [:train, :station]) }, status: :ok
+    render json: { train_stops: stops.map { |stop| serialize_train_stop(stop) } }, status: :ok
   end
 
   def create
@@ -15,7 +15,7 @@ class Admin::TrainStopsController < Admin::BaseController
     )
 
     if result.success?
-      render json: { message: 'Train stop added successfully', train_stop: result[:model] }, status: :created
+      render json: { message: 'Train stop added successfully', train_stop: serialize_train_stop(result[:model]) }, status: :created
     else
       render json: { errors: result[:errors] }, status: :unprocessable_entity
     end
@@ -30,7 +30,7 @@ class Admin::TrainStopsController < Admin::BaseController
     )
 
     if result.success?
-      render json: { message: 'Train stop updated successfully', train_stop: result[:model] }, status: :ok
+      render json: { message: 'Train stop updated successfully', train_stop: serialize_train_stop(result[:model]) }, status: :ok
     else
       render json: { errors: result[:errors] }, status: :unprocessable_entity
     end
@@ -59,7 +59,22 @@ class Admin::TrainStopsController < Admin::BaseController
   def train_stop_params
     params.require(:train_stop).permit(
       :train_id, :station_id, :stop_order,
-      :arrival_time, :departure_time, :distance_from_origin_km
+      :arrival_time, :departure_time, :arrival_at, :departure_at, :distance_from_origin_km
+    )
+  end
+
+  def serialize_train_stop(train_stop)
+    train_stop.as_json(include: {
+      train: { only: %i[id train_number name train_type] },
+      station: {
+        only: %i[id name code],
+        include: {
+          city: { only: %i[id name state country] }
+        }
+      }
+    }).merge(
+      arrival_at: train_stop.arrival_at,
+      departure_at: train_stop.departure_at
     )
   end
 end

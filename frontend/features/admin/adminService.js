@@ -5,6 +5,26 @@ export async function fetchAdminTrains() {
   return response.data;
 }
 
+export async function fetchAdminStations() {
+  const response = await api.get("/admin/stations");
+  return response.data;
+}
+
+export async function fetchAdminCities() {
+  const response = await api.get("/admin/cities");
+  return response.data;
+}
+
+export async function createAdminCity(payload) {
+  const response = await api.post("/admin/cities", { city: payload });
+  return response.data;
+}
+
+export async function createAdminStation(payload) {
+  const response = await api.post("/admin/stations", { station: payload });
+  return response.data;
+}
+
 export async function createAdminTrain(payload) {
   const response = await api.post("/admin/trains", { train: payload });
   return response.data;
@@ -17,6 +37,26 @@ export async function updateAdminTrain(id, payload) {
 
 export async function deleteAdminTrain(id) {
   const response = await api.delete(`/admin/trains/${id}`);
+  return response.data;
+}
+
+export async function fetchAdminTrainStops() {
+  const response = await api.get("/admin/train_stops");
+  return response.data;
+}
+
+export async function createAdminTrainStop(payload) {
+  const response = await api.post("/admin/train_stops", { train_stop: payload });
+  return response.data;
+}
+
+export async function updateAdminTrainStop(id, payload) {
+  const response = await api.put(`/admin/train_stops/${id}`, { train_stop: payload });
+  return response.data;
+}
+
+export async function deleteAdminTrainStop(id) {
+  const response = await api.delete(`/admin/train_stops/${id}`);
   return response.data;
 }
 

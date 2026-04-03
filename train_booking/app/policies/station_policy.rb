@@ -1,6 +1,6 @@
 class StationPolicy < ApplicationPolicy
   def search?
-    user.present?
+    true
   end
 
   def index?

@@ -26,7 +26,7 @@ const searchTips = [
 export default function SearchPage() {
   const router = useRouter();
   const dispatch = useDispatch();
-  const { isAuthenticated, user } = useSelector((state) => state.auth);
+  const { user } = useSelector((state) => state.auth);
   const displayName = getUserDisplayName(user);
   const { filters, error } = useSelector((state) => state.trainsSearch);
   const stations = useSelector((state) => state.stations.items);
@@ -38,10 +38,10 @@ export default function SearchPage() {
   const [toQuery, setToQuery] = useState("");
 
   useEffect(() => {
-    if (isAuthenticated && stationStatus === "idle") {
+    if (stationStatus === "idle") {
       dispatch(fetchStationsThunk());
     }
-  }, [dispatch, isAuthenticated, stationStatus]);
+  }, [dispatch, stationStatus]);
 
   useEffect(() => {
     if (!filters.journeyDate) {
@@ -186,29 +186,6 @@ export default function SearchPage() {
     router.push(`/search/results?${params.toString()}`);
   }
 
-  if (!isAuthenticated) {
-    return (
-      <main className="mx-auto flex min-h-[calc(100vh-81px)] w-full max-w-5xl flex-1 items-center px-6 py-12 sm:px-10">
-        <PageSection className="w-full">
-          <p className="text-sm font-semibold uppercase tracking-[0.25em] text-[var(--color-accent)]">
-            Protected area
-          </p>
-          <h1 className="mt-3 text-3xl font-semibold tracking-tight text-[var(--color-ink)]">
-            Sign in before searching trains.
-          </h1>
-          <p className="mt-4 max-w-2xl text-base leading-8 text-[var(--color-muted)]">
-            Login first to search routes, view availability, and continue to booking.
-          </p>
-          <div className="mt-6">
-            <Button as={Link} href="/login">
-              Go to login
-            </Button>
-          </div>
-        </PageSection>
-      </main>
-    );
-  }
-
   return (
     <main className="relative mx-auto flex min-h-[calc(100vh-81px)] w-full max-w-6xl flex-1 px-6 py-10 sm:px-10 lg:px-12">
       <div className="pointer-events-none absolute inset-x-6 top-0 h-72 rounded-[3rem] bg-[radial-gradient(circle_at_top_left,_rgba(27,116,180,0.1),_transparent_34%),radial-gradient(circle_at_top_right,_rgba(19,95,151,0.1),_transparent_34%)] sm:inset-x-10 lg:inset-x-12" />
@@ -226,7 +203,7 @@ export default function SearchPage() {
                 </p>
                 <p className="mt-2 text-sm font-semibold sm:text-base">{displayName}</p>
                 <p className="mt-3 text-sm leading-7 text-white/75">
-                  Keep your route search focused and compare train options on the next screen.
+                  Search routes freely first. Sign in only when you want to continue to booking or manage your trips.
                 </p>
               </div>
             }

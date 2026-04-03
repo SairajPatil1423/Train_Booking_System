@@ -86,7 +86,9 @@ class BookingsController < ApplicationController
       :schedule_id,
       :src_station_id,
       :dst_station_id,
+      :seat_id,
       :coach_type,
+      seat_ids: [],
       payment: [:payment_method, :gateway_txn_id],
       passengers: [:first_name, :last_name, :age, :gender, :id_type, :id_number]
     )

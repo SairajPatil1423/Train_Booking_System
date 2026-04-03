@@ -1,5 +1,6 @@
 PASSWORD = "password123".freeze
 SCHEDULE_DAYS = 21
+SEED_ROUTE_BASE_DATE = Date.new(2000, 1, 1)
 COMMON_SEARCH_ROUTES = [
   ["BCT", "ADI"],
   ["ADI", "BCT"],
@@ -20,6 +21,41 @@ COMMON_SEARCH_ROUTES = [
   ["BZA", "MAS"]
 ].freeze
 
+ADMIN_PROFILES = [
+  { full_name: "Aarav Menon", username: "admin_ops_1", email: "admin1@trainbooking.com", phone: "9000000001", address: "Rail Operations HQ 1, Central Admin Block, New Delhi, India" },
+  { full_name: "Meera Sharma", username: "admin_ops_2", email: "admin2@trainbooking.com", phone: "9000000002", address: "Rail Operations HQ 2, Central Admin Block, New Delhi, India" }
+].freeze
+
+USER_PROFILES = [
+  ["Priya Sharma", "priya.sharma", "Mumbai, Maharashtra"],
+  ["Rahul Verma", "rahul.verma", "Pune, Maharashtra"],
+  ["Ananya Iyer", "ananya.iyer", "Chennai, Tamil Nadu"],
+  ["Arjun Reddy", "arjun.reddy", "Hyderabad, Telangana"],
+  ["Neha Kapoor", "neha.kapoor", "Delhi, Delhi"],
+  ["Rohan Patel", "rohan.patel", "Ahmedabad, Gujarat"],
+  ["Sneha Kulkarni", "sneha.kulkarni", "Bengaluru, Karnataka"],
+  ["Vikram Singh", "vikram.singh", "Jaipur, Rajasthan"],
+  ["Kavya Nair", "kavya.nair", "Kochi, Kerala"],
+  ["Aditya Joshi", "aditya.joshi", "Nagpur, Maharashtra"]
+].freeze
+
+def build_stop(code:, distance_km:, arrival_time: nil, departure_time: nil, arrival_day: 0, departure_day: 0)
+  {
+    code: code,
+    distance_km: distance_km,
+    arrival_time: arrival_time,
+    departure_time: departure_time,
+    arrival_day: arrival_day,
+    departure_day: departure_day
+  }
+end
+
+def stop_datetime(day_offset, time_value)
+  return nil if time_value.blank?
+
+  Time.zone.parse("#{SEED_ROUTE_BASE_DATE + day_offset} #{time_value}")
+end
+
 puts "Cleaning existing data..."
 Cancellation.destroy_all
 TicketAllocation.destroy_all
@@ -37,25 +73,26 @@ City.destroy_all
 User.destroy_all
 
 puts "Creating admin users..."
-2.times do |index|
+ADMIN_PROFILES.each do |profile|
   User.create!(
-    email: "admin#{index + 1}@trainbooking.com",
-    full_name: "Admin Operator #{index + 1}",
-    username: "admin_ops_#{index + 1}",
-    address: "Rail Operations HQ #{index + 1}, Central Admin Block, New Delhi, India",
+    email: profile[:email],
+    full_name: profile[:full_name],
+    username: profile[:username],
+    address: profile[:address],
     password: PASSWORD,
-    phone: format("90000000%02d", index + 1),
+    phone: profile[:phone],
     role: :admin
   )
 end
 
 puts "Creating regular users..."
 40.times do |index|
+  name, username_seed, city_label = USER_PROFILES[index % USER_PROFILES.length]
   User.create!(
     email: "user#{index + 1}@trainbooking.com",
-    full_name: "Passenger #{index + 1}",
-    username: "traveler_#{index + 1}",
-    address: "#{100 + index} Passenger Residency, Sector #{(index % 9) + 1}, Mumbai, India",
+    full_name: "#{name} #{index >= USER_PROFILES.length ? index / USER_PROFILES.length + 1 : ''}".strip,
+    username: "#{username_seed}_#{index + 1}",
+    address: "#{100 + index} Traveler Residency, Sector #{(index % 9) + 1}, #{city_label}, India",
     password: PASSWORD,
     phone: format("70000000%02d", index + 1),
     role: :user
@@ -168,199 +205,225 @@ train_blueprints = [
   {
     number: "12951",
     name: "Western Capital Express",
-    train_type: "Superfast",
+    train_type: "superfast",
     rating: 4.6,
     grade: "Premium",
     route: [
-      ["BCT", nil, "06:00", 0],
-      ["ST", "08:15", "08:20", 265],
-      ["BRC", "09:45", "09:50", 392],
-      ["ADI", "11:30", nil, 492]
+      build_stop(code: "BCT", departure_time: "06:00", distance_km: 0),
+      build_stop(code: "ST", arrival_time: "08:15", departure_time: "08:20", distance_km: 265),
+      build_stop(code: "BRC", arrival_time: "09:45", departure_time: "09:50", distance_km: 392),
+      build_stop(code: "ADI", arrival_time: "11:30", distance_km: 492)
     ]
   },
   {
     number: "12952",
     name: "Western Capital Return",
-    train_type: "Superfast",
+    train_type: "superfast",
     rating: 4.5,
     grade: "Premium",
     route: [
-      ["ADI", nil, "06:10", 0],
-      ["BRC", "07:45", "07:50", 100],
-      ["ST", "09:20", "09:25", 227],
-      ["BCT", "11:45", nil, 492]
+      build_stop(code: "ADI", departure_time: "06:10", distance_km: 0),
+      build_stop(code: "BRC", arrival_time: "07:45", departure_time: "07:50", distance_km: 100),
+      build_stop(code: "ST", arrival_time: "09:20", departure_time: "09:25", distance_km: 227),
+      build_stop(code: "BCT", arrival_time: "11:45", distance_km: 492)
     ]
   },
   {
     number: "12953",
     name: "Rajputana Arrow",
-    train_type: "Express",
+    train_type: "express",
     rating: 4.4,
     grade: "Premier",
     route: [
-      ["ADI", nil, "05:45", 0],
-      ["JP", "11:40", "11:50", 660],
-      ["NDLS", "17:30", nil, 935]
+      build_stop(code: "ADI", departure_time: "05:45", distance_km: 0),
+      build_stop(code: "JP", arrival_time: "11:40", departure_time: "11:50", distance_km: 660),
+      build_stop(code: "NDLS", arrival_time: "17:30", distance_km: 935)
     ]
   },
   {
     number: "12954",
     name: "Rajputana Arrow Return",
-    train_type: "Express",
+    train_type: "express",
     rating: 4.3,
     grade: "Premier",
     route: [
-      ["NDLS", nil, "05:30", 0],
-      ["JP", "11:10", "11:20", 275],
-      ["ADI", "17:10", nil, 935]
+      build_stop(code: "NDLS", departure_time: "05:30", distance_km: 0),
+      build_stop(code: "JP", arrival_time: "11:10", departure_time: "11:20", distance_km: 275),
+      build_stop(code: "ADI", arrival_time: "17:10", distance_km: 935)
     ]
   },
   {
     number: "12621",
     name: "Dakshin Link",
-    train_type: "Superfast",
+    train_type: "superfast",
     rating: 4.2,
     grade: "Business",
     route: [
-      ["MAS", nil, "06:20", 0],
-      ["BZA", "11:00", "11:10", 431],
-      ["SC", "16:45", nil, 716]
+      build_stop(code: "MAS", departure_time: "06:20", distance_km: 0),
+      build_stop(code: "BZA", arrival_time: "11:00", departure_time: "11:10", distance_km: 431),
+      build_stop(code: "SC", arrival_time: "16:45", distance_km: 716)
     ]
   },
   {
     number: "12622",
     name: "Dakshin Link Return",
-    train_type: "Superfast",
+    train_type: "superfast",
     rating: 4.1,
     grade: "Business",
     route: [
-      ["SC", nil, "06:10", 0],
-      ["BZA", "11:25", "11:35", 285],
-      ["MAS", "16:15", nil, 716]
+      build_stop(code: "SC", departure_time: "06:10", distance_km: 0),
+      build_stop(code: "BZA", arrival_time: "11:25", departure_time: "11:35", distance_km: 285),
+      build_stop(code: "MAS", arrival_time: "16:15", distance_km: 716)
     ]
   },
   {
     number: "12701",
     name: "Central Crown",
-    train_type: "Express",
+    train_type: "express",
     rating: 4.0,
     grade: "Classic",
     route: [
-      ["LTT", nil, "07:00", 0],
-      ["BPL", "14:15", "14:25", 779],
-      ["NDLS", "23:10", nil, 1544]
+      build_stop(code: "LTT", departure_time: "07:00", distance_km: 0),
+      build_stop(code: "BPL", arrival_time: "14:15", departure_time: "14:25", distance_km: 779),
+      build_stop(code: "NDLS", arrival_time: "23:10", distance_km: 1544)
     ]
   },
   {
     number: "12702",
     name: "Central Crown Return",
-    train_type: "Express",
+    train_type: "express",
     rating: 4.0,
     grade: "Classic",
     route: [
-      ["NDLS", nil, "07:15", 0],
-      ["BPL", "15:50", "16:00", 765],
-      ["LTT", "23:45", nil, 1544]
+      build_stop(code: "NDLS", departure_time: "07:15", distance_km: 0),
+      build_stop(code: "BPL", arrival_time: "15:50", departure_time: "16:00", distance_km: 765),
+      build_stop(code: "LTT", arrival_time: "23:45", distance_km: 1544)
     ]
   },
   {
     number: "12811",
     name: "Deccan Meridian",
-    train_type: "Mail",
+    train_type: "passenger",
     rating: 3.9,
     grade: "Saver",
     route: [
-      ["BCT", nil, "05:50", 0],
-      ["NGP", "16:10", "16:20", 837],
-      ["SC", "23:55", nil, 1385]
+      build_stop(code: "BCT", departure_time: "05:50", distance_km: 0),
+      build_stop(code: "NGP", arrival_time: "16:10", departure_time: "16:20", distance_km: 837),
+      build_stop(code: "SC", arrival_time: "23:55", distance_km: 1385)
     ]
   },
   {
     number: "12812",
     name: "Deccan Meridian Return",
-    train_type: "Mail",
+    train_type: "passenger",
     rating: 3.9,
     grade: "Saver",
     route: [
-      ["SC", nil, "05:40", 0],
-      ["NGP", "13:00", "13:10", 548],
-      ["BCT", "23:15", nil, 1385]
+      build_stop(code: "SC", departure_time: "05:40", distance_km: 0),
+      build_stop(code: "NGP", arrival_time: "13:00", departure_time: "13:10", distance_km: 548),
+      build_stop(code: "BCT", arrival_time: "23:15", distance_km: 1385)
     ]
   },
   {
     number: "12111",
     name: "Western Deccan Link",
-    train_type: "Express",
+    train_type: "express",
     rating: 4.1,
     grade: "Business",
     route: [
-      ["BCT", nil, "06:30", 0],
-      ["PUNE", "10:10", "10:20", 192],
-      ["SBC", "20:15", nil, 982]
+      build_stop(code: "BCT", departure_time: "06:30", distance_km: 0),
+      build_stop(code: "PUNE", arrival_time: "10:10", departure_time: "10:20", distance_km: 192),
+      build_stop(code: "SBC", arrival_time: "20:15", distance_km: 982)
     ]
   },
   {
     number: "12112",
     name: "Western Deccan Return",
-    train_type: "Express",
+    train_type: "express",
     rating: 4.1,
     grade: "Business",
     route: [
-      ["SBC", nil, "06:10", 0],
-      ["PUNE", "15:50", "16:00", 790],
-      ["BCT", "20:05", nil, 982]
+      build_stop(code: "SBC", departure_time: "06:10", distance_km: 0),
+      build_stop(code: "PUNE", arrival_time: "15:50", departure_time: "16:00", distance_km: 790),
+      build_stop(code: "BCT", arrival_time: "20:05", distance_km: 982)
     ]
   },
   {
     number: "12651",
     name: "Southern Capital Connector",
-    train_type: "Superfast",
+    train_type: "superfast",
     rating: 4.3,
     grade: "Premium",
     route: [
-      ["MAS", nil, "05:55", 0],
-      ["BZA", "10:40", "10:50", 431],
-      ["SC", "15:50", "16:00", 716],
-      ["NDLS", "08:10", nil, 2175]
+      build_stop(code: "MAS", departure_time: "05:55", distance_km: 0),
+      build_stop(code: "BZA", arrival_time: "10:40", departure_time: "10:50", distance_km: 431),
+      build_stop(code: "SC", arrival_time: "15:50", departure_time: "16:00", distance_km: 716),
+      build_stop(code: "NDLS", arrival_time: "08:10", arrival_day: 1, distance_km: 2175)
     ]
   },
   {
     number: "12652",
     name: "Southern Capital Return",
-    train_type: "Superfast",
+    train_type: "superfast",
     rating: 4.2,
     grade: "Premium",
     route: [
-      ["NDLS", nil, "06:00", 0],
-      ["SC", "22:25", "22:35", 1459],
-      ["BZA", "03:10", "03:20", 1744],
-      ["MAS", "08:05", nil, 2175]
+      build_stop(code: "NDLS", departure_time: "06:00", distance_km: 0),
+      build_stop(code: "SC", arrival_time: "22:25", departure_time: "22:35", distance_km: 1459),
+      build_stop(code: "BZA", arrival_time: "03:10", departure_time: "03:20", arrival_day: 1, departure_day: 1, distance_km: 1744),
+      build_stop(code: "MAS", arrival_time: "08:05", arrival_day: 1, distance_km: 2175)
     ]
   },
   {
     number: "12961",
     name: "Capital Corridor",
-    train_type: "Express",
+    train_type: "express",
     rating: 4.2,
     grade: "Premier",
     route: [
-      ["BCT", nil, "07:15", 0],
-      ["BRC", "09:40", "09:50", 392],
-      ["JP", "18:10", "18:20", 1052],
-      ["NDLS", "23:40", nil, 1327]
+      build_stop(code: "BCT", departure_time: "07:15", distance_km: 0),
+      build_stop(code: "BRC", arrival_time: "09:40", departure_time: "09:50", distance_km: 392),
+      build_stop(code: "JP", arrival_time: "18:10", departure_time: "18:20", distance_km: 1052),
+      build_stop(code: "NDLS", arrival_time: "23:40", distance_km: 1327)
     ]
   },
   {
     number: "12962",
     name: "Capital Corridor Return",
-    train_type: "Express",
+    train_type: "express",
     rating: 4.2,
     grade: "Premier",
     route: [
-      ["NDLS", nil, "06:50", 0],
-      ["JP", "12:10", "12:20", 275],
-      ["BRC", "20:30", "20:40", 935],
-      ["BCT", "23:05", nil, 1327]
+      build_stop(code: "NDLS", departure_time: "06:50", distance_km: 0),
+      build_stop(code: "JP", arrival_time: "12:10", departure_time: "12:20", distance_km: 275),
+      build_stop(code: "BRC", arrival_time: "20:30", departure_time: "20:40", distance_km: 935),
+      build_stop(code: "BCT", arrival_time: "23:05", distance_km: 1327)
+    ]
+  },
+  {
+    number: "12271",
+    name: "Dakshin Rajya Express",
+    train_type: "superfast",
+    rating: 4.5,
+    grade: "Premium",
+    route: [
+      build_stop(code: "BCT", departure_time: "17:30", distance_km: 0),
+      build_stop(code: "PUNE", arrival_time: "21:20", departure_time: "21:30", distance_km: 192),
+      build_stop(code: "SC", arrival_time: "07:15", departure_time: "07:25", arrival_day: 1, departure_day: 1, distance_km: 705),
+      build_stop(code: "MAS", arrival_time: "17:40", arrival_day: 1, distance_km: 1340)
+    ]
+  },
+  {
+    number: "12272",
+    name: "Dakshin Rajya Return",
+    train_type: "superfast",
+    rating: 4.4,
+    grade: "Premium",
+    route: [
+      build_stop(code: "MAS", departure_time: "18:10", distance_km: 0),
+      build_stop(code: "SC", arrival_time: "04:00", departure_time: "04:10", arrival_day: 1, departure_day: 1, distance_km: 635),
+      build_stop(code: "PUNE", arrival_time: "14:05", departure_time: "14:15", arrival_day: 1, departure_day: 1, distance_km: 1148),
+      build_stop(code: "BCT", arrival_time: "18:05", arrival_day: 1, distance_km: 1340)
     ]
   }
 ]
@@ -381,15 +444,17 @@ train_blueprints.each_with_index do |blueprint, index|
     is_active: true
   )
 
-  blueprint[:route].each_with_index do |(station_code, arrival_time, departure_time, distance_km), stop_index|
-    TrainStop.create!(
+  blueprint[:route].each_with_index do |stop_blueprint, stop_index|
+    train_stop = TrainStop.new(
       train: train,
-      station: stations_by_code.fetch(station_code),
+      station: stations_by_code.fetch(stop_blueprint[:code]),
       stop_order: stop_index + 1,
-      arrival_time: arrival_time,
-      departure_time: departure_time,
-      distance_from_origin_km: distance_km
+      arrival_at: stop_datetime(stop_blueprint[:arrival_day], stop_blueprint[:arrival_time]),
+      departure_at: stop_datetime(stop_blueprint[:departure_day], stop_blueprint[:departure_time]),
+      distance_from_origin_km: stop_blueprint[:distance_km]
     )
+    train_stop.sync_time_columns_from_datetimes
+    train_stop.save!
   end
 
   coach_templates.each_with_index do |coach_template, coach_index|
@@ -415,8 +480,8 @@ train_blueprints.each_with_index do |blueprint, index|
     )
   end
 
-  departure_time = blueprint[:route].first[2]
-  arrival_time = blueprint[:route].last[1]
+  departure_time = blueprint[:route].first[:departure_time]
+  arrival_time = blueprint[:route].last[:arrival_time]
 
   SCHEDULE_DAYS.times do |day_offset|
     travel_date = Date.current + day_offset

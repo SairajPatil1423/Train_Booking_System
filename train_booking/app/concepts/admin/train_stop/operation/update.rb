@@ -37,15 +37,24 @@ module Admin
         def update_model(ctx, params:, model:, **)
           update_attrs = {}
           update_attrs[:stop_order] = params[:stop_order] if params.key?(:stop_order)
-          update_attrs[:arrival_time] = params[:arrival_time] if params.key?(:arrival_time)
-          update_attrs[:departure_time] = params[:departure_time] if params.key?(:departure_time)
+          update_attrs[:arrival_at] = parse_stop_datetime(params[:arrival_at], params[:arrival_time]) if params.key?(:arrival_at) || params.key?(:arrival_time)
+          update_attrs[:departure_at] = parse_stop_datetime(params[:departure_at], params[:departure_time]) if params.key?(:departure_at) || params.key?(:departure_time)
           update_attrs[:distance_from_origin_km] = params[:distance_from_origin_km] if params.key?(:distance_from_origin_km)
 
           model.update!(update_attrs)
+          model.sync_time_columns_from_datetimes
+          model.save! if model.changed?
           true
         rescue StandardError => e
           ctx[:errors] = [e.message]
           false
+        end
+
+        def parse_stop_datetime(datetime_value, time_value)
+          return datetime_value if datetime_value.present?
+          return nil if time_value.blank?
+
+          Time.zone.parse("2000-01-01 #{time_value}")
         end
       end
     end

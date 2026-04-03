@@ -23,7 +23,6 @@ function SearchResultsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const dispatch = useDispatch();
-  const { isAuthenticated } = useSelector((state) => state.auth);
   const { results, status, error } = useSelector((state) => state.trainsSearch);
 
   const fromStationId = searchParams.get("src_station_id") || "";
@@ -34,10 +33,6 @@ function SearchResultsPageContent() {
   const [sortBy, setSortBy] = useState("departure");
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      return;
-    }
-
     if (!fromStationId || !toStationId || !journeyDate) {
       dispatch(setSearchError("Search details are missing. Please start a new search."));
       return;
@@ -50,7 +45,7 @@ function SearchResultsPageContent() {
         journeyDate,
       }),
     );
-  }, [dispatch, fromStationId, isAuthenticated, journeyDate, toStationId]);
+  }, [dispatch, fromStationId, journeyDate, toStationId]);
 
   const scheduleCards = useMemo(() => {
     const mapped = results.map((schedule) =>
@@ -69,26 +64,6 @@ function SearchResultsPageContent() {
       return left.departureLabel.localeCompare(right.departureLabel);
     });
   }, [fromLabel, results, sortBy, toLabel]);
-
-  if (!isAuthenticated) {
-    return (
-      <PageShell className="items-center px-6 py-12 sm:px-10">
-        <PageSection className="w-full">
-          <p className="text-sm font-semibold uppercase tracking-[0.25em] text-[var(--color-accent)]">
-            Protected area
-          </p>
-          <h1 className="mt-3 text-3xl font-semibold tracking-tight text-[var(--color-ink)]">
-            Sign in before viewing search results.
-          </h1>
-          <div className="mt-6">
-            <Button as={Link} href="/login">
-              Go to login
-            </Button>
-          </div>
-        </PageSection>
-      </PageShell>
-    );
-  }
 
   return (
     <PageShell className="max-w-6xl px-6 py-10 sm:px-10 lg:px-12">

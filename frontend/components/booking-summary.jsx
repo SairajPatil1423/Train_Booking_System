@@ -66,7 +66,7 @@ export default function BookingSummary({
                 ? allocatedSeatLabels.join(", ")
                 : selectedSeatLabels.length
                   ? selectedSeatLabels.join(", ")
-                  : "Seats will be allocated automatically"}
+                  : "Select seats to continue"}
             </p>
           </div>
           <div className="rounded-[1.2rem] bg-[#edf5fd] px-4 py-3">

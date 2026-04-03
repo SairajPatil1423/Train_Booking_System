@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useDispatch, useSelector } from "react-redux";
 import BookingSummary from "@/components/booking-summary";
 import EmptyState from "@/components/empty-state";
@@ -23,11 +23,8 @@ import {
   formatScheduleDuration,
 } from "@/utils/formatters";
 import {
-  resetBooking,
   clearSeatSelection,
-  setSelectedCoachId,
   setSelectedSchedule,
-  setPassengers,
   toggleSeatSelection,
   checkoutThunk,
   selectSelectedSeatsArray,
@@ -51,20 +48,17 @@ const passengerTemplate = () => ({
 });
 
 function BookingPageContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const dispatch = useDispatch();
   const { isAuthenticated, hydrated, user } = useSelector((state) => state.auth);
-  const { 
-    selectedSchedule: details, 
-    status: bookingStatus, 
+  const {
+    selectedSchedule: details,
     error: bookingError,
-    selectedSeats: selectedSeatsMap,
     status: checkoutStatus,
     lastBooking: confirmation,
   } = useSelector((state) => state.booking);
 
-  const selectedSeatIds = useSelector(state => selectSelectedSeatsArray(state));
+  const selectedSeatIds = useSelector((state) => selectSelectedSeatsArray(state));
 
   const scheduleId = searchParams.get("schedule_id");
   const srcStationId = searchParams.get("src_station_id");
@@ -142,7 +136,22 @@ function BookingPageContent() {
 
   const fareOptions = details?.fare_options || {};
   const selectedFare = fareOptions[selectedCoachType]?.fare_per_seat || 0;
-  const unavailableSeatIds = details?.seat_map?.unavailable_seat_ids || [];
+  const unavailableSeatIds = useMemo(() => {
+    const requestedSegment = details?.seat_map?.requested_segment;
+    const allocations = details?.seat_map?.allocations || [];
+
+    if (!requestedSegment) {
+      return details?.seat_map?.unavailable_seat_ids || [];
+    }
+
+    return allocations
+      .filter(
+        (allocation) =>
+          requestedSegment.src_stop_order < allocation.dst_stop_order &&
+          requestedSegment.dst_stop_order > allocation.src_stop_order,
+      )
+      .map((allocation) => allocation.seat_id);
+  }, [details?.seat_map]);
   
   const selectedSeats = useMemo(() => {
     const seats = [];
@@ -195,8 +204,7 @@ function BookingPageContent() {
   }
 
   function toggleSeat(seat) {
-    // Find coach for this seat
-    const coach = (details?.coaches || []).find(c => c.seats.some(s => s.id === seat.id));
+    const coach = (details?.coaches || []).find((item) => item.seats.some((candidate) => candidate.id === seat.id));
     if (!coach) return;
 
     if (!selectedSeatIds.includes(seat.id) && selectedSeatIds.length >= passengerCount) {
@@ -224,7 +232,7 @@ function BookingPageContent() {
     }
 
     if (currentStep === 2) {
-      return true;
+      return Boolean(selectedCoachType) && selectedSeatIds.length === passengerCount;
     }
 
     return true;
@@ -236,6 +244,8 @@ function BookingPageContent() {
       src_station_id: srcStationId,
       dst_station_id: dstStationId,
       coach_type: selectedCoachType,
+      seat_ids: selectedSeatIds,
+      ...(selectedSeatIds.length === 1 ? { seat_id: selectedSeatIds[0] } : {}),
       passengers: passengersState,
       payment: {
         payment_method: paymentMethod,
@@ -245,6 +255,15 @@ function BookingPageContent() {
 
     const action = await dispatch(checkoutThunk(payload));
     if (checkoutThunk.fulfilled.match(action)) {
+      try {
+        const refreshedDetails = await fetchScheduleDetails(scheduleId, {
+          srcStationId,
+          dstStationId,
+        });
+        dispatch(setSelectedSchedule(refreshedDetails));
+      } catch (_refreshError) {
+      }
+
       setIsBooked(true);
       setCurrentStep(4);
       toastSuccess("Your booking was confirmed successfully.", "Booking complete");
@@ -473,7 +492,7 @@ function BookingPageContent() {
                   <SectionHeader
                     eyebrow="Seat selection"
                     title="Review coach layout and seat availability"
-                    description="You can preview preferred seats here, but final seats are allocated automatically by the backend when the booking is confirmed."
+                    description="Choose the exact seats you want. The backend will book these same seats only if the requested segment is still available."
                   />
                   <div className="mt-8">
                     <SeatMap
@@ -487,12 +506,12 @@ function BookingPageContent() {
                   </div>
                   <div className="mt-6 flex flex-wrap items-center gap-3 rounded-[1.4rem] bg-[var(--color-surface-soft)] px-5 py-4 text-sm text-[var(--color-muted-strong)]">
                     <Badge variant={selectedSeatLabels.length ? "primary" : "neutral"}>
-                      {selectedSeatLabels.length}/{passengerCount} preferences
+                      {selectedSeatLabels.length}/{passengerCount} selected
                     </Badge>
                     <span>
                       {selectedSeatLabels.length
-                        ? `Preferred seats: ${selectedSeatLabels.join(", ")}. Final seat allocation happens automatically at booking confirmation.`
-                        : "Seat allocation happens automatically when the booking is confirmed."}
+                        ? `Selected seats: ${selectedSeatLabels.join(", ")}. These exact seats will be sent to the backend for booking.`
+                        : "Select the exact seats you want to book."}
                     </span>
                   </div>
                 </PageSection>
@@ -568,8 +587,8 @@ function BookingPageContent() {
                           <span>{formatCurrency(selectedFare)}</span>
                         </div>
                         <div className="flex items-center justify-between">
-                          <span>Seat allocation</span>
-                          <span>Automatic</span>
+                          <span>Selected seats</span>
+                          <span>{selectedSeatLabels.length ? selectedSeatLabels.join(", ") : "Not selected"}</span>
                         </div>
                         <div className="flex items-center justify-between border-t border-[var(--color-line)] pt-3 font-bold text-[var(--color-ink)]">
                           <span className="text-lg">Total amount</span>
