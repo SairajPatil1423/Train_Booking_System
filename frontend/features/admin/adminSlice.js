@@ -1,9 +1,17 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import {
   fetchAdminTrains,
+  fetchAdminCities,
+  fetchAdminStations,
+  createAdminCity,
+  createAdminStation,
   createAdminTrain,
   updateAdminTrain,
   deleteAdminTrain,
+  fetchAdminTrainStops,
+  createAdminTrainStop,
+  updateAdminTrainStop,
+  deleteAdminTrainStop,
   fetchAdminBookings,
   updateAdminBookingStatus,
   fetchAdminCoaches,
@@ -28,12 +36,18 @@ const createResourceState = () => ({
 
 const initialState = {
   trains: [],
+  cities: [],
+  stations: [],
+  trainStops: [],
   bookings: [],
   coaches: [],
   fareRules: [],
   schedules: [],
   resources: {
     trains: createResourceState(),
+    cities: createResourceState(),
+    stations: createResourceState(),
+    trainStops: createResourceState(),
     bookings: createResourceState(),
     coaches: createResourceState(),
     fareRules: createResourceState(),
@@ -104,6 +118,54 @@ export const fetchAdminTrainsThunk = createAsyncThunk(
   }
 );
 
+export const fetchAdminStationsThunk = createAsyncThunk(
+  "admin/fetchStations",
+  async (_, { rejectWithValue }) => {
+    try {
+      const data = await fetchAdminStations();
+      return data.stations;
+    } catch (error) {
+      return rejectWithValue(normalizeAdminError(error, "Failed to fetch stations."));
+    }
+  }
+);
+
+export const fetchAdminCitiesThunk = createAsyncThunk(
+  "admin/fetchCities",
+  async (_, { rejectWithValue }) => {
+    try {
+      const data = await fetchAdminCities();
+      return data.cities;
+    } catch (error) {
+      return rejectWithValue(normalizeAdminError(error, "Failed to fetch cities."));
+    }
+  }
+);
+
+export const createAdminCityThunk = createAsyncThunk(
+  "admin/createCity",
+  async (payload, { rejectWithValue }) => {
+    try {
+      const data = await createAdminCity(payload);
+      return data.city;
+    } catch (error) {
+      return rejectWithValue(normalizeAdminError(error, "Failed to create city."));
+    }
+  }
+);
+
+export const createAdminStationThunk = createAsyncThunk(
+  "admin/createStation",
+  async (payload, { rejectWithValue }) => {
+    try {
+      const data = await createAdminStation(payload);
+      return data.station;
+    } catch (error) {
+      return rejectWithValue(normalizeAdminError(error, "Failed to create station."));
+    }
+  }
+);
+
 export const createAdminTrainThunk = createAsyncThunk(
   "admin/createTrain",
   async (trainData, { rejectWithValue }) => {
@@ -136,6 +198,54 @@ export const deleteAdminTrainThunk = createAsyncThunk(
       return id;
     } catch (error) {
       return rejectWithValue(normalizeAdminError(error, "Failed to delete train."));
+    }
+  }
+);
+
+export const fetchAdminTrainStopsThunk = createAsyncThunk(
+  "admin/fetchTrainStops",
+  async (_, { rejectWithValue }) => {
+    try {
+      const data = await fetchAdminTrainStops();
+      return data.train_stops;
+    } catch (error) {
+      return rejectWithValue(normalizeAdminError(error, "Failed to fetch train stops."));
+    }
+  }
+);
+
+export const createAdminTrainStopThunk = createAsyncThunk(
+  "admin/createTrainStop",
+  async (payload, { rejectWithValue }) => {
+    try {
+      const data = await createAdminTrainStop(payload);
+      return data.train_stop;
+    } catch (error) {
+      return rejectWithValue(normalizeAdminError(error, "Failed to add train stop."));
+    }
+  }
+);
+
+export const updateAdminTrainStopThunk = createAsyncThunk(
+  "admin/updateTrainStop",
+  async ({ id, trainStopData }, { rejectWithValue }) => {
+    try {
+      const data = await updateAdminTrainStop(id, trainStopData);
+      return data.train_stop;
+    } catch (error) {
+      return rejectWithValue(normalizeAdminError(error, "Failed to update train stop."));
+    }
+  }
+);
+
+export const deleteAdminTrainStopThunk = createAsyncThunk(
+  "admin/deleteTrainStop",
+  async (id, { rejectWithValue }) => {
+    try {
+      await deleteAdminTrainStop(id);
+      return id;
+    } catch (error) {
+      return rejectWithValue(normalizeAdminError(error, "Failed to remove train stop."));
     }
   }
 );
@@ -331,6 +441,46 @@ const adminSlice = createSlice({
       .addCase(fetchAdminTrainsThunk.rejected, (state, action) => {
         setRejected(state, "trains", action);
       })
+      .addCase(fetchAdminStationsThunk.pending, (state) => {
+        setPending(state, "stations");
+      })
+      .addCase(fetchAdminStationsThunk.fulfilled, (state, action) => {
+        setFulfilled(state, "stations");
+        state.stations = action.payload;
+      })
+      .addCase(fetchAdminStationsThunk.rejected, (state, action) => {
+        setRejected(state, "stations", action);
+      })
+      .addCase(fetchAdminCitiesThunk.pending, (state) => {
+        setPending(state, "cities");
+      })
+      .addCase(fetchAdminCitiesThunk.fulfilled, (state, action) => {
+        setFulfilled(state, "cities");
+        state.cities = action.payload;
+      })
+      .addCase(fetchAdminCitiesThunk.rejected, (state, action) => {
+        setRejected(state, "cities", action);
+      })
+      .addCase(createAdminCityThunk.pending, (state) => {
+        setPending(state, "cities");
+      })
+      .addCase(createAdminCityThunk.fulfilled, (state, action) => {
+        setFulfilled(state, "cities");
+        upsertById(state.cities, action.payload);
+      })
+      .addCase(createAdminCityThunk.rejected, (state, action) => {
+        setRejected(state, "cities", action);
+      })
+      .addCase(createAdminStationThunk.pending, (state) => {
+        setPending(state, "stations");
+      })
+      .addCase(createAdminStationThunk.fulfilled, (state, action) => {
+        setFulfilled(state, "stations");
+        upsertById(state.stations, action.payload);
+      })
+      .addCase(createAdminStationThunk.rejected, (state, action) => {
+        setRejected(state, "stations", action);
+      })
       .addCase(createAdminTrainThunk.pending, (state) => {
         setPending(state, "trains");
       })
@@ -363,6 +513,46 @@ const adminSlice = createSlice({
       })
       .addCase(deleteAdminTrainThunk.rejected, (state, action) => {
         setRejected(state, "trains", action);
+      })
+      .addCase(fetchAdminTrainStopsThunk.pending, (state) => {
+        setPending(state, "trainStops");
+      })
+      .addCase(fetchAdminTrainStopsThunk.fulfilled, (state, action) => {
+        setFulfilled(state, "trainStops");
+        state.trainStops = action.payload;
+      })
+      .addCase(fetchAdminTrainStopsThunk.rejected, (state, action) => {
+        setRejected(state, "trainStops", action);
+      })
+      .addCase(createAdminTrainStopThunk.pending, (state) => {
+        setPending(state, "trainStops");
+      })
+      .addCase(createAdminTrainStopThunk.fulfilled, (state, action) => {
+        setFulfilled(state, "trainStops");
+        state.trainStops.push(attachTrain(action.payload, state.trains));
+      })
+      .addCase(createAdminTrainStopThunk.rejected, (state, action) => {
+        setRejected(state, "trainStops", action);
+      })
+      .addCase(updateAdminTrainStopThunk.pending, (state) => {
+        setPending(state, "trainStops");
+      })
+      .addCase(updateAdminTrainStopThunk.fulfilled, (state, action) => {
+        setFulfilled(state, "trainStops");
+        upsertById(state.trainStops, attachTrain(action.payload, state.trains));
+      })
+      .addCase(updateAdminTrainStopThunk.rejected, (state, action) => {
+        setRejected(state, "trainStops", action);
+      })
+      .addCase(deleteAdminTrainStopThunk.pending, (state) => {
+        setPending(state, "trainStops");
+      })
+      .addCase(deleteAdminTrainStopThunk.fulfilled, (state, action) => {
+        setFulfilled(state, "trainStops");
+        state.trainStops = state.trainStops.filter((item) => item.id !== action.payload);
+      })
+      .addCase(deleteAdminTrainStopThunk.rejected, (state, action) => {
+        setRejected(state, "trainStops", action);
       })
       .addCase(fetchAdminBookingsThunk.pending, (state) => {
         setPending(state, "bookings");

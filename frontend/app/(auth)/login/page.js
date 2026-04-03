@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useDispatch, useSelector } from "react-redux";
@@ -20,7 +20,9 @@ import { toastError, toastSuccess } from "@/utils/toast";
 export default function LoginPage() {
   const dispatch = useDispatch();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { status, error } = useSelector((state) => state.auth);
+  const redirectTarget = searchParams.get("redirect") || "/dashboard";
 
   const {
     register,
@@ -46,7 +48,7 @@ export default function LoginPage() {
         }),
       );
       toastSuccess("Welcome back. You are now signed in.", "Login successful");
-      router.push("/");
+      router.push(redirectTarget);
     } catch (requestError) {
       const message =
         requestError?.response?.data?.error || "Unable to log in right now.";

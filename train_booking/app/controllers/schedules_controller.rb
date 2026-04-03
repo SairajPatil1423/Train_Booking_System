@@ -1,5 +1,5 @@
 class SchedulesController < ApplicationController
-  before_action :authenticate_user!
+  before_action :authenticate_user!, only: :show
 
   def index
     authorize Schedule
@@ -87,7 +87,9 @@ class SchedulesController < ApplicationController
       availability: availability,
       fare_options: fare_options,
       seat_map: {
-        unavailable_seat_ids: unavailable_seat_ids
+        unavailable_seat_ids: unavailable_seat_ids,
+        requested_segment: serialize_requested_segment(src_stop, dst_stop),
+        allocations: seat_allocations_for_schedule(schedule)
       }
     }, status: :ok
   end
@@ -107,18 +109,20 @@ class SchedulesController < ApplicationController
   def selected_stops(schedule)
     return [nil, nil] unless params[:src_station_id].present? && params[:dst_station_id].present?
 
-    src_stop = TrainStop.find_by(train_id: schedule.train_id, station_id: params[:src_station_id])
-    dst_stop = TrainStop.find_by(train_id: schedule.train_id, station_id: params[:dst_station_id])
+    segment = ScheduleSegmentResolver.new(
+      schedule: schedule,
+      src_station_id: params[:src_station_id],
+      dst_station_id: params[:dst_station_id]
+    ).call
 
-    [src_stop, dst_stop]
+    [segment.src_stop, segment.dst_stop]
   end
 
   def unavailable_seat_ids_for_segment(schedule, src_stop, dst_stop)
     return [] unless src_stop && dst_stop
 
-    TicketAllocation.where(schedule_id: schedule.id)
-                    .where.not(status: :cancelled)
-                    .where("src_stop_order < ? AND dst_stop_order > ?", dst_stop.stop_order, src_stop.stop_order)
+    TicketAllocation.active_for_schedule(schedule.id)
+                    .overlapping_segment(src_stop.stop_order, dst_stop.stop_order)
                     .pluck(:seat_id)
   end
 
@@ -139,5 +143,28 @@ class SchedulesController < ApplicationController
                 distance_km: distance
               }
             end
+  end
+
+  def serialize_requested_segment(src_stop, dst_stop)
+    return nil unless src_stop && dst_stop
+
+    {
+      src_station_id: src_stop.station_id,
+      dst_station_id: dst_stop.station_id,
+      src_stop_order: src_stop.stop_order,
+      dst_stop_order: dst_stop.stop_order
+    }
+  end
+
+  def seat_allocations_for_schedule(schedule)
+    TicketAllocation.active_for_schedule(schedule.id).map do |allocation|
+      {
+        id: allocation.id,
+        seat_id: allocation.seat_id,
+        src_stop_order: allocation.src_stop_order,
+        dst_stop_order: allocation.dst_stop_order,
+        status: allocation.status
+      }
+    end
   end
 end

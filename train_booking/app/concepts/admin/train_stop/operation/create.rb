@@ -57,18 +57,28 @@ module Admin
         end
 
         def persist(ctx, params:, **)
-          ctx[:model] = ::TrainStop.create!(
+          train_stop = ::TrainStop.new(
             train_id: params[:train_id],
             station_id: params[:station_id],
             stop_order: params[:stop_order],
-            arrival_time: params[:arrival_time],
-            departure_time: params[:departure_time],
+            arrival_at: parse_stop_datetime(params[:arrival_at], params[:arrival_time]),
+            departure_at: parse_stop_datetime(params[:departure_at], params[:departure_time]),
             distance_from_origin_km: params[:distance_from_origin_km]
           )
+          train_stop.sync_time_columns_from_datetimes
+          train_stop.save!
+          ctx[:model] = train_stop
           true
         rescue StandardError => e
           ctx[:errors] = [e.message]
           false
+        end
+
+        def parse_stop_datetime(datetime_value, time_value)
+          return datetime_value if datetime_value.present?
+          return nil if time_value.blank?
+
+          Time.zone.parse("2000-01-01 #{time_value}")
         end
       end
     end

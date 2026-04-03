@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_04_02_100000) do
+ActiveRecord::Schema[7.1].define(version: 2026_04_03_090000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pgcrypto"
   enable_extension "plpgsql"
@@ -159,6 +159,8 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_02_100000) do
     t.time "arrival_time"
     t.time "departure_time"
     t.integer "distance_from_origin_km", default: 0, null: false
+    t.datetime "arrival_at"
+    t.datetime "departure_at"
     t.index ["station_id"], name: "index_train_stops_on_station_id"
     t.index ["train_id", "station_id"], name: "idx_train_stops_station", unique: true
     t.index ["train_id", "stop_order"], name: "idx_train_stops_order", unique: true

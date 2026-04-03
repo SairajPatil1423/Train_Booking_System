@@ -14,6 +14,11 @@ class TicketAllocation < ApplicationRecord
     cancelled: "cancelled"
   }, default: :confirmed
 
+  scope :active_for_schedule, ->(schedule_id) { where(schedule_id: schedule_id).where.not(status: :cancelled) }
+  scope :overlapping_segment, lambda { |new_src_stop_order, new_dst_stop_order|
+    where("? < dst_stop_order AND ? > src_stop_order", new_src_stop_order, new_dst_stop_order)
+  }
+
   validates :pnr, presence: true, uniqueness: true
   validates :fare, numericality: { greater_than_or_equal_to: 0 }
   validates :dst_stop_order, numericality: { greater_than: :src_stop_order }

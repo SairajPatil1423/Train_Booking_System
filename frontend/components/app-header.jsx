@@ -9,7 +9,10 @@ import { clearCredentials } from "@/features/auth/authSlice";
 import { logoutUser } from "@/features/auth/authService";
 import { getUserDisplayName } from "@/utils/user-formatters";
 
-const publicLinks = [{ href: "/", label: "Home" }];
+const publicLinks = [
+  { href: "/dashboard", label: "Dashboard" },
+  { href: "/search", label: "Search trains" },
+];
 
 const privateLinks = [
   { href: "/dashboard", label: "Dashboard" },
