@@ -2,7 +2,6 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useDispatch, useSelector } from "react-redux";
 import EmptyState from "@/components/empty-state";
 import PageHero from "@/components/layout/page-hero";
@@ -15,15 +14,12 @@ import Button from "@/components/ui/button";
 import Card from "@/components/ui/card";
 import PaginationToolbar from "@/components/ui/pagination-toolbar";
 import { fetchUserCancellationsThunk } from "@/features/booking/bookingSlice";
+import { usePaginatedRouteState } from "@/hooks/use-paginated-route-state";
+import { formatErrorMessage } from "@/utils/errors";
 import { formatCurrency, formatDate, formatDateTime, formatScheduleDateTime } from "@/utils/formatters";
-
-const DEFAULT_PAGE_SIZE = 10;
 
 export default function CancellationsPage() {
   const dispatch = useDispatch();
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
   const { isAuthenticated, hydrated } = useSelector((state) => state.auth);
   const {
     cancellations: bookings,
@@ -32,45 +28,16 @@ export default function CancellationsPage() {
     cancellationsMeta,
     refundSummary,
   } = useSelector((state) => state.booking);
-  const requestedPage = Number(searchParams.get("page") || 1);
-  const requestedPerPage = Number(searchParams.get("per_page") || DEFAULT_PAGE_SIZE);
-  const currentPage = Number.isFinite(requestedPage) && requestedPage > 0 ? requestedPage : 1;
-  const currentPerPage =
-    Number.isFinite(requestedPerPage) && requestedPerPage > 0 ? requestedPerPage : DEFAULT_PAGE_SIZE;
+  const { currentPage, currentPerPage, setPage, setPerPage } = usePaginatedRouteState({
+    totalPages: cancellationsMeta.totalPages,
+    status,
+  });
 
   useEffect(() => {
     if (isAuthenticated) {
       dispatch(fetchUserCancellationsThunk({ page: currentPage, perPage: currentPerPage }));
     }
   }, [currentPage, currentPerPage, dispatch, isAuthenticated]);
-
-  useEffect(() => {
-    if (
-      status === "succeeded" &&
-      cancellationsMeta.totalPages > 0 &&
-      currentPage > cancellationsMeta.totalPages
-    ) {
-      const params = new URLSearchParams(searchParams.toString());
-      params.set("page", String(cancellationsMeta.totalPages));
-      router.replace(`${pathname}?${params.toString()}`);
-    }
-  }, [cancellationsMeta.totalPages, status, currentPage, pathname, router, searchParams]);
-
-  function handlePageChange(nextPage) {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("page", String(nextPage));
-    params.set("per_page", String(currentPerPage));
-    router.push(`${pathname}?${params.toString()}`);
-  }
-
-  function handlePerPageChange(nextPerPage) {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("page", "1");
-    params.set("per_page", String(nextPerPage));
-    router.push(`${pathname}?${params.toString()}`);
-  }
 
   if (!hydrated) {
     return (
@@ -122,7 +89,7 @@ export default function CancellationsPage() {
 
           {error ? (
             <div className="rounded-[1.2rem] border border-[color-mix(in_srgb,var(--color-danger)_26%,var(--color-line))] bg-[color-mix(in_srgb,var(--color-danger-soft)_84%,var(--color-panel-strong))] px-4 py-3 text-sm text-[var(--color-danger)]">
-              {formatError(error)}
+              {formatErrorMessage(error)}
             </div>
           ) : null}
 
@@ -230,8 +197,8 @@ export default function CancellationsPage() {
                 perPage={cancellationsMeta.perPage}
                 totalCount={cancellationsMeta.totalCount || bookings.length}
                 totalPages={cancellationsMeta.totalPages}
-                onPageChange={handlePageChange}
-                onPerPageChange={handlePerPageChange}
+                onPageChange={setPage}
+                onPerPageChange={setPerPage}
                 disabled={status === "loading"}
                 loading={status === "loading"}
               />
@@ -252,12 +219,4 @@ function InfoBlock({ label, value }) {
       <p className="mt-2 text-sm font-semibold text-[var(--color-ink)]">{value}</p>
     </div>
   );
-}
-
-function formatError(error) {
-  if (Array.isArray(error)) {
-    return error.join(", ");
-  }
-
-  return String(error || "Something went wrong.");
 }

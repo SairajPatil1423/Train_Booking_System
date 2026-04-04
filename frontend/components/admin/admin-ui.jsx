@@ -76,7 +76,7 @@ export function CoachLayoutPreview({ coach, compact = false }) {
       <div className={cn("grid gap-3", compact ? "grid-cols-2" : "sm:grid-cols-3")}>
         <AdminInfoBlock label="Columns" value={String(coach.columns)} />
         <AdminInfoBlock label="Pattern" value={coach.pattern} />
-        <AdminInfoBlock label=" seats" value={String(coach.totalSeats)} accent />
+        <AdminInfoBlock label="Generated seats" value={String(coach.totalSeats)} accent />
       </div>
     </Card>
   );

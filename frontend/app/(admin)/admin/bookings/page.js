@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchAdminBookingsThunk } from "@/features/admin/adminSlice";
 import PageHero from "@/components/layout/page-hero";
@@ -13,57 +12,25 @@ import Card from "@/components/ui/card";
 import { AdminErrorBox, AdminInfoBlock } from "@/components/admin/admin-ui";
 import { BookingsSummaryRail } from "@/components/admin/admin-dashboard-widgets";
 import PaginationToolbar from "@/components/ui/pagination-toolbar";
-
-const DEFAULT_PAGE_SIZE = 10;
+import { usePaginatedRouteState } from "@/hooks/use-paginated-route-state";
+import { formatBookingStatus, formatCurrency, formatDate } from "@/utils/formatters";
 
 export default function AdminBookingsPage() {
   const dispatch = useDispatch();
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
   const { bookings, bookingsMeta, resources } = useSelector((state) => state.admin);
   const { isAuthenticated, user } = useSelector((state) => state.auth);
   const bookingsStatus = resources.bookings.status;
   const bookingsError = resources.bookings.error;
-  const requestedPage = Number(searchParams.get("page") || 1);
-  const requestedPerPage = Number(searchParams.get("per_page") || DEFAULT_PAGE_SIZE);
-  const currentPage = Number.isFinite(requestedPage) && requestedPage > 0 ? requestedPage : 1;
-  const currentPerPage =
-    Number.isFinite(requestedPerPage) && requestedPerPage > 0 ? requestedPerPage : DEFAULT_PAGE_SIZE;
+  const { currentPage, currentPerPage, setPage, setPerPage } = usePaginatedRouteState({
+    totalPages: bookingsMeta.totalPages,
+    status: bookingsStatus,
+  });
 
   useEffect(() => {
     if (isAuthenticated && user?.role === "admin") {
       dispatch(fetchAdminBookingsThunk({ page: currentPage, perPage: currentPerPage }));
     }
   }, [currentPage, currentPerPage, dispatch, isAuthenticated, user]);
-
-  useEffect(() => {
-    if (
-      bookingsStatus === "succeeded" &&
-      bookingsMeta.totalPages > 0 &&
-      currentPage > bookingsMeta.totalPages
-    ) {
-      const params = new URLSearchParams(searchParams.toString());
-      params.set("page", String(bookingsMeta.totalPages));
-      router.replace(`${pathname}?${params.toString()}`);
-    }
-  }, [bookingsMeta.totalPages, bookingsStatus, currentPage, pathname, router, searchParams]);
-
-  function handlePageChange(nextPage) {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("page", String(nextPage));
-    params.set("per_page", String(currentPerPage));
-    router.push(`${pathname}?${params.toString()}`);
-  }
-
-  function handlePerPageChange(nextPerPage) {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("page", "1");
-    params.set("per_page", String(nextPerPage));
-    router.push(`${pathname}?${params.toString()}`);
-  }
 
   if (!isAuthenticated || user?.role !== "admin") {
     return (
@@ -138,7 +105,7 @@ export default function AdminBookingsPage() {
 
                     <div className="flex flex-wrap gap-2">
                       <Badge variant={statusVariant(booking.status)} className="px-4 py-2 text-xs sm:text-sm">
-                        {booking.status}
+                        {formatBookingStatus(booking.status)}
                       </Badge>
                       <Badge variant="neutral" className="px-4 py-2 text-xs sm:text-sm">
                         {booking.user?.role || "user"}
@@ -158,7 +125,7 @@ export default function AdminBookingsPage() {
                         ),
                       )}
                     />
-                    <AdminInfoBlock label="Status" value={booking.status} />
+                    <AdminInfoBlock label="Status" value={formatBookingStatus(booking.status)} />
                   </div>
                 </Card>
               ))}
@@ -180,8 +147,8 @@ export default function AdminBookingsPage() {
                 perPage={bookingsMeta.perPage}
                 totalCount={bookingsMeta.totalCount || bookings.length}
                 totalPages={bookingsMeta.totalPages}
-                onPageChange={handlePageChange}
-                onPerPageChange={handlePerPageChange}
+                onPageChange={setPage}
+                onPerPageChange={setPerPage}
                 disabled={bookingsStatus === "loading"}
                 loading={bookingsStatus === "loading"}
               />
@@ -191,22 +158,6 @@ export default function AdminBookingsPage() {
       </div>
     </main>
   );
-}
-
-function formatCurrency(amount) {
-  return new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
-    maximumFractionDigits: 0,
-  }).format(amount || 0);
-}
-
-function formatDate(value) {
-  return new Date(value).toLocaleDateString("en-IN", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
 }
 
 function statusVariant(status) {

@@ -148,6 +148,7 @@ function BookingPageContent() {
   });
 
   const {
+    control: confirmationControl,
     formState: {
       errors: confirmationErrors,
       isValid: isConfirmationValid,
@@ -280,11 +281,11 @@ function BookingPageContent() {
     .map((allocation) => allocation.seat?.seat_number)
     .filter(Boolean);
   const resolvedContactEmail = useWatch({
-    control,
+    control: confirmationControl,
     name: "contactEmail",
   }) || "";
   const resolvedContactPhone = useWatch({
-    control,
+    control: confirmationControl,
     name: "contactPhone",
   }) || "";
   const fromLabel = routeStops[0]?.station?.name || initialFromLabel;

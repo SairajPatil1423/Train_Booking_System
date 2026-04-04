@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useDispatch, useSelector } from "react-redux";
 import EmptyState from "@/components/empty-state";
 import PageHero from "@/components/layout/page-hero";
@@ -19,17 +18,14 @@ import {
   cancelTicketThunk,
   fetchUserBookingsThunk,
 } from "@/features/booking/bookingSlice";
+import { usePaginatedRouteState } from "@/hooks/use-paginated-route-state";
 import { cn } from "@/utils/cn";
+import { formatErrorMessage } from "@/utils/errors";
 import { formatCurrency, formatDateTime, formatScheduleDateTime } from "@/utils/formatters";
 import { toastError, toastSuccess } from "@/utils/toast";
 
-const DEFAULT_PAGE_SIZE = 10;
-
 export default function BookingsPage() {
   const dispatch = useDispatch();
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
   const { isAuthenticated, hydrated } = useSelector((state) => state.auth);
   const {
     userBookings: bookings,
@@ -38,11 +34,10 @@ export default function BookingsPage() {
     bookingsMeta,
     refundSummary,
   } = useSelector((state) => state.booking);
-  const requestedPage = Number(searchParams.get("page") || 1);
-  const requestedPerPage = Number(searchParams.get("per_page") || DEFAULT_PAGE_SIZE);
-  const currentPage = Number.isFinite(requestedPage) && requestedPage > 0 ? requestedPage : 1;
-  const currentPerPage =
-    Number.isFinite(requestedPerPage) && requestedPerPage > 0 ? requestedPerPage : DEFAULT_PAGE_SIZE;
+  const { currentPage, currentPerPage, setPage, setPerPage } = usePaginatedRouteState({
+    totalPages: bookingsMeta.totalPages,
+    status,
+  });
 
   const [processingAction, setProcessingAction] = useState("");
   const [cancelIntent, setCancelIntent] = useState(null);
@@ -54,18 +49,6 @@ export default function BookingsPage() {
     }
   }, [currentPage, currentPerPage, dispatch, isAuthenticated]);
 
-  useEffect(() => {
-    if (
-      status === "succeeded" &&
-      bookingsMeta.totalPages > 0 &&
-      currentPage > bookingsMeta.totalPages
-    ) {
-      const params = new URLSearchParams(searchParams.toString());
-      params.set("page", String(bookingsMeta.totalPages));
-      router.replace(`${pathname}?${params.toString()}`);
-    }
-  }, [bookingsMeta.totalPages, status, currentPage, pathname, router, searchParams]);
-
   const refundPreview = useMemo(() => {
     if (!cancelIntent) {
       return 0;
@@ -75,22 +58,6 @@ export default function BookingsPage() {
     const ratio = estimateRefundRatio(cancelIntent.travelDate, cancelIntent.departureTime);
     return amount * ratio;
   }, [cancelIntent]);
-
-  function handlePageChange(nextPage) {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("page", String(nextPage));
-    params.set("per_page", String(currentPerPage));
-    router.push(`${pathname}?${params.toString()}`);
-  }
-
-  function handlePerPageChange(nextPerPage) {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("page", "1");
-    params.set("per_page", String(nextPerPage));
-    router.push(`${pathname}?${params.toString()}`);
-  }
 
   function openBookingCancelDialog(booking) {
     const activeAllocations = (booking.ticket_allocations || []).filter(
@@ -175,7 +142,7 @@ export default function BookingsPage() {
       setCancelIntent(null);
       setCancelReason("");
     } catch (requestError) {
-      toastError(formatError(requestError), "Cancellation failed");
+      toastError(formatErrorMessage(requestError), "Cancellation failed");
     } finally {
       setProcessingAction("");
     }
@@ -231,7 +198,7 @@ export default function BookingsPage() {
 
           {error ? (
             <div className="rounded-[1.2rem] border border-[color-mix(in_srgb,var(--color-danger)_26%,var(--color-line))] bg-[color-mix(in_srgb,var(--color-danger-soft)_84%,var(--color-panel-strong))] px-4 py-3 text-sm text-[var(--color-danger)]">
-              {formatError(error)}
+              {formatErrorMessage(error)}
             </div>
           ) : null}
 
@@ -388,8 +355,8 @@ export default function BookingsPage() {
                 perPage={bookingsMeta.perPage}
                 totalCount={bookingsMeta.totalCount || bookings.length}
                 totalPages={bookingsMeta.totalPages}
-                onPageChange={handlePageChange}
-                onPerPageChange={handlePerPageChange}
+                onPageChange={setPage}
+                onPerPageChange={setPerPage}
                 disabled={status === "loading"}
                 loading={status === "loading"}
               />
@@ -554,12 +521,4 @@ function estimateRefundRatio(travelDate, departureTime) {
   }
 
   return 0;
-}
-
-function formatError(error) {
-  if (Array.isArray(error)) {
-    return error.join(", ");
-  }
-
-  return String(error || "Something went wrong.");
 }

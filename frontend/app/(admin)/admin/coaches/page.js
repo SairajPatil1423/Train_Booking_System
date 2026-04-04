@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useDispatch, useSelector } from "react-redux";
 import PageHero from "@/components/layout/page-hero";
 import PageSection from "@/components/layout/page-section";
@@ -26,42 +25,28 @@ import {
   AdminInfoPill,
   CoachLayoutPreview,
 } from "@/components/admin/admin-ui";
+import AdminConfirmDialog from "@/components/admin/admin-confirm-dialog";
+import { usePaginatedRouteState } from "@/hooks/use-paginated-route-state";
+import { formatErrorMessage } from "@/utils/errors";
 import { toastError, toastInfo, toastSuccess } from "@/utils/toast";
-
-const DEFAULT_PAGE_SIZE = 10;
 
 export default function AdminCoachesPage() {
   const dispatch = useDispatch();
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
   const { coaches, coachesMeta, trainCatalog, trainCatalogStatus, trainCatalogError, resources } = useSelector((state) => state.admin);
   const coachesStatus = resources.coaches.status;
   const coachesError = resources.coaches.error;
   const [editingCoach, setEditingCoach] = useState(null);
   const [formError, setFormError] = useState("");
-  const requestedPage = Number(searchParams.get("page") || 1);
-  const requestedPerPage = Number(searchParams.get("per_page") || DEFAULT_PAGE_SIZE);
-  const currentPage = Number.isFinite(requestedPage) && requestedPage > 0 ? requestedPage : 1;
-  const currentPerPage =
-    Number.isFinite(requestedPerPage) && requestedPerPage > 0 ? requestedPerPage : DEFAULT_PAGE_SIZE;
+  const [coachToDelete, setCoachToDelete] = useState(null);
+  const { currentPage, currentPerPage, setPage, setPerPage } = usePaginatedRouteState({
+    totalPages: coachesMeta.totalPages,
+    status: coachesStatus,
+  });
 
   useEffect(() => {
     dispatch(fetchAdminCoachesThunk({ page: currentPage, perPage: currentPerPage }));
     dispatch(fetchAdminTrainCatalogThunk());
   }, [currentPage, currentPerPage, dispatch]);
-
-  useEffect(() => {
-    if (
-      coachesStatus === "succeeded" &&
-      coachesMeta.totalPages > 0 &&
-      currentPage > coachesMeta.totalPages
-    ) {
-      const params = new URLSearchParams(searchParams.toString());
-      params.set("page", String(coachesMeta.totalPages));
-      router.replace(`${pathname}?${params.toString()}`);
-    }
-  }, [coachesMeta.totalPages, coachesStatus, currentPage, pathname, router, searchParams]);
 
   const coachLayouts = useMemo(
     () => Object.fromEntries(ADMIN_COACH_CONFIGS.map((item) => [item.key, item])),
@@ -98,44 +83,29 @@ export default function AdminCoachesPage() {
       setEditingCoach(null);
       event.currentTarget.reset();
     } catch (requestError) {
-      const message = Array.isArray(requestError) ? requestError.join(", ") : String(requestError);
+      const message = formatErrorMessage(requestError);
       setFormError(message);
       toastError(message, "Coach action failed");
     }
   }
 
-  async function handleDelete(id) {
-    setFormError("");
-
-    if (!window.confirm("Delete this coach?")) {
+  async function handleDeleteCoach() {
+    if (!coachToDelete) {
       return;
     }
 
+    setFormError("");
+
     try {
-      await dispatch(deleteAdminCoachThunk(id)).unwrap();
+      await dispatch(deleteAdminCoachThunk(coachToDelete.id)).unwrap();
       setFormError("");
+      setCoachToDelete(null);
       toastSuccess("Coach deleted successfully.");
     } catch (requestError) {
-      const message = Array.isArray(requestError) ? requestError.join(", ") : String(requestError);
+      const message = formatErrorMessage(requestError);
       setFormError(message);
       toastError(message, "Coach deletion failed");
     }
-  }
-
-  function handlePageChange(nextPage) {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("page", String(nextPage));
-    params.set("per_page", String(currentPerPage));
-    router.push(`${pathname}?${params.toString()}`);
-  }
-
-  function handlePerPageChange(nextPerPage) {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("page", "1");
-    params.set("per_page", String(nextPerPage));
-    router.push(`${pathname}?${params.toString()}`);
   }
 
   return (
@@ -212,7 +182,7 @@ export default function AdminCoachesPage() {
                           type="button"
                           variant="danger"
                           size="sm"
-                          onClick={() => handleDelete(coach.id)}
+                          onClick={() => setCoachToDelete(coach)}
                         >
                           Delete coach
                         </Button>
@@ -236,8 +206,8 @@ export default function AdminCoachesPage() {
                   perPage={coachesMeta.perPage}
                   totalCount={coachesMeta.totalCount || coaches.length}
                   totalPages={coachesMeta.totalPages}
-                  onPageChange={handlePageChange}
-                  onPerPageChange={handlePerPageChange}
+                  onPageChange={setPage}
+                  onPerPageChange={setPerPage}
                   disabled={coachesStatus === "loading"}
                   loading={coachesStatus === "loading"}
                 />
@@ -328,6 +298,16 @@ export default function AdminCoachesPage() {
           </PageSection>
         </div>
       </div>
+
+      <AdminConfirmDialog
+        open={Boolean(coachToDelete)}
+        title="Delete coach"
+        description={`Delete ${coachToDelete?.coach_number || "this coach"}? This action cannot be undone.`}
+        confirmLabel="Delete coach"
+        busy={coachesStatus === "loading"}
+        onClose={() => setCoachToDelete(null)}
+        onConfirm={handleDeleteCoach}
+      />
     </main>
   );
 }
