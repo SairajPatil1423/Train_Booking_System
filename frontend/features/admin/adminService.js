@@ -1,7 +1,17 @@
 import api from "@/services/api";
 
-export async function fetchAdminTrains() {
-  const response = await api.get("/admin/trains");
+export async function fetchAdminTrains(params = {}) {
+  const query = {};
+
+  if (params.page) {
+    query.page = params.page;
+  }
+
+  if (params.perPage) {
+    query.per_page = params.perPage;
+  }
+
+  const response = await api.get("/admin/trains", { params: query });
   return response.data;
 }
 
@@ -60,18 +70,38 @@ export async function deleteAdminTrainStop(id) {
   return response.data;
 }
 
-export async function fetchAdminBookings() {
-  const response = await api.get("/admin/bookings");
+export async function fetchAdminBookings(params = {}) {
+  const query = {};
+
+  if (params.page) {
+    query.page = params.page;
+  }
+
+  if (params.perPage) {
+    query.per_page = params.perPage;
+  }
+
+  const response = await api.get("/admin/bookings", { params: query });
   return response.data;
 }
 
-export async function updateAdminBookingStatus(id, status) {
-  const response = await api.patch(`/admin/bookings/${id}`, { status });
+export async function createAdminUser(payload) {
+  const response = await api.post("/admin/users", { user: payload });
   return response.data;
 }
 
-export async function fetchAdminCoaches() {
-  const response = await api.get("/admin/coaches");
+export async function fetchAdminCoaches(params = {}) {
+  const query = {};
+
+  if (params.page) {
+    query.page = params.page;
+  }
+
+  if (params.perPage) {
+    query.per_page = params.perPage;
+  }
+
+  const response = await api.get("/admin/coaches", { params: query });
   return response.data;
 }
 
@@ -90,8 +120,18 @@ export async function deleteAdminCoach(id) {
   return response.data;
 }
 
-export async function fetchAdminFareRules() {
-  const response = await api.get("/admin/fare_rules");
+export async function fetchAdminFareRules(params = {}) {
+  const query = {};
+
+  if (params.page) {
+    query.page = params.page;
+  }
+
+  if (params.perPage) {
+    query.per_page = params.perPage;
+  }
+
+  const response = await api.get("/admin/fare_rules", { params: query });
   return response.data;
 }
 
@@ -110,8 +150,18 @@ export async function deleteAdminFareRule(id) {
   return response.data;
 }
 
-export async function fetchAdminSchedules() {
-  const response = await api.get("/admin/schedules");
+export async function fetchAdminSchedules(params = {}) {
+  const query = {};
+
+  if (params.page) {
+    query.page = params.page;
+  }
+
+  if (params.perPage) {
+    query.per_page = params.perPage;
+  }
+
+  const response = await api.get("/admin/schedules", { params: query });
   return response.data;
 }
 

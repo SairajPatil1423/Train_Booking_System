@@ -1,12 +1,21 @@
 import api from "@/services/api";
 
-export async function fetchUserBookings() {
-  const response = await api.get("/bookings");
-  return response.data;
-}
+export async function fetchUserBookings(params = {}) {
+  const query = {};
 
-export async function fetchUserBooking(bookingId) {
-  const response = await api.get(`/bookings/${bookingId}`);
+  if (params.page) {
+    query.page = params.page;
+  }
+
+  if (params.perPage) {
+    query.per_page = params.perPage;
+  }
+
+  if (params.withCancellations) {
+    query.with_cancellations = true;
+  }
+
+  const response = await api.get("/bookings", { params: query });
   return response.data;
 }
 

@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useDispatch, useSelector } from "react-redux";
 import {
   createAdminCityThunk,
   createAdminStationThunk,
   createAdminTrainThunk,
+  fetchAdminTrainCatalogThunk,
   createAdminTrainStopThunk,
   fetchAdminCitiesThunk,
   deleteAdminTrainStopThunk,
@@ -24,6 +26,7 @@ import EmptyState from "@/components/ui/empty-state";
 import Input from "@/components/ui/input";
 import LoadingState from "@/components/loading-state";
 import Badge from "@/components/ui/badge";
+import PaginationToolbar from "@/components/ui/pagination-toolbar";
 import { AdminErrorBox, AdminInfoBlock, AdminInfoPill } from "@/components/admin/admin-ui";
 import { toastError, toastInfo, toastSuccess } from "@/utils/toast";
 
@@ -33,9 +36,14 @@ const TRAIN_TYPE_OPTIONS = [
   { value: "passenger", label: "Passenger" },
 ];
 
+const DEFAULT_PAGE_SIZE = 10;
+
 export default function AdminTrainsPage() {
   const dispatch = useDispatch();
-  const { trains, cities, stations, trainStops, resources } = useSelector((state) => state.admin);
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const { trains, trainCatalog, trainsMeta, cities, stations, trainStops, resources } = useSelector((state) => state.admin);
   const { isAuthenticated, user } = useSelector((state) => state.auth);
   const trainsStatus = resources.trains.status;
   const trainsError = resources.trains.error;
@@ -53,15 +61,33 @@ export default function AdminTrainsPage() {
   const [cityFormError, setCityFormError] = useState("");
   const [stationFormError, setStationFormError] = useState("");
   const routeEditorRef = useRef(null);
+  const requestedPage = Number(searchParams.get("page") || 1);
+  const requestedPerPage = Number(searchParams.get("per_page") || DEFAULT_PAGE_SIZE);
+  const currentPage = Number.isFinite(requestedPage) && requestedPage > 0 ? requestedPage : 1;
+  const currentPerPage =
+    Number.isFinite(requestedPerPage) && requestedPerPage > 0 ? requestedPerPage : DEFAULT_PAGE_SIZE;
 
   useEffect(() => {
     if (isAuthenticated && user?.role === "admin") {
-      dispatch(fetchAdminTrainsThunk());
+      dispatch(fetchAdminTrainsThunk({ page: currentPage, perPage: currentPerPage }));
+      dispatch(fetchAdminTrainCatalogThunk());
       dispatch(fetchAdminTrainStopsThunk());
       dispatch(fetchAdminStationsThunk());
       dispatch(fetchAdminCitiesThunk());
     }
-  }, [dispatch, isAuthenticated, user]);
+  }, [currentPage, currentPerPage, dispatch, isAuthenticated, user]);
+
+  useEffect(() => {
+    if (
+      trainsStatus === "succeeded" &&
+      trainsMeta.totalPages > 0 &&
+      currentPage > trainsMeta.totalPages
+    ) {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("page", String(trainsMeta.totalPages));
+      router.replace(`${pathname}?${params.toString()}`);
+    }
+  }, [trainsMeta.totalPages, trainsStatus, currentPage, pathname, router, searchParams]);
 
   async function handleSave(event) {
     event.preventDefault();
@@ -94,6 +120,7 @@ export default function AdminTrainsPage() {
         routeEditorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
       }
 
+      setFormError("");
       setEditingTrain(null);
       event.currentTarget.reset();
     } catch (requestError) {
@@ -132,6 +159,7 @@ export default function AdminTrainsPage() {
         toastSuccess("Route stop added successfully.");
       }
 
+      setRouteFormError("");
       setEditingStop(null);
       event.currentTarget.reset();
     } catch (requestError) {
@@ -154,6 +182,7 @@ export default function AdminTrainsPage() {
 
     try {
       const createdCity = await dispatch(createAdminCityThunk(cityData)).unwrap();
+      setCityFormError("");
       toastSuccess("City created successfully.");
       event.currentTarget.reset();
       return createdCity;
@@ -180,6 +209,7 @@ export default function AdminTrainsPage() {
 
     try {
       const createdStation = await dispatch(createAdminStationThunk(stationData)).unwrap();
+      setStationFormError("");
       toastSuccess("Station created successfully.");
       event.currentTarget.reset();
       return createdStation;
@@ -200,6 +230,7 @@ export default function AdminTrainsPage() {
 
     try {
       await dispatch(deleteAdminTrainStopThunk(id)).unwrap();
+      setRouteFormError("");
       toastSuccess("Route stop removed successfully.");
     } catch (requestError) {
       const message = Array.isArray(requestError) ? requestError.join(", ") : String(requestError);
@@ -208,8 +239,13 @@ export default function AdminTrainsPage() {
     }
   }
 
-  const effectiveRouteTrainId = selectedRouteTrainId || trains[0]?.id || "";
-  const selectedRouteTrain = trains.find((train) => train.id === effectiveRouteTrainId) || editingTrain || trains[0] || null;
+  const availableTrains = trainCatalog.length ? trainCatalog : trains;
+  const effectiveRouteTrainId = selectedRouteTrainId || availableTrains[0]?.id || "";
+  const selectedRouteTrain =
+    availableTrains.find((train) => train.id === effectiveRouteTrainId) ||
+    editingTrain ||
+    availableTrains[0] ||
+    null;
   const selectedTrainId = selectedRouteTrain?.id || "";
   const selectedTrainStops = trainStops
     .filter((stop) => stop.train_id === selectedTrainId)
@@ -224,6 +260,7 @@ export default function AdminTrainsPage() {
 
     try {
       await dispatch(deleteAdminTrainThunk(id)).unwrap();
+      setFormError("");
       toastSuccess("Train deleted successfully.");
     } catch (requestError) {
       const message = Array.isArray(requestError) ? requestError.join(", ") : String(requestError);
@@ -232,11 +269,27 @@ export default function AdminTrainsPage() {
     }
   }
 
+  function handlePageChange(nextPage) {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("page", String(nextPage));
+    params.set("per_page", String(currentPerPage));
+    router.push(`${pathname}?${params.toString()}`);
+  }
+
+  function handlePerPageChange(nextPerPage) {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("page", "1");
+    params.set("per_page", String(nextPerPage));
+    router.push(`${pathname}?${params.toString()}`);
+  }
+
   if (!isAuthenticated || user?.role !== "admin") {
     return (
       <main className="mx-auto flex min-h-[calc(100vh-81px)] w-full max-w-5xl flex-1 items-center px-6 py-12 sm:px-10">
         <div className="surface-panel w-full rounded-[2rem] p-8 text-center">
-          <p className="font-bold text-[var(--color-danger)]">Unauthorized Access</p>
+          <p className="inline-flex rounded-full bg-[var(--color-danger-soft)] px-3 py-1 text-sm font-bold uppercase tracking-[0.2em] text-[var(--color-danger)]">
+            Unauthorized Access
+          </p>
         </div>
       </main>
     );
@@ -247,9 +300,8 @@ export default function AdminTrainsPage() {
       <div className="space-y-6">
         <PageHero
           eyebrow="Train management"
-          title="Manage the active train catalog with a cleaner operations flow"
-          description="Create and update trains without changing the underlying API contract. This screen keeps train metadata organized while the deterministic coach and schedule systems build on top of it."
-          meta={["Modernized admin layout", "Existing payloads preserved", "Ratings and grades supported"]}
+          title="Trains"
+          meta={[`${trainsMeta.totalCount || trains.length} trains`, `Page ${trainsMeta.page}`]}
         />
 
         <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
@@ -306,7 +358,7 @@ export default function AdminTrainsPage() {
                           {routeStops.map((stop) => (
                             <span
                               key={stop.id}
-                              className="rounded-full bg-white px-3 py-2 text-xs font-semibold text-[var(--color-ink)] ring-1 ring-[var(--color-line)]"
+                              className="rounded-full border border-[var(--color-line)] bg-[var(--color-surface-strong)] px-3 py-2 text-xs font-semibold text-[var(--color-ink)] shadow-[0_8px_18px_rgba(15,23,42,0.04)]"
                             >
                               {stop.stop_order}. {stop.station?.code || stop.station?.name || "Station"}
                             </span>
@@ -374,8 +426,20 @@ export default function AdminTrainsPage() {
             {trains.length === 0 && trainsStatus !== "loading" ? (
               <EmptyState
                 title="No trains found"
-                description="Add the first train record here. Existing backend logic and payload shape remain unchanged, so schedules, fares, and coach generation can build on top of it immediately."
               />
+            ) : null}
+
+            {trains.length > 0 ? (
+              <div className="pt-6">
+                <PaginationToolbar
+                  page={trainsMeta.page}
+                  perPage={trainsMeta.perPage}
+                  totalCount={trainsMeta.totalCount || trains.length}
+                  totalPages={trainsMeta.totalPages}
+                  onPageChange={handlePageChange}
+                  onPerPageChange={handlePerPageChange}
+                />
+              </div>
             ) : null}
           </PageSection>
 
@@ -493,7 +557,7 @@ export default function AdminTrainsPage() {
                   }}
                   className="field-input"
                 >
-                  {trains.map((train) => (
+                  {availableTrains.map((train) => (
                     <option key={train.id} value={train.id}>
                       {train.train_number} - {train.name}
                     </option>
@@ -628,7 +692,7 @@ export default function AdminTrainsPage() {
                   className="field-input"
                   required
                 >
-                  {trains.map((train) => (
+                  {availableTrains.map((train) => (
                     <option key={train.id} value={train.id}>
                       {train.train_number} - {train.name}
                     </option>

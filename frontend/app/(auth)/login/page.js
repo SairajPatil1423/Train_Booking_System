@@ -64,6 +64,23 @@ export default function LoginPage() {
       eyebrow="Passenger login"
       title="Sign in to search routes and continue your booking."
       description="Access your journeys, booking history, and live train search with your account."
+      highlights={[
+        {
+          title: "Resume bookings quickly",
+          description:
+            "Jump back into route search, seat selection, and pending bookings without starting over.",
+        },
+        {
+          title: "Track every journey",
+          description:
+            "See your upcoming trips, cancellations, and booking history in one organized place.",
+        },
+      ]}
+      stats={[
+        { label: "Speed", value: "Fast sign-in flow" },
+        { label: "Seats", value: "Exact seat continuity" },
+        { label: "History", value: "Bookings synced" },
+      ]}
       footer={
         <>
           New passenger?{" "}
@@ -75,6 +92,17 @@ export default function LoginPage() {
     >
       <div>
         <div className="mb-6">
+          <div className="mb-4 flex flex-wrap gap-2">
+            <span className="rounded-full bg-[var(--color-accent-soft)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--color-accent)]">
+              Welcome back
+            </span>
+            <Link
+              href="/admin/login"
+              className="rounded-full border border-[var(--color-line)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--color-muted)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
+            >
+              Admin login
+            </Link>
+          </div>
           <h2 className="text-2xl font-semibold tracking-tight text-[var(--color-ink)]">
             Login
           </h2>
@@ -89,6 +117,7 @@ export default function LoginPage() {
             label="Email address"
             {...register("email")}
             placeholder="you@example.com"
+            hint="Use the email you registered with for your passenger account."
             error={errors.email?.message}
           />
 
@@ -97,16 +126,26 @@ export default function LoginPage() {
             label="Password"
             {...register("password")}
             placeholder="Enter your password"
+            hint="Your booking history and active journeys will load after sign-in."
             error={errors.password?.message}
           />
 
           {error ? (
-            <div className="rounded-[1.2rem] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <div className="rounded-[1.2rem] border border-[color-mix(in_srgb,var(--color-danger)_26%,var(--color-line))] bg-[color-mix(in_srgb,var(--color-danger-soft)_84%,var(--color-panel-strong))] px-4 py-3 text-sm text-[var(--color-danger)]">
               {error}
             </div>
           ) : null}
 
-          <Button type="submit" disabled={status === "loading"} className="w-full">
+          <div className="rounded-[1.5rem] border border-[var(--color-line)] bg-[var(--color-surface-soft)] px-4 py-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--color-muted)]">
+              Session benefits
+            </p>
+            <p className="mt-2 text-sm leading-7 text-[var(--color-muted)]">
+              Signed-in passengers can manage reservations, review cancellations, and continue bookings with less friction.
+            </p>
+          </div>
+
+          <Button type="submit" size="lg" disabled={status === "loading"} className="w-full">
             {status === "loading" ? "Signing in..." : "Sign in"}
           </Button>
         </form>

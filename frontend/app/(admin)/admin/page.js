@@ -5,12 +5,54 @@ import Link from "next/link";
 import { useDispatch, useSelector } from "react-redux";
 import { ADMIN_COACH_CONFIGS } from "@/utils/admin-coach-config";
 import { fetchAdminTrainsThunk, fetchAdminBookingsThunk } from "@/features/admin/adminSlice";
+import PageHero from "@/components/layout/page-hero";
+import PageSection from "@/components/layout/page-section";
+import Badge from "@/components/ui/badge";
+import {
+  AdminBookingSnapshot,
+  AdminHealthPanel,
+  AdminMetricCard,
+  AdminModuleCard,
+  AdminRevenueCard,
+} from "@/components/admin/admin-dashboard-widgets";
 
 const adminModules = [
-  { name: "Train management", href: "/admin/trains", icon: "🚆" },
-  { name: "Schedules", href: "/admin/schedules", icon: "📅" },
-  { name: "Coaches and seats", href: "/admin/coaches", icon: "💺" },
-  { name: "Fare rules", href: "/admin/fares", icon: "💰" },
+  {
+    name: "Train management",
+    href: "/admin/trains",
+    icon: "🚆",
+    description: "Create and manage active trains, classes, and service details.",
+  },
+  {
+    name: "Schedules",
+    href: "/admin/schedules",
+    icon: "📅",
+    description: "Control running dates, departures, and operational timing windows.",
+  },
+  {
+    name: "Coaches and seats",
+    href: "/admin/coaches",
+    icon: "💺",
+    description: "Configure the seat inventory model used across your train roster.",
+  },
+  {
+    name: "Fare rules",
+    href: "/admin/fares",
+    icon: "💰",
+    description: "Tune pricing rules and keep route classes aligned with revenue goals.",
+  },
+  {
+    name: "All bookings",
+    href: "/admin/bookings",
+    icon: "🧾",
+    description: "Monitor passenger demand, refunds, and status changes from one board.",
+  },
+  {
+    name: "Create admin",
+    href: "/admin/users",
+    icon: "🛡️",
+    description: "Invite and provision new operations administrators securely.",
+  },
 ];
 
 export default function AdminPage() {
@@ -29,7 +71,7 @@ export default function AdminPage() {
     return (
       <main className="mx-auto flex min-h-[calc(100vh-81px)] w-full max-w-5xl flex-1 items-center px-6 py-12 sm:px-10">
         <div className="surface-panel w-full rounded-[2rem] p-8">
-          <p className="text-sm font-semibold uppercase tracking-[0.25em] text-[var(--color-danger)]">
+          <p className="inline-flex rounded-full bg-[var(--color-danger-soft)] px-3 py-1 text-sm font-semibold uppercase tracking-[0.25em] text-[var(--color-danger)]">
             Admin only
           </p>
           <h1 className="mt-3 text-3xl font-semibold tracking-tight text-[var(--color-ink)]">
@@ -63,137 +105,147 @@ export default function AdminPage() {
     0,
   );
   const netRevenue = grossRevenue - totalRefunds;
-
-  const stats = [
-    { label: "Active Trains", value: trains.filter((t) => t.is_active).length, color: "text-blue-600" },
-    { label: "Total Refunds", value: `₹${totalRefunds.toLocaleString("en-IN")}`, color: "text-amber-600" },
-    { label: "Net Revenue", value: `₹${netRevenue.toLocaleString("en-IN")}`, color: "text-green-600" },
-  ];
+  const bookingsStatus = resources.bookings.status;
+  const bookingsError = resources.bookings.error;
+  const trainsStatus = resources.trains.status;
+  const isRevenueLoading = bookingsStatus === "loading";
+  const hasRevenueError = Boolean(bookingsError);
+  const activeTrainsCount = trains.filter((t) => t.is_active).length;
+  const delayedDataSync = resources.trains.status === "loading" || resources.bookings.status === "loading";
 
   return (
-    <main className="relative mx-auto flex min-h-[calc(100vh-81px)] w-full max-w-6xl flex-1 px-6 py-10 sm:px-10 lg:px-12">
-      <div className="pointer-events-none absolute inset-x-6 top-0 h-64 rounded-[3rem] bg-[radial-gradient(circle_at_top_left,_rgba(239,126,28,0.08),_transparent_34%),radial-gradient(circle_at_top_right,_rgba(12,79,129,0.12),_transparent_34%)] sm:inset-x-10 lg:inset-x-12" />
-      
-      <div className="relative z-10 grid w-full gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-        <section className="surface-panel rounded-[2rem] p-8">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.34em] text-[var(--color-accent)]">
-            Operations dashboard
-          </p>
-          <h1 className="mt-4 text-3xl font-semibold tracking-tight text-[var(--color-ink)]">
-            Manage rail operations.
-          </h1>
-          
-          <div className="mt-8 grid grid-cols-3 gap-4">
-            {stats.map((stat) => (
-              <div key={stat.label} className="rounded-2xl bg-white p-4 shadow-sm border border-[var(--color-line)]">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-muted)]">{stat.label}</p>
-                <p className={`mt-1 text-xl font-bold ${stat.color}`}>{stat.value}</p>
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-8 grid gap-3 sm:grid-cols-2">
-            {adminModules.map((module) => (
-              <Link
-                key={module.href}
-                href={module.href}
-                className="flex items-center space-x-3 rounded-[1.4rem] border border-[var(--color-line)] bg-[var(--color-surface-soft)] px-4 py-4 text-sm font-medium text-[var(--color-ink)] transition-all hover:border-[var(--color-accent)] hover:bg-white hover:shadow-sm"
-              >
-                <span className="text-xl">{module.icon}</span>
-                <span>{module.name}</span>
+    <main className="mx-auto max-w-7xl px-6 py-10 sm:px-10 lg:px-12">
+      <div className="space-y-6">
+        <PageHero
+          eyebrow="Admin command center"
+          title="Run rail operations from a calmer, more intelligent dashboard."
+          description="Keep train inventory, schedules, bookings, coach layouts, and revenue in one premium workspace built for day-to-day operations."
+          meta={[
+            delayedDataSync ? "Sync in progress" : "Live data",
+            `${bookings.length} booking records`,
+            `${activeTrainsCount} active trains`,
+          ]}
+          actions={
+            <>
+              <Link href="/admin/bookings" className="primary-button px-5 py-3 text-sm">
+                Open bookings board
               </Link>
-            ))}
-          </div>
-
-          <div className="mt-8 rounded-[1.6rem] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-5">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[var(--color-accent)]">
-              Revenue snapshot
-            </p>
-            <div className="mt-4 grid gap-3 sm:grid-cols-3">
-              <div className="rounded-[1.2rem] bg-white px-4 py-3 ring-1 ring-[var(--color-line)]">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--color-muted)]">
-                  Gross bookings
-                </p>
-                <p className="mt-2 text-sm font-semibold text-[var(--color-ink)]">
-                  ₹{grossRevenue.toLocaleString("en-IN")}
-                </p>
+              <Link href="/admin/users" className="secondary-button px-5 py-3 text-sm">
+                Create admin
+              </Link>
+            </>
+          }
+          aside={
+            <div className="rounded-[1.8rem] border border-[var(--color-line)] bg-white/80 p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)] backdrop-blur dark:bg-white/5">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--color-muted)]">
+                    Active admin
+                  </p>
+                  <p className="mt-2 text-base font-semibold text-[var(--color-ink)]">
+                    {user?.email}
+                  </p>
+                </div>
+                <Badge variant="neutral">{user?.role}</Badge>
               </div>
-              <div className="rounded-[1.2rem] bg-white px-4 py-3 ring-1 ring-[var(--color-line)]">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--color-muted)]">
-                  Refunds issued
-                </p>
-                <p className="mt-2 text-sm font-semibold text-[var(--color-ink)]">
-                  ₹{totalRefunds.toLocaleString("en-IN")}
-                </p>
-              </div>
-              <div className="rounded-[1.2rem] bg-white px-4 py-3 ring-1 ring-[var(--color-line)]">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--color-muted)]">
-                  Net retained
-                </p>
-                <p className="mt-2 text-sm font-semibold text-[var(--color-ink)]">
-                  ₹{netRevenue.toLocaleString("en-IN")}
-                </p>
-              </div>
+              <p className="mt-4 text-sm leading-7 text-[var(--color-muted)]">
+                Keep demand, revenue, and inventory aligned with a single operational view.
+              </p>
             </div>
-          </div>
+          }
+        />
 
-          <div className="mt-8 rounded-[1.6rem] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-5">
+        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <AdminMetricCard
+            label="Active trains"
+            value={trainsStatus === "loading" ? "Loading..." : activeTrainsCount}
+            hint="Currently running services available for booking."
+            trend={activeTrainsCount > 0 ? "Live" : "Setup"}
+          />
+          <AdminMetricCard
+            label="All bookings"
+            value={bookingsStatus === "loading" ? "Loading..." : bookings.length}
+            hint="Customer reservations across the current operational dataset."
+            trend={bookings.length > 0 ? "Demand" : "Quiet"}
+          />
+          <AdminMetricCard
+            label="Net revenue"
+            value={
+              hasRevenueError
+                ? "Unavailable"
+                : isRevenueLoading
+                  ? "Loading..."
+                  : `₹${netRevenue.toLocaleString("en-IN")}`
+            }
+            hint="Bookings minus recorded refunds."
+            trend={hasRevenueError ? "Check data" : "Finance"}
+            trendTone={hasRevenueError ? "warning" : "positive"}
+          />
+          <AdminMetricCard
+            label="Coach templates"
+            value={ADMIN_COACH_CONFIGS.length}
+            hint="Fixed coach layouts ready for operations and seat generation."
+            trend="Inventory"
+          />
+        </section>
+
+        <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+          <PageSection className="space-y-5 p-6 sm:p-8">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-[var(--color-accent)]">
+                  Admin modules
+                </p>
+                <h2 className="mt-2 text-2xl font-semibold tracking-tight text-[var(--color-ink)]">
+                  Fast access to core controls
+                </h2>
+              </div>
+              <Badge variant="neutral">{adminModules.length} areas</Badge>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              {adminModules.map((module) => (
+                <AdminModuleCard key={module.href} module={module} />
+              ))}
+            </div>
+          </PageSection>
+
+          <div className="space-y-6">
+            <AdminRevenueCard
+              grossRevenue={grossRevenue}
+              totalRefunds={totalRefunds}
+              netRevenue={netRevenue}
+              loading={isRevenueLoading}
+              error={hasRevenueError ? (Array.isArray(bookingsError) ? bookingsError.join(", ") : bookingsError) : null}
+            />
+
+            <AdminHealthPanel
+              syncing={delayedDataSync}
+              role={user?.role}
+              email={user?.email}
+            />
+          </div>
+        </div>
+
+        <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
+          <PageSection className="p-6 sm:p-8">
             <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[var(--color-accent)]">
               Fixed coach model
             </p>
-            <div className="mt-4 flex flex-wrap gap-3">
+            <div className="mt-5 flex flex-wrap gap-3">
               {ADMIN_COACH_CONFIGS.map((coach) => (
                 <div
                   key={coach.key}
-                  className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-[var(--color-panel-dark)] ring-1 ring-[var(--color-line)]"
+                  className="rounded-full border border-[var(--color-line)] bg-[var(--color-surface-soft)] px-4 py-2 text-sm font-semibold text-[var(--color-panel-dark)]"
                 >
                   {coach.label}: {coach.totalSeats} seats
                 </div>
               ))}
             </div>
-          </div>
-        </section>
+          </PageSection>
 
-        <aside className="space-y-6">
-          <section className="rounded-[2rem] bg-[linear-gradient(180deg,_#0d4d7d_0%,_#0a3658_100%)] p-8 text-white shadow-[0_28px_70px_rgba(12,79,129,0.16)]">
-            <div className="flex items-center space-x-4">
-              <div className="h-12 w-12 rounded-full bg-white/10 flex items-center justify-center text-xl">👤</div>
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-white/66">
-                  Admin Session
-                </p>
-                <p className="mt-1 text-lg font-semibold">{user?.email}</p>
-              </div>
-            </div>
-            <div className="mt-6 flex items-center justify-between border-t border-white/10 pt-6">
-              <span className="text-xs text-white/60">Operational Role</span>
-              <span className="rounded-full bg-white/10 px-3 py-1 text-[10px] font-bold uppercase">{user?.role}</span>
-            </div>
-          </section>
-
-          <section className="surface-card rounded-[2rem] p-6 border border-[var(--color-line)]">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-[var(--color-muted)]">
-              System Health
-            </p>
-            <div className="mt-4 space-y-3">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-[var(--color-muted)]">API Status</span>
-                <span className="flex items-center text-green-600 font-medium">
-                  <span className="mr-2 h-2 w-2 rounded-full bg-green-600 anim-pulse"></span>
-                  Operational
-                </span>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-[var(--color-muted)]">Data Sync</span>
-                <span className="text-[var(--color-ink)]">
-                  {resources.trains.status === "loading" || resources.bookings.status === "loading"
-                    ? "Syncing..."
-                    : "Up to date"}
-                </span>
-              </div>
-            </div>
-          </section>
-        </aside>
+          <AdminBookingSnapshot bookings={bookings} />
+        </div>
       </div>
     </main>
   );

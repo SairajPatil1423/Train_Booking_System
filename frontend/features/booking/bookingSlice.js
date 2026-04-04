@@ -6,17 +6,100 @@ import {
   cancelTicket,
 } from "./bookingService";
 
+const BOOKINGS_CACHE_TTL_MS = 60 * 1000;
+
+function shouldFetchBookings(state, payload = {}) {
+  const bookingState = state?.booking;
+  const isPaginatedRequest = Boolean(payload.page || payload.perPage);
+  const requestedPage = Number(payload.page || 1);
+  const requestedPerPage = Number(payload.perPage || 10);
+
+  if (!bookingState) {
+    return true;
+  }
+
+  if (bookingState.bookingsStatus === "loading") {
+    return false;
+  }
+
+  if (bookingState.bookingsStatus === "idle" || bookingState.bookingsStatus === "failed") {
+    return true;
+  }
+
+  if (!bookingState.bookingsFetchedAt) {
+    return true;
+  }
+
+  if (Boolean(bookingState.bookingsMeta?.paginated) !== isPaginatedRequest) {
+    return true;
+  }
+
+  if (
+    isPaginatedRequest &&
+    (bookingState.bookingsMeta?.page !== requestedPage ||
+      bookingState.bookingsMeta?.perPage !== requestedPerPage)
+  ) {
+    return true;
+  }
+
+  return Date.now() - bookingState.bookingsFetchedAt > BOOKINGS_CACHE_TTL_MS;
+}
+
+function shouldFetchCancellations(state, payload = {}) {
+  const bookingState = state?.booking;
+  const requestedPage = Number(payload.page || 1);
+  const requestedPerPage = Number(payload.perPage || 10);
+
+  if (!bookingState) {
+    return true;
+  }
+
+  if (bookingState.cancellationsStatus === "loading") {
+    return false;
+  }
+
+  if (
+    bookingState.cancellationsStatus === "idle" ||
+    bookingState.cancellationsStatus === "failed"
+  ) {
+    return true;
+  }
+
+  if (!bookingState.cancellationsFetchedAt) {
+    return true;
+  }
+
+  if (
+    bookingState.cancellationsMeta?.page !== requestedPage ||
+    bookingState.cancellationsMeta?.perPage !== requestedPerPage
+  ) {
+    return true;
+  }
+
+  return Date.now() - bookingState.cancellationsFetchedAt > BOOKINGS_CACHE_TTL_MS;
+}
+
 export const fetchUserBookingsThunk = createAsyncThunk(
   "booking/fetchAll",
-  async (_, { rejectWithValue }) => {
+  async (payload = {}, { rejectWithValue }) => {
     try {
-      const data = await fetchUserBookings();
-      return data.bookings;
+      const data = await fetchUserBookings(payload);
+      return {
+        bookings: data.bookings || [],
+        meta: data.meta || null,
+        request: {
+          page: Number(payload.page || 1),
+          perPage: Number(payload.perPage || 10),
+        },
+      };
     } catch (error) {
       return rejectWithValue(
         error.response?.data?.error || "Failed to fetch bookings."
       );
     }
+  },
+  {
+    condition: (payload, { getState }) => shouldFetchBookings(getState(), payload),
   }
 );
 
@@ -31,6 +114,33 @@ export const cancelBookingThunk = createAsyncThunk(
         error.response?.data?.errors || error.response?.data?.error || "Cancellation failed."
       );
     }
+  }
+);
+
+export const fetchUserCancellationsThunk = createAsyncThunk(
+  "booking/fetchCancellations",
+  async (payload = {}, { rejectWithValue }) => {
+    try {
+      const data = await fetchUserBookings({
+        ...payload,
+        withCancellations: true,
+      });
+      return {
+        bookings: data.bookings || [],
+        meta: data.meta || null,
+        request: {
+          page: Number(payload.page || 1),
+          perPage: Number(payload.perPage || 10),
+        },
+      };
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.error || "Failed to fetch cancellations."
+      );
+    }
+  },
+  {
+    condition: (payload, { getState }) => shouldFetchCancellations(getState(), payload),
   }
 );
 
@@ -72,6 +182,24 @@ const initialState = {
   userBookings: [],
   bookingsStatus: "idle",
   bookingsError: null,
+  bookingsFetchedAt: null,
+  bookingsMeta: {
+    page: 1,
+    perPage: 10,
+    totalCount: 0,
+    totalPages: 1,
+    paginated: false,
+  },
+  cancellations: [],
+  cancellationsStatus: "idle",
+  cancellationsError: null,
+  cancellationsFetchedAt: null,
+  cancellationsMeta: {
+    page: 1,
+    perPage: 10,
+    totalCount: 0,
+    totalPages: 1,
+  },
   refundSummary: null,
   status: "idle",
   error: null,
@@ -101,6 +229,17 @@ const bookingSlice = createSlice({
         state.selectedSeats[coachId].push(seatId);
       } else {
         state.selectedSeats[coachId].splice(index, 1);
+      }
+    },
+    removeSeatSelection(state, action) {
+      const { coachId, seatId } = action.payload;
+      if (!state.selectedSeats[coachId]) {
+        return;
+      }
+
+      state.selectedSeats[coachId] = state.selectedSeats[coachId].filter((id) => id !== seatId);
+      if (state.selectedSeats[coachId].length === 0) {
+        delete state.selectedSeats[coachId];
       }
     },
     clearSeatSelection(state) {
@@ -137,19 +276,68 @@ const bookingSlice = createSlice({
       })
       .addCase(fetchUserBookingsThunk.fulfilled, (state, action) => {
         state.bookingsStatus = "succeeded";
-        state.userBookings = action.payload;
+        state.userBookings = action.payload.bookings;
+        state.bookingsFetchedAt = Date.now();
+        state.bookingsMeta = action.payload.meta
+          ? {
+              page: action.payload.meta.page,
+              perPage: action.payload.meta.per_page,
+              totalCount: action.payload.meta.total_count,
+              totalPages: action.payload.meta.total_pages,
+              paginated: true,
+            }
+          : {
+              page: action.payload.request.page,
+              perPage: action.payload.request.perPage,
+              totalCount: action.payload.bookings.length,
+              totalPages: 1,
+              paginated: false,
+            };
       })
       .addCase(fetchUserBookingsThunk.rejected, (state, action) => {
         state.bookingsStatus = "failed";
         state.bookingsError = action.payload;
       })
+      .addCase(fetchUserCancellationsThunk.pending, (state) => {
+        state.cancellationsStatus = "loading";
+        state.cancellationsError = null;
+      })
+      .addCase(fetchUserCancellationsThunk.fulfilled, (state, action) => {
+        state.cancellationsStatus = "succeeded";
+        state.cancellations = action.payload.bookings;
+        state.cancellationsFetchedAt = Date.now();
+        state.cancellationsMeta = action.payload.meta
+          ? {
+              page: action.payload.meta.page,
+              perPage: action.payload.meta.per_page,
+              totalCount: action.payload.meta.total_count,
+              totalPages: action.payload.meta.total_pages,
+            }
+          : {
+              page: action.payload.request.page,
+              perPage: action.payload.request.perPage,
+              totalCount: action.payload.bookings.length,
+              totalPages: 1,
+            };
+      })
+      .addCase(fetchUserCancellationsThunk.rejected, (state, action) => {
+        state.cancellationsStatus = "failed";
+        state.cancellationsError = action.payload;
+      })
       .addCase(cancelBookingThunk.pending, (state) => {
         state.bookingsError = null;
+        state.cancellationsError = null;
       })
       .addCase(cancelBookingThunk.fulfilled, (state, action) => {
         const index = state.userBookings.findIndex(b => b.id === action.payload.booking?.id);
         if (index !== -1) {
           state.userBookings[index] = action.payload.booking;
+        }
+        const cancellationsIndex = state.cancellations.findIndex(
+          (b) => b.id === action.payload.booking?.id,
+        );
+        if (cancellationsIndex !== -1) {
+          state.cancellations[cancellationsIndex] = action.payload.booking;
         }
         state.refundSummary = {
           bookingId: action.payload.booking?.id,
@@ -159,14 +347,22 @@ const bookingSlice = createSlice({
       })
       .addCase(cancelBookingThunk.rejected, (state, action) => {
         state.bookingsError = action.payload;
+        state.cancellationsError = action.payload;
       })
       .addCase(cancelTicketThunk.pending, (state) => {
         state.bookingsError = null;
+        state.cancellationsError = null;
       })
       .addCase(cancelTicketThunk.fulfilled, (state, action) => {
         const index = state.userBookings.findIndex(b => b.id === action.payload.booking?.id);
         if (index !== -1) {
           state.userBookings[index] = action.payload.booking;
+        }
+        const cancellationsIndex = state.cancellations.findIndex(
+          (b) => b.id === action.payload.booking?.id,
+        );
+        if (cancellationsIndex !== -1) {
+          state.cancellations[cancellationsIndex] = action.payload.booking;
         }
         state.refundSummary = {
           bookingId: action.payload.booking?.id,
@@ -176,6 +372,7 @@ const bookingSlice = createSlice({
       })
       .addCase(cancelTicketThunk.rejected, (state, action) => {
         state.bookingsError = action.payload;
+        state.cancellationsError = action.payload;
       });
   },
 });
@@ -185,6 +382,7 @@ export const {
   setSelectedCoachId,
   setPassengers,
   toggleSeatSelection,
+  removeSeatSelection,
   clearSeatSelection,
   setFareSummary,
   clearRefundSummary,
@@ -199,5 +397,7 @@ export const selectSelectedSeatsArray = (state) => {
   });
   return allSeats;
 };
+
+export const selectShouldFetchUserBookings = (state, payload) => shouldFetchBookings(state, payload);
 
 export default bookingSlice.reducer;

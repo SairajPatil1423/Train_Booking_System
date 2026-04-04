@@ -1,22 +1,58 @@
 class Admin::BookingsController < Admin::BaseController
-  before_action :set_booking, only: :show
-
   def index
     authorize Booking
-    bookings = policy_scope(Booking).includes(:user, :passengers, :ticket_allocations, :payment).order(booked_at: :desc)
+    base_scope = policy_scope(Booking)
+    bookings_scope = base_scope
+      .includes(
+        :user,
+        :passengers,
+        :payment,
+        :src_station,
+        :dst_station,
+        :cancellations,
+        { ticket_allocations: :seat },
+        { schedule: :train }
+      )
+      .order(booked_at: :desc)
 
-    render json: { bookings: bookings.as_json(include: booking_includes) }, status: :ok
-  end
+    if pagination_requested?
+      total_count = base_scope.count
+      page = normalized_page
+      per_page = normalized_per_page
+      total_pages = [(total_count.to_f / per_page).ceil, 1].max
+      page = [page, total_pages].min
+      offset = (page - 1) * per_page
+      bookings = bookings_scope.offset(offset).limit(per_page)
 
-  def show
-    authorize @booking
-    render json: { booking: @booking.as_json(include: booking_includes) }, status: :ok
+      render json: {
+        bookings: bookings.as_json(include: booking_includes),
+        meta: {
+          page: page,
+          per_page: per_page,
+          total_count: total_count,
+          total_pages: total_pages
+        }
+      }, status: :ok
+      return
+    end
+
+    render json: { bookings: bookings_scope.as_json(include: booking_includes) }, status: :ok
   end
 
   private
 
-  def set_booking
-    @booking = policy_scope(Booking).find(params[:id])
+  def pagination_requested?
+    params[:page].present? || params[:per_page].present?
+  end
+
+  def normalized_page
+    [params[:page].to_i, 1].max
+  end
+
+  def normalized_per_page
+    requested = params[:per_page].to_i
+    requested = 10 if requested <= 0
+    [requested, 50].min
   end
 
   def booking_includes

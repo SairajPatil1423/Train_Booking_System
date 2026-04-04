@@ -13,8 +13,11 @@ export default function Loader({
         className,
       )}
     >
-      <div className="mx-auto flex w-fit items-center gap-3 rounded-full bg-white/80 px-4 py-2 shadow-[0_10px_24px_rgba(15,23,42,0.06)]">
-        <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-[var(--color-accent)]" />
+      <div className="mx-auto flex w-fit items-center gap-3 rounded-full border border-[var(--color-line)] bg-[var(--color-panel-strong)] px-4 py-2 shadow-[var(--shadow-soft)]">
+        <span className="relative flex h-3 w-3">
+          <span className="absolute inset-0 animate-ping rounded-full bg-[var(--color-accent)] opacity-40" />
+          <span className="relative rounded-full bg-[var(--color-accent)] h-3 w-3" />
+        </span>
         <span className="text-sm font-medium text-[var(--color-muted-strong)]">
           {label}
         </span>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useDispatch, useSelector } from "react-redux";
 import PageHero from "@/components/layout/page-hero";
 import PageSection from "@/components/layout/page-section";
@@ -9,13 +10,14 @@ import Card from "@/components/ui/card";
 import EmptyState from "@/components/ui/empty-state";
 import Input from "@/components/ui/input";
 import LoadingState from "@/components/loading-state";
+import PaginationToolbar from "@/components/ui/pagination-toolbar";
 import { ADMIN_COACH_CONFIGS } from "@/utils/admin-coach-config";
 import { formatCoachType, normalizeCoachType } from "@/utils/coach-formatters";
 import {
   createAdminCoachThunk,
   deleteAdminCoachThunk,
+  fetchAdminTrainCatalogThunk,
   fetchAdminCoachesThunk,
-  fetchAdminTrainsThunk,
   updateAdminCoachThunk,
 } from "@/features/admin/adminSlice";
 import {
@@ -26,22 +28,40 @@ import {
 } from "@/components/admin/admin-ui";
 import { toastError, toastInfo, toastSuccess } from "@/utils/toast";
 
+const DEFAULT_PAGE_SIZE = 10;
+
 export default function AdminCoachesPage() {
   const dispatch = useDispatch();
-  const { coaches, trains, resources } = useSelector((state) => state.admin);
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const { coaches, coachesMeta, trainCatalog, trainCatalogStatus, trainCatalogError, resources } = useSelector((state) => state.admin);
   const coachesStatus = resources.coaches.status;
   const coachesError = resources.coaches.error;
-  const trainsStatus = resources.trains.status;
-  const trainsError = resources.trains.error;
   const [editingCoach, setEditingCoach] = useState(null);
   const [formError, setFormError] = useState("");
+  const requestedPage = Number(searchParams.get("page") || 1);
+  const requestedPerPage = Number(searchParams.get("per_page") || DEFAULT_PAGE_SIZE);
+  const currentPage = Number.isFinite(requestedPage) && requestedPage > 0 ? requestedPage : 1;
+  const currentPerPage =
+    Number.isFinite(requestedPerPage) && requestedPerPage > 0 ? requestedPerPage : DEFAULT_PAGE_SIZE;
 
   useEffect(() => {
-    dispatch(fetchAdminCoachesThunk());
-    if (trainsStatus === "idle") {
-      dispatch(fetchAdminTrainsThunk());
+    dispatch(fetchAdminCoachesThunk({ page: currentPage, perPage: currentPerPage }));
+    dispatch(fetchAdminTrainCatalogThunk());
+  }, [currentPage, currentPerPage, dispatch]);
+
+  useEffect(() => {
+    if (
+      coachesStatus === "succeeded" &&
+      coachesMeta.totalPages > 0 &&
+      currentPage > coachesMeta.totalPages
+    ) {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("page", String(coachesMeta.totalPages));
+      router.replace(`${pathname}?${params.toString()}`);
     }
-  }, [dispatch, trainsStatus]);
+  }, [coachesMeta.totalPages, coachesStatus, currentPage, pathname, router, searchParams]);
 
   const coachLayouts = useMemo(
     () => Object.fromEntries(ADMIN_COACH_CONFIGS.map((item) => [item.key, item])),
@@ -74,6 +94,7 @@ export default function AdminCoachesPage() {
         toastSuccess("Coach created successfully.");
       }
 
+      setFormError("");
       setEditingCoach(null);
       event.currentTarget.reset();
     } catch (requestError) {
@@ -92,6 +113,7 @@ export default function AdminCoachesPage() {
 
     try {
       await dispatch(deleteAdminCoachThunk(id)).unwrap();
+      setFormError("");
       toastSuccess("Coach deleted successfully.");
     } catch (requestError) {
       const message = Array.isArray(requestError) ? requestError.join(", ") : String(requestError);
@@ -100,14 +122,27 @@ export default function AdminCoachesPage() {
     }
   }
 
+  function handlePageChange(nextPage) {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("page", String(nextPage));
+    params.set("per_page", String(currentPerPage));
+    router.push(`${pathname}?${params.toString()}`);
+  }
+
+  function handlePerPageChange(nextPerPage) {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("page", "1");
+    params.set("per_page", String(nextPerPage));
+    router.push(`${pathname}?${params.toString()}`);
+  }
+
   return (
     <main className="mx-auto max-w-6xl px-6 py-10 sm:px-10 lg:px-12">
       <div className="space-y-6">
         <PageHero
           eyebrow="Coach management"
-          title="Manage fixed coach layouts with confidence"
-          description="Admins only choose the coach type and coach number. Seats are generated automatically using the fixed row-by-column layout, so manual seat entry is intentionally unavailable."
-          meta={["1AC / 2AC / Sleeper only", "Seat generation is deterministic", "No custom seat counts"]}
+          title="Coaches"
+          meta={[`${coachesMeta.totalCount || coaches.length} coaches`, `Page ${coachesMeta.page}`]}
         />
 
         <PageSection className="p-6 sm:p-8">
@@ -186,8 +221,20 @@ export default function AdminCoachesPage() {
             {coaches.length === 0 && coachesStatus !== "loading" ? (
               <EmptyState
                 title="No coaches configured yet"
-                description="Create a coach from the fixed layout system and the app will generate its seats automatically. Custom layouts and manual seat entry are no longer part of the workflow."
               />
+            ) : null}
+
+            {coaches.length > 0 ? (
+              <div className="pt-6">
+                <PaginationToolbar
+                  page={coachesMeta.page}
+                  perPage={coachesMeta.perPage}
+                  totalCount={coachesMeta.totalCount || coaches.length}
+                  totalPages={coachesMeta.totalPages}
+                  onPageChange={handlePageChange}
+                  onPerPageChange={handlePerPageChange}
+                />
+              </div>
             ) : null}
           </PageSection>
 
@@ -207,21 +254,21 @@ export default function AdminCoachesPage() {
                   defaultValue={editingCoach?.train_id || ""}
                   className="field-input"
                   required
-                  disabled={trainsStatus === "loading"}
+                  disabled={trainCatalogStatus === "loading"}
                 >
                   <option value="">Select train</option>
-                  {trains.map((train) => (
+                  {trainCatalog.map((train) => (
                     <option key={train.id} value={train.id}>
                       {train.train_number} - {train.name}
                     </option>
                   ))}
                 </select>
-                {trainsStatus === "loading" ? (
+                {trainCatalogStatus === "loading" ? (
                   <p className="field-hint">Loading train options...</p>
                 ) : null}
-                {trainsError ? (
+                {trainCatalogError ? (
                   <p className="field-error">
-                    {Array.isArray(trainsError) ? trainsError.join(", ") : trainsError}
+                    {Array.isArray(trainCatalogError) ? trainCatalogError.join(", ") : trainCatalogError}
                   </p>
                 ) : null}
               </div>

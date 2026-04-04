@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useDispatch, useSelector } from "react-redux";
 import PageHero from "@/components/layout/page-hero";
 import PageSection from "@/components/layout/page-section";
@@ -10,11 +11,12 @@ import EmptyState from "@/components/ui/empty-state";
 import Input from "@/components/ui/input";
 import Badge from "@/components/ui/badge";
 import LoadingState from "@/components/loading-state";
+import PaginationToolbar from "@/components/ui/pagination-toolbar";
 import {
   createAdminScheduleThunk,
   deleteAdminScheduleThunk,
+  fetchAdminTrainCatalogThunk,
   fetchAdminSchedulesThunk,
-  fetchAdminTrainsThunk,
   updateAdminScheduleThunk,
 } from "@/features/admin/adminSlice";
 import { AdminErrorBox, AdminInfoBlock, AdminInfoPill } from "@/components/admin/admin-ui";
@@ -27,22 +29,40 @@ const SCHEDULE_STATUS_OPTIONS = [
   { value: "cancelled", label: "Cancelled", variant: "danger" },
 ];
 
+const DEFAULT_PAGE_SIZE = 10;
+
 export default function AdminSchedulesPage() {
   const dispatch = useDispatch();
-  const { schedules, trains, resources } = useSelector((state) => state.admin);
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const { schedules, schedulesMeta, trainCatalog, trainCatalogStatus, trainCatalogError, resources } = useSelector((state) => state.admin);
   const schedulesStatus = resources.schedules.status;
   const schedulesError = resources.schedules.error;
-  const trainsStatus = resources.trains.status;
-  const trainsError = resources.trains.error;
   const [editingSchedule, setEditingSchedule] = useState(null);
   const [formError, setFormError] = useState("");
+  const requestedPage = Number(searchParams.get("page") || 1);
+  const requestedPerPage = Number(searchParams.get("per_page") || DEFAULT_PAGE_SIZE);
+  const currentPage = Number.isFinite(requestedPage) && requestedPage > 0 ? requestedPage : 1;
+  const currentPerPage =
+    Number.isFinite(requestedPerPage) && requestedPerPage > 0 ? requestedPerPage : DEFAULT_PAGE_SIZE;
 
   useEffect(() => {
-    dispatch(fetchAdminSchedulesThunk());
-    if (trainsStatus === "idle") {
-      dispatch(fetchAdminTrainsThunk());
+    dispatch(fetchAdminSchedulesThunk({ page: currentPage, perPage: currentPerPage }));
+    dispatch(fetchAdminTrainCatalogThunk());
+  }, [currentPage, currentPerPage, dispatch]);
+
+  useEffect(() => {
+    if (
+      schedulesStatus === "succeeded" &&
+      schedulesMeta.totalPages > 0 &&
+      currentPage > schedulesMeta.totalPages
+    ) {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("page", String(schedulesMeta.totalPages));
+      router.replace(`${pathname}?${params.toString()}`);
     }
-  }, [dispatch, trainsStatus]);
+  }, [schedulesMeta.totalPages, schedulesStatus, currentPage, pathname, router, searchParams]);
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -79,6 +99,7 @@ export default function AdminSchedulesPage() {
         toastSuccess("Schedule created successfully.");
       }
 
+      setFormError("");
       setEditingSchedule(null);
       event.currentTarget.reset();
     } catch (requestError) {
@@ -97,6 +118,7 @@ export default function AdminSchedulesPage() {
 
     try {
       await dispatch(deleteAdminScheduleThunk(id)).unwrap();
+      setFormError("");
       toastSuccess("Schedule deleted successfully.");
     } catch (requestError) {
       const message = Array.isArray(requestError) ? requestError.join(", ") : String(requestError);
@@ -105,20 +127,35 @@ export default function AdminSchedulesPage() {
     }
   }
 
+  function handlePageChange(nextPage) {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("page", String(nextPage));
+    params.set("per_page", String(currentPerPage));
+    router.push(`${pathname}?${params.toString()}`);
+  }
+
+  function handlePerPageChange(nextPerPage) {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("page", "1");
+    params.set("per_page", String(nextPerPage));
+    router.push(`${pathname}?${params.toString()}`);
+  }
+
   return (
     <main className="mx-auto max-w-6xl px-6 py-10 sm:px-10 lg:px-12">
       <div className="space-y-6">
         <PageHero
           eyebrow="Schedules"
-          title="Manage daily train services with real schedule controls"
-          description="Schedules represent daily service instances tied to train routes and timings. Create them with travel dates, then update status and delays as operations change."
-          meta={["Daily services", "Operational status tracking", "Delete rules respect bookings"]}
+          title="Schedules"
+          meta={[`${schedulesMeta.totalCount || schedules.length} schedules`, `Page ${schedulesMeta.page}`]}
         />
 
         <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
           <PageSection className="p-6 sm:p-8">
             {schedulesStatus === "loading" && schedules.length === 0 ? <LoadingState label="Loading schedules..." /> : null}
             <AdminErrorBox message={Array.isArray(schedulesError) ? schedulesError.join(", ") : schedulesError} />
+
+            {schedules.length > 0 ? null : null}
 
             {schedules.length > 0 ? (
               <div className="space-y-4">
@@ -178,8 +215,20 @@ export default function AdminSchedulesPage() {
             {schedules.length === 0 && schedulesStatus !== "loading" ? (
               <EmptyState
                 title="No schedules created yet"
-                description="Create a dated service for a train, then update delays and operational status from this page. The app will prevent deletion when bookings or allocations already depend on a schedule."
               />
+            ) : null}
+
+            {schedules.length > 0 ? (
+              <div className="pt-6">
+                <PaginationToolbar
+                  page={schedulesMeta.page}
+                  perPage={schedulesMeta.perPage}
+                  totalCount={schedulesMeta.totalCount || schedules.length}
+                  totalPages={schedulesMeta.totalPages}
+                  onPageChange={handlePageChange}
+                  onPerPageChange={handlePerPageChange}
+                />
+              </div>
             ) : null}
           </PageSection>
 
@@ -201,19 +250,19 @@ export default function AdminSchedulesPage() {
                       defaultValue=""
                       className="field-input"
                       required
-                      disabled={trainsStatus === "loading"}
+                      disabled={trainCatalogStatus === "loading"}
                     >
                       <option value="">Select train</option>
-                      {trains.map((train) => (
+                      {trainCatalog.map((train) => (
                         <option key={train.id} value={train.id}>
                           {train.train_number} - {train.name}
                         </option>
                       ))}
                     </select>
-                    {trainsStatus === "loading" ? <p className="field-hint">Loading train options...</p> : null}
-                    {trainsError ? (
+                    {trainCatalogStatus === "loading" ? <p className="field-hint">Loading train options...</p> : null}
+                    {trainCatalogError ? (
                       <p className="field-error">
-                        {Array.isArray(trainsError) ? trainsError.join(", ") : trainsError}
+                        {Array.isArray(trainCatalogError) ? trainCatalogError.join(", ") : trainCatalogError}
                       </p>
                     ) : null}
                   </div>

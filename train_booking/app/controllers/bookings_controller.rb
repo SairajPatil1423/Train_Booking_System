@@ -3,9 +3,43 @@ class BookingsController < ApplicationController
   before_action :set_booking, only: %i[show update cancel_ticket]
 
   def index
-    bookings = policy_scope(Booking).includes(:passengers, :ticket_allocations, :payment).order(booked_at: :desc)
+    base_scope = policy_scope(Booking)
+    base_scope = base_scope.joins(:cancellations).distinct if with_cancellations?
+    bookings_scope = base_scope
+      .includes(
+        :payment,
+        :passengers,
+        :src_station,
+        :dst_station,
+        :cancellations,
+        { ticket_allocations: :seat },
+        { schedule: :train }
+      )
+      .order(booked_at: :desc)
     authorize Booking
-    render json: { bookings: bookings.as_json(include: booking_includes) }, status: :ok
+
+    if pagination_requested?
+      total_count = base_scope.count
+      page = normalized_page
+      per_page = normalized_per_page
+      total_pages = [(total_count.to_f / per_page).ceil, 1].max
+      page = [page, total_pages].min
+      offset = (page - 1) * per_page
+      bookings = bookings_scope.offset(offset).limit(per_page)
+
+      render json: {
+        bookings: bookings.as_json(include: booking_includes),
+        meta: {
+          page: page,
+          per_page: per_page,
+          total_count: total_count,
+          total_pages: total_pages
+        }
+      }, status: :ok
+      return
+    end
+
+    render json: { bookings: bookings_scope.as_json(include: booking_includes) }, status: :ok
   end
 
   def show
@@ -120,5 +154,23 @@ class BookingsController < ApplicationController
       payment: {},
       cancellations: {}
     }
+  end
+
+  def pagination_requested?
+    params[:page].present? || params[:per_page].present?
+  end
+
+  def normalized_page
+    [params[:page].to_i, 1].max
+  end
+
+  def normalized_per_page
+    requested = params[:per_page].to_i
+    requested = 10 if requested <= 0
+    [requested, 50].min
+  end
+
+  def with_cancellations?
+    ActiveModel::Type::Boolean.new.cast(params[:with_cancellations])
   end
 end

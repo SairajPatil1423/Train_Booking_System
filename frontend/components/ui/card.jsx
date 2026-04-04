@@ -19,6 +19,7 @@ export default function Card({
       className={cn(
         toneClasses[tone] || toneClasses.default,
         "rounded-[1.5rem]",
+        Component === "button" || Component === "a" ? "ui-card-hover" : "",
         className,
       )}
       {...props}

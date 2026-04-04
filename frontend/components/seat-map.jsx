@@ -44,8 +44,7 @@ function SeatMap({
   if (!normalizedSelectedCoachType) {
     return (
       <div className="rounded-[1.5rem] border border-dashed border-[var(--color-line)] bg-[var(--color-surface-soft)] px-5 py-10 text-sm text-[var(--color-muted)] text-center">
-        <p className="font-medium">Please select a travel class</p>
-        <p className="mt-1 text-xs opacity-70">to view available seats and coach layout</p>
+        <p className="font-medium">Select Class</p>
       </div>
     );
   }
@@ -86,7 +85,7 @@ function SeatMap({
                   Coach {coach.coach_number}
                 </h3>
                 <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.25em] text-[var(--color-muted)]">
-                  {formatCoachType(coach.coach_type)} Class
+                  {formatCoachType(coach.coach_type)}
                 </p>
               </div>
               <div className="coach-meta">
@@ -124,7 +123,7 @@ function SeatMap({
                           key={seat.id}
                           type="button"
                           onClick={() => onToggleSeat(seat)}
-                          disabled={isUnavailable || isAtLimit}
+                          disabled={isUnavailable}
                           className={`seat-item ${statusClass} ${isAtLimit ? "at-limit" : ""}`.trim()}
                             title={`Seat ${seat.seat_number} - ${seat.seat_type}`}
                           >
@@ -197,7 +196,7 @@ function LegendItem({ status, label }) {
   return (
     <div className="legend-item">
       <div className={`legend-swatch ${status}`} />
-      <span className="text-[11px] font-bold uppercase tracking-wider text-[#64748b]">{label}</span>
+      <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--color-muted)]">{label}</span>
     </div>
   );
 }

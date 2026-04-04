@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchAdminBookingsThunk } from "@/features/admin/adminSlice";
 import PageHero from "@/components/layout/page-hero";
@@ -10,60 +11,122 @@ import EmptyState from "@/components/ui/empty-state";
 import LoadingState from "@/components/loading-state";
 import Card from "@/components/ui/card";
 import { AdminErrorBox, AdminInfoBlock } from "@/components/admin/admin-ui";
+import { BookingsSummaryRail } from "@/components/admin/admin-dashboard-widgets";
+import PaginationToolbar from "@/components/ui/pagination-toolbar";
+
+const DEFAULT_PAGE_SIZE = 10;
 
 export default function AdminBookingsPage() {
   const dispatch = useDispatch();
-  const { bookings, resources } = useSelector((state) => state.admin);
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const { bookings, bookingsMeta, resources } = useSelector((state) => state.admin);
   const { isAuthenticated, user } = useSelector((state) => state.auth);
   const bookingsStatus = resources.bookings.status;
   const bookingsError = resources.bookings.error;
+  const requestedPage = Number(searchParams.get("page") || 1);
+  const requestedPerPage = Number(searchParams.get("per_page") || DEFAULT_PAGE_SIZE);
+  const currentPage = Number.isFinite(requestedPage) && requestedPage > 0 ? requestedPage : 1;
+  const currentPerPage =
+    Number.isFinite(requestedPerPage) && requestedPerPage > 0 ? requestedPerPage : DEFAULT_PAGE_SIZE;
 
   useEffect(() => {
     if (isAuthenticated && user?.role === "admin") {
-      dispatch(fetchAdminBookingsThunk());
+      dispatch(fetchAdminBookingsThunk({ page: currentPage, perPage: currentPerPage }));
     }
-  }, [dispatch, isAuthenticated, user]);
+  }, [currentPage, currentPerPage, dispatch, isAuthenticated, user]);
+
+  useEffect(() => {
+    if (
+      bookingsStatus === "succeeded" &&
+      bookingsMeta.totalPages > 0 &&
+      currentPage > bookingsMeta.totalPages
+    ) {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("page", String(bookingsMeta.totalPages));
+      router.replace(`${pathname}?${params.toString()}`);
+    }
+  }, [bookingsMeta.totalPages, bookingsStatus, currentPage, pathname, router, searchParams]);
+
+  function handlePageChange(nextPage) {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("page", String(nextPage));
+    params.set("per_page", String(currentPerPage));
+    router.push(`${pathname}?${params.toString()}`);
+  }
+
+  function handlePerPageChange(nextPerPage) {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("page", "1");
+    params.set("per_page", String(nextPerPage));
+    router.push(`${pathname}?${params.toString()}`);
+  }
 
   if (!isAuthenticated || user?.role !== "admin") {
     return (
       <main className="mx-auto flex min-h-[calc(100vh-81px)] w-full max-w-5xl flex-1 items-center px-6 py-12 sm:px-10">
         <div className="surface-panel w-full rounded-[2rem] p-8 text-center">
-          <p className="font-bold text-[var(--color-danger)]">Unauthorized Access</p>
+          <p className="inline-flex rounded-full bg-[var(--color-danger-soft)] px-3 py-1 text-sm font-bold uppercase tracking-[0.2em] text-[var(--color-danger)]">
+            Unauthorized Access
+          </p>
         </div>
       </main>
     );
   }
 
   return (
-    <main className="mx-auto max-w-6xl px-6 py-10 sm:px-10 lg:px-12">
+    <main className="mx-auto max-w-7xl px-6 py-10 sm:px-10 lg:px-12">
       <div className="space-y-6">
         <PageHero
-          eyebrow="Booking overview"
-          title="Monitor booking flow and payment totals from one place"
-          description="This page keeps the existing backend behavior intact while giving operations a cleaner view of booking volume, passenger counts, and payment state."
-          meta={["Read-only overview", "Passenger counts", "Payment status visibility"]}
+          eyebrow="Booking operations"
+          title="Bookings"
+          meta={[
+            `${bookingsMeta.totalCount || bookings.length} bookings`,
+            bookingsStatus === "loading" ? "Refreshing" : `Page ${bookingsMeta.page}`,
+          ]}
         />
 
+        <BookingsSummaryRail bookings={bookings} />
+
         <PageSection className="p-6 sm:p-8">
-          {bookingsStatus === "loading" && bookings.length === 0 ? <LoadingState label="Loading bookings..." /> : null}
+          <div className="flex flex-col gap-3 border-b border-[var(--color-line)] pb-5 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[var(--color-accent)]">
+                All bookings
+              </p>
+              <h2 className="mt-2 text-2xl font-semibold tracking-tight text-[var(--color-ink)]">
+                Records
+              </h2>
+            </div>
+            <Badge variant="neutral" className="w-fit">
+              {bookingsStatus === "loading" ? "Refreshing..." : `${bookingsMeta.totalCount || bookings.length} rows`}
+            </Badge>
+          </div>
+
+          {bookingsStatus === "loading" && bookings.length === 0 ? (
+            <div className="pt-6">
+              <LoadingState label="Loading bookings..." />
+            </div>
+          ) : null}
           <AdminErrorBox message={Array.isArray(bookingsError) ? bookingsError.join(", ") : bookingsError} />
 
           {bookings.length > 0 ? (
-            <div className="space-y-4">
+            <div className="space-y-4 pt-6">
               {bookings.map((booking) => (
-                <Card key={booking.id} className="rounded-[1.6rem] p-5">
-                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <Card key={booking.id} className="rounded-[1.8rem] p-5 sm:p-6">
+                  <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
                     <div>
-                      <p className="font-mono text-sm font-semibold text-[var(--color-panel-dark)]">
+                      <p className="font-mono text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-panel-dark)]">
                         {booking.booking_ref || booking.booking_reference}
                       </p>
-                      <p className="mt-2 text-lg font-semibold text-[var(--color-ink)]">
+                      <p className="mt-3 text-xl font-semibold text-[var(--color-ink)]">
                         {booking.user?.email || "User account"}
                       </p>
-                      <p className="mt-1 text-sm text-[var(--color-muted)]">
+                      <p className="mt-2 text-sm text-[var(--color-muted)]">
                         Booked on {formatDate(booking.booked_at || booking.created_at)}
                       </p>
-                      <p className="mt-1 text-sm text-[var(--color-muted)]">
+                      <p className="mt-2 text-sm text-[var(--color-muted)]">
                         {booking.schedule?.train?.name || "Train"} • {booking.src_station?.name || "Source"} to {booking.dst_station?.name || "Destination"}
                       </p>
                     </div>
@@ -78,7 +141,7 @@ export default function AdminBookingsPage() {
                     </div>
                   </div>
 
-                  <div className="mt-4 grid gap-3 sm:grid-cols-4">
+                  <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                     <AdminInfoBlock label="Passengers" value={`${booking.passengers?.length || 0} travelers`} />
                     <AdminInfoBlock label="Total fare" value={formatCurrency(booking.total_fare)} accent />
                     <AdminInfoBlock
@@ -98,10 +161,24 @@ export default function AdminBookingsPage() {
           ) : null}
 
           {bookings.length === 0 && bookingsStatus !== "loading" ? (
-            <EmptyState
-              title="No bookings found"
-              description="Bookings will appear here once customers complete reservations. This view is read-only and intended for operational visibility."
-            />
+            <div className="pt-6">
+              <EmptyState
+                title="No bookings found"
+              />
+            </div>
+          ) : null}
+
+          {bookings.length > 0 ? (
+            <div className="pt-6">
+              <PaginationToolbar
+                page={bookingsMeta.page}
+                perPage={bookingsMeta.perPage}
+                totalCount={bookingsMeta.totalCount || bookings.length}
+                totalPages={bookingsMeta.totalPages}
+                onPageChange={handlePageChange}
+                onPerPageChange={handlePerPageChange}
+              />
+            </div>
           ) : null}
         </PageSection>
       </div>

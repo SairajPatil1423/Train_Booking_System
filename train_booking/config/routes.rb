@@ -17,15 +17,13 @@ Rails.application.routes.draw do
 
   namespace :admin do
     resources :users, only: [:create]
-    resources :bookings, only: [:index, :show]
+    resources :bookings, only: [:index]
     resources :cities, only: [:index, :create, :update, :destroy]
     resources :trains, only: [:index, :create, :update, :destroy]
     resources :train_stops, only: [:index, :create, :update, :destroy]
     resources :stations, only: [:index, :create, :update, :destroy]
     resources :fare_rules, only: [:index, :create, :update, :destroy]
-    resources :coaches, only: [:index, :create, :update, :destroy] do
-      resources :seats, only: [:index, :create, :update, :destroy]
-    end
+    resources :coaches, only: [:index, :create, :update, :destroy]
     resources :schedules, only: [:index, :create, :update, :destroy]
   end
 end
