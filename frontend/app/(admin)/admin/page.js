@@ -57,7 +57,7 @@ const adminModules = [
 
 export default function AdminPage() {
   const dispatch = useDispatch();
-  const { trains, bookings, resources } = useSelector((state) => state.admin);
+  const { trains, bookings, trainsMeta, bookingsMeta, resources } = useSelector((state) => state.admin);
   const { isAuthenticated, user } = useSelector((state) => state.auth);
 
   useEffect(() => {
@@ -112,6 +112,8 @@ export default function AdminPage() {
   const hasRevenueError = Boolean(bookingsError);
   const activeTrainsCount = trains.filter((t) => t.is_active).length;
   const delayedDataSync = resources.trains.status === "loading" || resources.bookings.status === "loading";
+  const totalTrains = trainsMeta.totalCount || trains.length;
+  const totalBookings = bookingsMeta.totalCount || bookings.length;
 
   return (
     <main className="mx-auto max-w-7xl px-6 py-10 sm:px-10 lg:px-12">
@@ -122,8 +124,8 @@ export default function AdminPage() {
           description="Keep train inventory, schedules, bookings, coach layouts, and revenue in one premium workspace built for day-to-day operations."
           meta={[
             delayedDataSync ? "Sync in progress" : "Live data",
-            `${bookings.length} booking records`,
-            `${activeTrainsCount} active trains`,
+            `${totalBookings} booking records`,
+            `${totalTrains} trains`,
           ]}
           actions={
             <>
@@ -157,16 +159,16 @@ export default function AdminPage() {
 
         <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <AdminMetricCard
-            label="Active trains"
-            value={trainsStatus === "loading" ? "Loading..." : activeTrainsCount}
-            hint="Currently running services available for booking."
-            trend={activeTrainsCount > 0 ? "Live" : "Setup"}
+            label="Total trains"
+            value={trainsStatus === "loading" ? "Loading..." : totalTrains}
+            hint="Paginated train inventory available to operations."
+            trend={totalTrains > 0 ? "Live" : "Setup"}
           />
           <AdminMetricCard
             label="All bookings"
-            value={bookingsStatus === "loading" ? "Loading..." : bookings.length}
-            hint="Customer reservations across the current operational dataset."
-            trend={bookings.length > 0 ? "Demand" : "Quiet"}
+            value={bookingsStatus === "loading" ? "Loading..." : totalBookings}
+            hint="Customer reservations reported by backend pagination metadata."
+            trend={totalBookings > 0 ? "Demand" : "Quiet"}
           />
           <AdminMetricCard
             label="Net revenue"
@@ -217,6 +219,7 @@ export default function AdminPage() {
               netRevenue={netRevenue}
               loading={isRevenueLoading}
               error={hasRevenueError ? (Array.isArray(bookingsError) ? bookingsError.join(", ") : bookingsError) : null}
+              scopeLabel="Current bookings page revenue"
             />
 
             <AdminHealthPanel

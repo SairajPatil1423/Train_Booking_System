@@ -50,6 +50,7 @@ export default function AdminBookingsPage() {
   }, [bookingsMeta.totalPages, bookingsStatus, currentPage, pathname, router, searchParams]);
 
   function handlePageChange(nextPage) {
+    window.scrollTo({ top: 0, behavior: "smooth" });
     const params = new URLSearchParams(searchParams.toString());
     params.set("page", String(nextPage));
     params.set("per_page", String(currentPerPage));
@@ -57,6 +58,7 @@ export default function AdminBookingsPage() {
   }
 
   function handlePerPageChange(nextPerPage) {
+    window.scrollTo({ top: 0, behavior: "smooth" });
     const params = new URLSearchParams(searchParams.toString());
     params.set("page", "1");
     params.set("per_page", String(nextPerPage));
@@ -108,6 +110,9 @@ export default function AdminBookingsPage() {
             <div className="pt-6">
               <LoadingState label="Loading bookings..." />
             </div>
+          ) : null}
+          {bookingsStatus === "loading" && bookings.length > 0 ? (
+            <div className="pt-6 text-sm font-medium text-[var(--color-muted)]">Loading page {currentPage}...</div>
           ) : null}
           <AdminErrorBox message={Array.isArray(bookingsError) ? bookingsError.join(", ") : bookingsError} />
 
@@ -177,6 +182,8 @@ export default function AdminBookingsPage() {
                 totalPages={bookingsMeta.totalPages}
                 onPageChange={handlePageChange}
                 onPerPageChange={handlePerPageChange}
+                disabled={bookingsStatus === "loading"}
+                loading={bookingsStatus === "loading"}
               />
             </div>
           ) : null}

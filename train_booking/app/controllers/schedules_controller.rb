@@ -15,10 +15,16 @@ class SchedulesController < ApplicationController
 
     if travel_date < Time.zone.today
       return render json: {
+        data: [],
+        meta: {
+          current_page: page_param,
+          per_page: per_page_param,
+          total_pages: 0,
+          total_count: 0
+        },
         travel_date: travel_date,
         src_station_id: src_station_id,
         dst_station_id: dst_station_id,
-        schedules: [],
         message: 'Past dates are not available for booking'
       }, status: :ok
     end
@@ -33,16 +39,26 @@ class SchedulesController < ApplicationController
       .pluck("src_stops.train_id")
 
     if valid_train_ids.empty?
-      return render json: { schedules: [], message: 'No trains found for this route' }, status: :ok
+      return render json: {
+        data: [],
+        meta: {
+          current_page: page_param,
+          per_page: per_page_param,
+          total_pages: 0,
+          total_count: 0
+        },
+        message: 'No trains found for this route'
+      }, status: :ok
     end
 
     Schedule.ensure_daily_schedules!(travel_date: travel_date, train_ids: valid_train_ids)
 
-    schedules = Schedule
+    schedules_scope = Schedule
       .includes(:train)
       .where(train_id: valid_train_ids)
       .searchable_for_date(travel_date)
       .order(:departure_time)
+    schedules = paginate_scope(schedules_scope)
 
     schedules_with_availability = schedules.map do |schedule|
       schedule.as_json(include: { train: { only: %i[id train_number name train_type] } }).merge(
@@ -58,7 +74,8 @@ class SchedulesController < ApplicationController
       travel_date: travel_date,
       src_station_id: src_station_id,
       dst_station_id: dst_station_id,
-      schedules: schedules_with_availability
+      data: schedules_with_availability,
+      meta: pagination_meta(schedules)
     }, status: :ok
 
   rescue Date::Error

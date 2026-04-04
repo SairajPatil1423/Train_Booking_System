@@ -1,27 +1,31 @@
 import api from "@/services/api";
 
+function buildPaginationQuery(params = {}, defaultPerPage = 10) {
+  const requestedPage = Number(params.page || 1);
+  const requestedPerPage = Number(params.perPage || defaultPerPage);
+
+  return {
+    page: Number.isFinite(requestedPage) && requestedPage > 0 ? requestedPage : 1,
+    per_page: Number.isFinite(requestedPerPage) && requestedPerPage > 0 ? requestedPerPage : defaultPerPage,
+  };
+}
+
 export async function fetchAdminTrains(params = {}) {
-  const query = {};
-
-  if (params.page) {
-    query.page = params.page;
-  }
-
-  if (params.perPage) {
-    query.per_page = params.perPage;
-  }
-
-  const response = await api.get("/admin/trains", { params: query });
+  const response = await api.get("/admin/trains", { params: buildPaginationQuery(params) });
   return response.data;
 }
 
 export async function fetchAdminStations() {
-  const response = await api.get("/admin/stations");
+  const response = await api.get("/admin/stations", {
+    params: buildPaginationQuery({ page: 1, perPage: 50 }),
+  });
   return response.data;
 }
 
 export async function fetchAdminCities() {
-  const response = await api.get("/admin/cities");
+  const response = await api.get("/admin/cities", {
+    params: buildPaginationQuery({ page: 1, perPage: 50 }),
+  });
   return response.data;
 }
 
@@ -51,7 +55,9 @@ export async function deleteAdminTrain(id) {
 }
 
 export async function fetchAdminTrainStops() {
-  const response = await api.get("/admin/train_stops");
+  const response = await api.get("/admin/train_stops", {
+    params: buildPaginationQuery({ page: 1, perPage: 50 }),
+  });
   return response.data;
 }
 
@@ -71,17 +77,7 @@ export async function deleteAdminTrainStop(id) {
 }
 
 export async function fetchAdminBookings(params = {}) {
-  const query = {};
-
-  if (params.page) {
-    query.page = params.page;
-  }
-
-  if (params.perPage) {
-    query.per_page = params.perPage;
-  }
-
-  const response = await api.get("/admin/bookings", { params: query });
+  const response = await api.get("/admin/bookings", { params: buildPaginationQuery(params) });
   return response.data;
 }
 
@@ -91,17 +87,7 @@ export async function createAdminUser(payload) {
 }
 
 export async function fetchAdminCoaches(params = {}) {
-  const query = {};
-
-  if (params.page) {
-    query.page = params.page;
-  }
-
-  if (params.perPage) {
-    query.per_page = params.perPage;
-  }
-
-  const response = await api.get("/admin/coaches", { params: query });
+  const response = await api.get("/admin/coaches", { params: buildPaginationQuery(params) });
   return response.data;
 }
 
@@ -121,17 +107,7 @@ export async function deleteAdminCoach(id) {
 }
 
 export async function fetchAdminFareRules(params = {}) {
-  const query = {};
-
-  if (params.page) {
-    query.page = params.page;
-  }
-
-  if (params.perPage) {
-    query.per_page = params.perPage;
-  }
-
-  const response = await api.get("/admin/fare_rules", { params: query });
+  const response = await api.get("/admin/fare_rules", { params: buildPaginationQuery(params) });
   return response.data;
 }
 
@@ -151,17 +127,7 @@ export async function deleteAdminFareRule(id) {
 }
 
 export async function fetchAdminSchedules(params = {}) {
-  const query = {};
-
-  if (params.page) {
-    query.page = params.page;
-  }
-
-  if (params.perPage) {
-    query.per_page = params.perPage;
-  }
-
-  const response = await api.get("/admin/schedules", { params: query });
+  const response = await api.get("/admin/schedules", { params: buildPaginationQuery(params) });
   return response.data;
 }
 

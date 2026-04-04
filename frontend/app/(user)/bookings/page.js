@@ -77,6 +77,7 @@ export default function BookingsPage() {
   }, [cancelIntent]);
 
   function handlePageChange(nextPage) {
+    window.scrollTo({ top: 0, behavior: "smooth" });
     const params = new URLSearchParams(searchParams.toString());
     params.set("page", String(nextPage));
     params.set("per_page", String(currentPerPage));
@@ -84,6 +85,7 @@ export default function BookingsPage() {
   }
 
   function handlePerPageChange(nextPerPage) {
+    window.scrollTo({ top: 0, behavior: "smooth" });
     const params = new URLSearchParams(searchParams.toString());
     params.set("page", "1");
     params.set("per_page", String(nextPerPage));
@@ -214,7 +216,10 @@ export default function BookingsPage() {
         />
 
         <PageSection className="p-8">
-          {status === "loading" ? <LoadingState label="Loading your bookings..." /> : null}
+          {status === "loading" && bookings.length === 0 ? <LoadingState label="Loading your bookings..." /> : null}
+          {status === "loading" && bookings.length > 0 ? (
+            <div className="mb-5 text-sm font-medium text-[var(--color-muted)]">Loading page {currentPage}...</div>
+          ) : null}
 
           {refundSummary ? (
             <div className="mb-5 rounded-[1.2rem] border border-[color-mix(in_srgb,var(--color-success)_26%,var(--color-line))] bg-[color-mix(in_srgb,var(--color-success-soft)_82%,var(--color-panel-strong))] px-4 py-3 text-sm text-[var(--color-success)]">
@@ -385,6 +390,8 @@ export default function BookingsPage() {
                 totalPages={bookingsMeta.totalPages}
                 onPageChange={handlePageChange}
                 onPerPageChange={handlePerPageChange}
+                disabled={status === "loading"}
+                loading={status === "loading"}
               />
             </div>
           ) : null}

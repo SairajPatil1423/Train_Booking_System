@@ -2,29 +2,9 @@ class Admin::TrainsController < Admin::BaseController
   def index
     authorize Train
     trains_scope = Train.order(:train_number)
+    trains = paginate_scope(trains_scope)
 
-    if pagination_requested?
-      total_count = trains_scope.count
-      page = normalized_page
-      per_page = normalized_per_page
-      total_pages = [(total_count.to_f / per_page).ceil, 1].max
-      page = [page, total_pages].min
-      offset = (page - 1) * per_page
-      trains = trains_scope.offset(offset).limit(per_page)
-
-      render json: {
-        trains: trains,
-        meta: {
-          page: page,
-          per_page: per_page,
-          total_count: total_count,
-          total_pages: total_pages
-        }
-      }, status: :ok
-      return
-    end
-
-    render json: { trains: trains_scope }, status: :ok
+    render json: paginated_response(data: trains, records: trains), status: :ok
   end
 
   def create
@@ -76,20 +56,6 @@ class Admin::TrainsController < Admin::BaseController
   end
 
   private
-
-  def pagination_requested?
-    params[:page].present? || params[:per_page].present?
-  end
-
-  def normalized_page
-    [params[:page].to_i, 1].max
-  end
-
-  def normalized_per_page
-    requested = params[:per_page].to_i
-    requested = 10 if requested <= 0
-    [requested, 50].min
-  end
 
   def train_params
     params.require(:train).permit(:train_number, :name, :train_type, :rating, :grade, :is_active)

@@ -8,9 +8,17 @@ import {
 
 const BOOKINGS_CACHE_TTL_MS = 60 * 1000;
 
+function normalizeMeta(meta, fallback = {}) {
+  return {
+    page: Number(meta?.current_page || fallback.page || 1),
+    perPage: Number(meta?.per_page || fallback.perPage || 10),
+    totalCount: Number(meta?.total_count || fallback.totalCount || 0),
+    totalPages: Number(meta?.total_pages || fallback.totalPages || 1),
+  };
+}
+
 function shouldFetchBookings(state, payload = {}) {
   const bookingState = state?.booking;
-  const isPaginatedRequest = Boolean(payload.page || payload.perPage);
   const requestedPage = Number(payload.page || 1);
   const requestedPerPage = Number(payload.perPage || 10);
 
@@ -30,14 +38,9 @@ function shouldFetchBookings(state, payload = {}) {
     return true;
   }
 
-  if (Boolean(bookingState.bookingsMeta?.paginated) !== isPaginatedRequest) {
-    return true;
-  }
-
   if (
-    isPaginatedRequest &&
-    (bookingState.bookingsMeta?.page !== requestedPage ||
-      bookingState.bookingsMeta?.perPage !== requestedPerPage)
+    bookingState.bookingsMeta?.page !== requestedPage ||
+    bookingState.bookingsMeta?.perPage !== requestedPerPage
   ) {
     return true;
   }
@@ -85,8 +88,8 @@ export const fetchUserBookingsThunk = createAsyncThunk(
     try {
       const data = await fetchUserBookings(payload);
       return {
-        bookings: data.bookings || [],
-        meta: data.meta || null,
+        bookings: data.data || [],
+        meta: data.meta || {},
         request: {
           page: Number(payload.page || 1),
           perPage: Number(payload.perPage || 10),
@@ -126,8 +129,8 @@ export const fetchUserCancellationsThunk = createAsyncThunk(
         withCancellations: true,
       });
       return {
-        bookings: data.bookings || [],
-        meta: data.meta || null,
+        bookings: data.data || [],
+        meta: data.meta || {},
         request: {
           page: Number(payload.page || 1),
           perPage: Number(payload.perPage || 10),
@@ -188,7 +191,6 @@ const initialState = {
     perPage: 10,
     totalCount: 0,
     totalPages: 1,
-    paginated: false,
   },
   cancellations: [],
   cancellationsStatus: "idle",
@@ -278,21 +280,12 @@ const bookingSlice = createSlice({
         state.bookingsStatus = "succeeded";
         state.userBookings = action.payload.bookings;
         state.bookingsFetchedAt = Date.now();
-        state.bookingsMeta = action.payload.meta
-          ? {
-              page: action.payload.meta.page,
-              perPage: action.payload.meta.per_page,
-              totalCount: action.payload.meta.total_count,
-              totalPages: action.payload.meta.total_pages,
-              paginated: true,
-            }
-          : {
-              page: action.payload.request.page,
-              perPage: action.payload.request.perPage,
-              totalCount: action.payload.bookings.length,
-              totalPages: 1,
-              paginated: false,
-            };
+        state.bookingsMeta = normalizeMeta(action.payload.meta, {
+          page: action.payload.request.page,
+          perPage: action.payload.request.perPage,
+          totalCount: action.payload.bookings.length,
+          totalPages: 1,
+        });
       })
       .addCase(fetchUserBookingsThunk.rejected, (state, action) => {
         state.bookingsStatus = "failed";
@@ -306,19 +299,12 @@ const bookingSlice = createSlice({
         state.cancellationsStatus = "succeeded";
         state.cancellations = action.payload.bookings;
         state.cancellationsFetchedAt = Date.now();
-        state.cancellationsMeta = action.payload.meta
-          ? {
-              page: action.payload.meta.page,
-              perPage: action.payload.meta.per_page,
-              totalCount: action.payload.meta.total_count,
-              totalPages: action.payload.meta.total_pages,
-            }
-          : {
-              page: action.payload.request.page,
-              perPage: action.payload.request.perPage,
-              totalCount: action.payload.bookings.length,
-              totalPages: 1,
-            };
+        state.cancellationsMeta = normalizeMeta(action.payload.meta, {
+          page: action.payload.request.page,
+          perPage: action.payload.request.perPage,
+          totalCount: action.payload.bookings.length,
+          totalPages: 1,
+        });
       })
       .addCase(fetchUserCancellationsThunk.rejected, (state, action) => {
         state.cancellationsStatus = "failed";

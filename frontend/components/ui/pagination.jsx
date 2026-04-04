@@ -15,6 +15,7 @@ export default function Pagination({
   page = 1,
   totalPages = 1,
   onPageChange,
+  disabled = false,
   className = "",
 }) {
   if (totalPages <= 1) {
@@ -40,7 +41,7 @@ export default function Pagination({
       <Button
         type="button"
         variant="secondary"
-        disabled={page <= 1}
+        disabled={disabled || page <= 1}
         onClick={() => onPageChange(page - 1)}
       >
         Previous
@@ -59,6 +60,7 @@ export default function Pagination({
             <button
               key={item}
               type="button"
+              disabled={disabled}
               onClick={() => onPageChange(item)}
               aria-current={item === page ? "page" : undefined}
               className={`min-w-10 rounded-full border px-3 py-2 text-sm font-semibold transition ${
@@ -76,7 +78,7 @@ export default function Pagination({
       <Button
         type="button"
         variant="secondary"
-        disabled={page >= totalPages}
+        disabled={disabled || page >= totalPages}
         onClick={() => onPageChange(page + 1)}
       >
         Next

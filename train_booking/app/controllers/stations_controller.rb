@@ -2,17 +2,19 @@ class StationsController < ApplicationController
   def index
     authorize Station, :search?
 
-    stations = Station.includes(:city).order(:name)
+    stations_scope = Station.includes(:city).order(:name)
+    stations = paginate_scope(stations_scope)
 
-    render json: {
-      stations: stations.as_json(
+    render json: paginated_response(
+      data: stations.as_json(
         only: %i[id name code],
         include: {
           city: {
             only: %i[id name state country]
           }
         }
-      )
-    }, status: :ok
+      ),
+      records: stations
+    ), status: :ok
   end
 end

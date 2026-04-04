@@ -1,8 +1,13 @@
 class Admin::StationsController < Admin::BaseController
   def index
     authorize Station
-    stations = Station.includes(:city).order(:name)
-    render json: { stations: stations.as_json(include: :city) }, status: :ok
+    stations_scope = Station.includes(:city).order(:name)
+    stations = paginate_scope(stations_scope)
+
+    render json: paginated_response(
+      data: stations.as_json(include: :city),
+      records: stations
+    ), status: :ok
   end
 
   def create

@@ -123,6 +123,7 @@ export default function AdminCoachesPage() {
   }
 
   function handlePageChange(nextPage) {
+    window.scrollTo({ top: 0, behavior: "smooth" });
     const params = new URLSearchParams(searchParams.toString());
     params.set("page", String(nextPage));
     params.set("per_page", String(currentPerPage));
@@ -130,6 +131,7 @@ export default function AdminCoachesPage() {
   }
 
   function handlePerPageChange(nextPerPage) {
+    window.scrollTo({ top: 0, behavior: "smooth" });
     const params = new URLSearchParams(searchParams.toString());
     params.set("page", "1");
     params.set("per_page", String(nextPerPage));
@@ -156,6 +158,9 @@ export default function AdminCoachesPage() {
         <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
           <PageSection className="p-6 sm:p-8">
             {coachesStatus === "loading" && coaches.length === 0 ? <LoadingState label="Loading coaches..." /> : null}
+            {coachesStatus === "loading" && coaches.length > 0 ? (
+              <div className="pb-4 text-sm font-medium text-[var(--color-muted)]">Loading page {currentPage}...</div>
+            ) : null}
             <AdminErrorBox message={Array.isArray(coachesError) ? coachesError.join(", ") : coachesError} />
 
             {coaches.length > 0 ? (
@@ -233,6 +238,8 @@ export default function AdminCoachesPage() {
                   totalPages={coachesMeta.totalPages}
                   onPageChange={handlePageChange}
                   onPerPageChange={handlePerPageChange}
+                  disabled={coachesStatus === "loading"}
+                  loading={coachesStatus === "loading"}
                 />
               </div>
             ) : null}

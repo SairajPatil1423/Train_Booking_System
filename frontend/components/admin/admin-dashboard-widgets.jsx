@@ -91,6 +91,7 @@ export function AdminRevenueCard({
   netRevenue,
   loading,
   error,
+  scopeLabel = "Current page snapshot",
 }) {
   const value = (amount) => `₹${Number(amount || 0).toLocaleString("en-IN")}`;
 
@@ -104,7 +105,7 @@ export function AdminRevenueCard({
             Revenue cockpit
           </p>
           <h2 className="mt-3 text-2xl font-semibold tracking-tight">
-            Live booking revenue
+            {scopeLabel}
           </h2>
         </div>
         <Badge variant="neutral" className="border-white/10 bg-white/10 text-white">
@@ -117,7 +118,7 @@ export function AdminRevenueCard({
           ? error
           : loading
             ? "Refreshing totals from booking and refund records..."
-            : "Gross collections, refunds, and retained revenue update from current booking data."}
+            : "Gross collections, refunds, and retained revenue update from the bookings loaded on this page."}
       </p>
 
       <div className="mt-6 grid gap-3 sm:grid-cols-3">

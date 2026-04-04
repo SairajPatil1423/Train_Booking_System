@@ -30,7 +30,7 @@ export const fetchStationsThunk = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const data = await fetchStations();
-      return data.stations || [];
+      return data.data || [];
     } catch (error) {
       return rejectWithValue(
         error.response?.data?.error || "Failed to fetch stations"

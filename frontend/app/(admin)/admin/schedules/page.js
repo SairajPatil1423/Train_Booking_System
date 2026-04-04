@@ -128,6 +128,7 @@ export default function AdminSchedulesPage() {
   }
 
   function handlePageChange(nextPage) {
+    window.scrollTo({ top: 0, behavior: "smooth" });
     const params = new URLSearchParams(searchParams.toString());
     params.set("page", String(nextPage));
     params.set("per_page", String(currentPerPage));
@@ -135,6 +136,7 @@ export default function AdminSchedulesPage() {
   }
 
   function handlePerPageChange(nextPerPage) {
+    window.scrollTo({ top: 0, behavior: "smooth" });
     const params = new URLSearchParams(searchParams.toString());
     params.set("page", "1");
     params.set("per_page", String(nextPerPage));
@@ -153,6 +155,9 @@ export default function AdminSchedulesPage() {
         <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
           <PageSection className="p-6 sm:p-8">
             {schedulesStatus === "loading" && schedules.length === 0 ? <LoadingState label="Loading schedules..." /> : null}
+            {schedulesStatus === "loading" && schedules.length > 0 ? (
+              <div className="pb-4 text-sm font-medium text-[var(--color-muted)]">Loading page {currentPage}...</div>
+            ) : null}
             <AdminErrorBox message={Array.isArray(schedulesError) ? schedulesError.join(", ") : schedulesError} />
 
             {schedules.length > 0 ? null : null}
@@ -227,6 +232,8 @@ export default function AdminSchedulesPage() {
                   totalPages={schedulesMeta.totalPages}
                   onPageChange={handlePageChange}
                   onPerPageChange={handlePerPageChange}
+                  disabled={schedulesStatus === "loading"}
+                  loading={schedulesStatus === "loading"}
                 />
               </div>
             ) : null}

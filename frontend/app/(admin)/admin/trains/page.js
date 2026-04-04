@@ -270,6 +270,7 @@ export default function AdminTrainsPage() {
   }
 
   function handlePageChange(nextPage) {
+    window.scrollTo({ top: 0, behavior: "smooth" });
     const params = new URLSearchParams(searchParams.toString());
     params.set("page", String(nextPage));
     params.set("per_page", String(currentPerPage));
@@ -277,6 +278,7 @@ export default function AdminTrainsPage() {
   }
 
   function handlePerPageChange(nextPerPage) {
+    window.scrollTo({ top: 0, behavior: "smooth" });
     const params = new URLSearchParams(searchParams.toString());
     params.set("page", "1");
     params.set("per_page", String(nextPerPage));
@@ -307,6 +309,9 @@ export default function AdminTrainsPage() {
         <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
           <PageSection className="p-6 sm:p-8">
             {trainsStatus === "loading" && trains.length === 0 ? <LoadingState label="Loading trains..." /> : null}
+            {trainsStatus === "loading" && trains.length > 0 ? (
+              <div className="pb-4 text-sm font-medium text-[var(--color-muted)]">Loading page {currentPage}...</div>
+            ) : null}
             <AdminErrorBox message={Array.isArray(trainsError) ? trainsError.join(", ") : trainsError} />
 
             {trains.length > 0 ? (
@@ -438,6 +443,8 @@ export default function AdminTrainsPage() {
                   totalPages={trainsMeta.totalPages}
                   onPageChange={handlePageChange}
                   onPerPageChange={handlePerPageChange}
+                  disabled={trainsStatus === "loading"}
+                  loading={trainsStatus === "loading"}
                 />
               </div>
             ) : null}

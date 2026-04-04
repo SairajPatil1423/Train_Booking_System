@@ -1,7 +1,12 @@
 import api from "@/services/api";
 
 export async function fetchStations() {
-  const response = await api.get("/stations");
+  const response = await api.get("/stations", {
+    params: {
+      page: 1,
+      per_page: 50,
+    },
+  });
   return response.data;
 }
 
@@ -11,6 +16,8 @@ export async function searchSchedules(payload) {
       src_station_id: payload.fromStationId,
       dst_station_id: payload.toStationId,
       travel_date: payload.journeyDate,
+      page: payload.page || 1,
+      per_page: payload.perPage || 10,
     },
   });
 

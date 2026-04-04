@@ -57,6 +57,7 @@ export default function CancellationsPage() {
   }, [cancellationsMeta.totalPages, status, currentPage, pathname, router, searchParams]);
 
   function handlePageChange(nextPage) {
+    window.scrollTo({ top: 0, behavior: "smooth" });
     const params = new URLSearchParams(searchParams.toString());
     params.set("page", String(nextPage));
     params.set("per_page", String(currentPerPage));
@@ -64,6 +65,7 @@ export default function CancellationsPage() {
   }
 
   function handlePerPageChange(nextPerPage) {
+    window.scrollTo({ top: 0, behavior: "smooth" });
     const params = new URLSearchParams(searchParams.toString());
     params.set("page", "1");
     params.set("per_page", String(nextPerPage));
@@ -105,7 +107,10 @@ export default function CancellationsPage() {
         />
 
         <PageSection className="p-8">
-          {status === "loading" ? <LoadingState label="Loading your cancellation history..." /> : null}
+          {status === "loading" && bookings.length === 0 ? <LoadingState label="Loading your cancellation history..." /> : null}
+          {status === "loading" && bookings.length > 0 ? (
+            <div className="mb-5 text-sm font-medium text-[var(--color-muted)]">Loading page {currentPage}...</div>
+          ) : null}
 
           {refundSummary ? (
             <div className="mb-5 rounded-[1.2rem] border border-[color-mix(in_srgb,var(--color-success)_26%,var(--color-line))] bg-[color-mix(in_srgb,var(--color-success-soft)_82%,var(--color-panel-strong))] px-4 py-3 text-sm text-[var(--color-success)]">
@@ -227,6 +232,8 @@ export default function CancellationsPage() {
                 totalPages={cancellationsMeta.totalPages}
                 onPageChange={handlePageChange}
                 onPerPageChange={handlePerPageChange}
+                disabled={status === "loading"}
+                loading={status === "loading"}
               />
             </div>
           ) : null}

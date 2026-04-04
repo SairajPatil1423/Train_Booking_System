@@ -35,6 +35,13 @@ const createResourceState = () => ({
   lastFetchedAt: null,
 });
 
+const createPaginationState = () => ({
+  page: 1,
+  perPage: 10,
+  totalCount: 0,
+  totalPages: 1,
+});
+
 const ADMIN_RESOURCE_CACHE_TTL_MS = 60 * 1000;
 
 const initialState = {
@@ -51,39 +58,19 @@ const initialState = {
   fareRules: [],
   schedules: [],
   fareRulesMeta: {
-    page: 1,
-    perPage: 10,
-    totalCount: 0,
-    totalPages: 1,
-    paginated: false,
+    ...createPaginationState(),
   },
   coachesMeta: {
-    page: 1,
-    perPage: 10,
-    totalCount: 0,
-    totalPages: 1,
-    paginated: false,
+    ...createPaginationState(),
   },
   schedulesMeta: {
-    page: 1,
-    perPage: 10,
-    totalCount: 0,
-    totalPages: 1,
-    paginated: false,
+    ...createPaginationState(),
   },
   bookingsMeta: {
-    page: 1,
-    perPage: 10,
-    totalCount: 0,
-    totalPages: 1,
-    paginated: false,
+    ...createPaginationState(),
   },
   trainsMeta: {
-    page: 1,
-    perPage: 10,
-    totalCount: 0,
-    totalPages: 1,
-    paginated: false,
+    ...createPaginationState(),
   },
   resources: {
     users: createResourceState(),
@@ -139,7 +126,6 @@ function shouldFetchAdminResource(state, resourceKey) {
 function shouldFetchAdminBookings(state, payload = {}) {
   const adminState = state?.admin;
   const resource = adminState?.resources?.bookings;
-  const isPaginatedRequest = Boolean(payload.page || payload.perPage);
   const requestedPage = Number(payload.page || 1);
   const requestedPerPage = Number(payload.perPage || 10);
 
@@ -159,14 +145,9 @@ function shouldFetchAdminBookings(state, payload = {}) {
     return true;
   }
 
-  if (Boolean(adminState?.bookingsMeta?.paginated) !== isPaginatedRequest) {
-    return true;
-  }
-
   if (
-    isPaginatedRequest &&
-    (adminState?.bookingsMeta?.page !== requestedPage ||
-      adminState?.bookingsMeta?.perPage !== requestedPerPage)
+    adminState?.bookingsMeta?.page !== requestedPage ||
+    adminState?.bookingsMeta?.perPage !== requestedPerPage
   ) {
     return true;
   }
@@ -177,7 +158,6 @@ function shouldFetchAdminBookings(state, payload = {}) {
 function shouldFetchAdminSchedules(state, payload = {}) {
   const adminState = state?.admin;
   const resource = adminState?.resources?.schedules;
-  const isPaginatedRequest = Boolean(payload.page || payload.perPage);
   const requestedPage = Number(payload.page || 1);
   const requestedPerPage = Number(payload.perPage || 10);
 
@@ -197,14 +177,9 @@ function shouldFetchAdminSchedules(state, payload = {}) {
     return true;
   }
 
-  if (Boolean(adminState?.schedulesMeta?.paginated) !== isPaginatedRequest) {
-    return true;
-  }
-
   if (
-    isPaginatedRequest &&
-    (adminState?.schedulesMeta?.page !== requestedPage ||
-      adminState?.schedulesMeta?.perPage !== requestedPerPage)
+    adminState?.schedulesMeta?.page !== requestedPage ||
+    adminState?.schedulesMeta?.perPage !== requestedPerPage
   ) {
     return true;
   }
@@ -215,7 +190,6 @@ function shouldFetchAdminSchedules(state, payload = {}) {
 function shouldFetchAdminCoaches(state, payload = {}) {
   const adminState = state?.admin;
   const resource = adminState?.resources?.coaches;
-  const isPaginatedRequest = Boolean(payload.page || payload.perPage);
   const requestedPage = Number(payload.page || 1);
   const requestedPerPage = Number(payload.perPage || 10);
 
@@ -235,14 +209,9 @@ function shouldFetchAdminCoaches(state, payload = {}) {
     return true;
   }
 
-  if (Boolean(adminState?.coachesMeta?.paginated) !== isPaginatedRequest) {
-    return true;
-  }
-
   if (
-    isPaginatedRequest &&
-    (adminState?.coachesMeta?.page !== requestedPage ||
-      adminState?.coachesMeta?.perPage !== requestedPerPage)
+    adminState?.coachesMeta?.page !== requestedPage ||
+    adminState?.coachesMeta?.perPage !== requestedPerPage
   ) {
     return true;
   }
@@ -253,7 +222,6 @@ function shouldFetchAdminCoaches(state, payload = {}) {
 function shouldFetchAdminFareRules(state, payload = {}) {
   const adminState = state?.admin;
   const resource = adminState?.resources?.fareRules;
-  const isPaginatedRequest = Boolean(payload.page || payload.perPage);
   const requestedPage = Number(payload.page || 1);
   const requestedPerPage = Number(payload.perPage || 10);
 
@@ -273,14 +241,9 @@ function shouldFetchAdminFareRules(state, payload = {}) {
     return true;
   }
 
-  if (Boolean(adminState?.fareRulesMeta?.paginated) !== isPaginatedRequest) {
-    return true;
-  }
-
   if (
-    isPaginatedRequest &&
-    (adminState?.fareRulesMeta?.page !== requestedPage ||
-      adminState?.fareRulesMeta?.perPage !== requestedPerPage)
+    adminState?.fareRulesMeta?.page !== requestedPage ||
+    adminState?.fareRulesMeta?.perPage !== requestedPerPage
   ) {
     return true;
   }
@@ -291,7 +254,6 @@ function shouldFetchAdminFareRules(state, payload = {}) {
 function shouldFetchAdminTrains(state, payload = {}) {
   const adminState = state?.admin;
   const resource = adminState?.resources?.trains;
-  const isPaginatedRequest = Boolean(payload.page || payload.perPage);
   const requestedPage = Number(payload.page || 1);
   const requestedPerPage = Number(payload.perPage || 10);
 
@@ -311,14 +273,9 @@ function shouldFetchAdminTrains(state, payload = {}) {
     return true;
   }
 
-  if (Boolean(adminState?.trainsMeta?.paginated) !== isPaginatedRequest) {
-    return true;
-  }
-
   if (
-    isPaginatedRequest &&
-    (adminState?.trainsMeta?.page !== requestedPage ||
-      adminState?.trainsMeta?.perPage !== requestedPerPage)
+    adminState?.trainsMeta?.page !== requestedPage ||
+    adminState?.trainsMeta?.perPage !== requestedPerPage
   ) {
     return true;
   }
@@ -387,14 +344,23 @@ function upsertById(collection, item) {
   collection[index] = item;
 }
 
+function normalizeMeta(meta, fallback = {}) {
+  return {
+    page: Number(meta?.current_page || fallback.page || 1),
+    perPage: Number(meta?.per_page || fallback.perPage || 10),
+    totalCount: Number(meta?.total_count || fallback.totalCount || 0),
+    totalPages: Number(meta?.total_pages || fallback.totalPages || 1),
+  };
+}
+
 export const fetchAdminTrainsThunk = createAsyncThunk(
   "admin/fetchTrains",
   async (payload = {}, { rejectWithValue }) => {
     try {
       const data = await fetchAdminTrains(payload);
       return {
-        trains: data.trains || [],
-        meta: data.meta || null,
+        trains: data.data || [],
+        meta: data.meta || {},
         request: {
           page: Number(payload.page || 1),
           perPage: Number(payload.perPage || 10),
@@ -413,8 +379,8 @@ export const fetchAdminTrainCatalogThunk = createAsyncThunk(
   "admin/fetchTrainCatalog",
   async (_, { rejectWithValue }) => {
     try {
-      const data = await fetchAdminTrains();
-      return data.trains || [];
+      const data = await fetchAdminTrains({ page: 1, perPage: 50 });
+      return data.data || [];
     } catch (error) {
       return rejectWithValue(normalizeAdminError(error, "Failed to fetch trains."));
     }
@@ -429,7 +395,7 @@ export const fetchAdminStationsThunk = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const data = await fetchAdminStations();
-      return data.stations;
+      return data.data || [];
     } catch (error) {
       return rejectWithValue(normalizeAdminError(error, "Failed to fetch stations."));
     }
@@ -444,7 +410,7 @@ export const fetchAdminCitiesThunk = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const data = await fetchAdminCities();
-      return data.cities;
+      return data.data || [];
     } catch (error) {
       return rejectWithValue(normalizeAdminError(error, "Failed to fetch cities."));
     }
@@ -519,7 +485,7 @@ export const fetchAdminTrainStopsThunk = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const data = await fetchAdminTrainStops();
-      return data.train_stops;
+      return data.data || [];
     } catch (error) {
       return rejectWithValue(normalizeAdminError(error, "Failed to fetch train stops."));
     }
@@ -571,8 +537,8 @@ export const fetchAdminBookingsThunk = createAsyncThunk(
     try {
       const data = await fetchAdminBookings(payload);
       return {
-        bookings: data.bookings || [],
-        meta: data.meta || null,
+        bookings: data.data || [],
+        meta: data.meta || {},
         request: {
           page: Number(payload.page || 1),
           perPage: Number(payload.perPage || 10),
@@ -605,8 +571,8 @@ export const fetchAdminCoachesThunk = createAsyncThunk(
     try {
       const data = await fetchAdminCoaches(payload);
       return {
-        coaches: data.coaches || [],
-        meta: data.meta || null,
+        coaches: data.data || [],
+        meta: data.meta || {},
         request: {
           page: Number(payload.page || 1),
           perPage: Number(payload.perPage || 10),
@@ -663,8 +629,8 @@ export const fetchAdminFareRulesThunk = createAsyncThunk(
     try {
       const data = await fetchAdminFareRules(payload);
       return {
-        fareRules: data.fare_rules || [],
-        meta: data.meta || null,
+        fareRules: data.data || [],
+        meta: data.meta || {},
         request: {
           page: Number(payload.page || 1),
           perPage: Number(payload.perPage || 10),
@@ -721,8 +687,8 @@ export const fetchAdminSchedulesThunk = createAsyncThunk(
     try {
       const data = await fetchAdminSchedules(payload);
       return {
-        schedules: data.schedules || [],
-        meta: data.meta || null,
+        schedules: data.data || [],
+        meta: data.meta || {},
         request: {
           page: Number(payload.page || 1),
           perPage: Number(payload.perPage || 10),
@@ -792,22 +758,12 @@ const adminSlice = createSlice({
       .addCase(fetchAdminTrainsThunk.fulfilled, (state, action) => {
         setFulfilled(state, "trains");
         state.trains = action.payload.trains;
-        state.trainCatalog = action.payload.meta ? state.trainCatalog : action.payload.trains;
-        state.trainsMeta = action.payload.meta
-          ? {
-              page: action.payload.meta.page,
-              perPage: action.payload.meta.per_page,
-              totalCount: action.payload.meta.total_count,
-              totalPages: action.payload.meta.total_pages,
-              paginated: true,
-            }
-          : {
-              page: action.payload.request.page,
-              perPage: action.payload.request.perPage,
-              totalCount: action.payload.trains.length,
-              totalPages: 1,
-              paginated: false,
-            };
+        state.trainsMeta = normalizeMeta(action.payload.meta, {
+          page: action.payload.request.page,
+          perPage: action.payload.request.perPage,
+          totalCount: action.payload.trains.length,
+          totalPages: 1,
+        });
       })
       .addCase(fetchAdminTrainsThunk.rejected, (state, action) => {
         setRejected(state, "trains", action);
@@ -872,8 +828,9 @@ const adminSlice = createSlice({
       .addCase(createAdminTrainThunk.fulfilled, (state, action) => {
         setFulfilled(state, "trains");
         state.trainCatalog.unshift(action.payload);
-        if (!state.trainsMeta.paginated) {
+        if (state.trainsMeta.page === 1) {
           state.trains.unshift(action.payload);
+          state.trains = state.trains.slice(0, state.trainsMeta.perPage);
         }
       })
       .addCase(createAdminTrainThunk.rejected, (state, action) => {
@@ -953,21 +910,12 @@ const adminSlice = createSlice({
       .addCase(fetchAdminBookingsThunk.fulfilled, (state, action) => {
         setFulfilled(state, "bookings");
         state.bookings = action.payload.bookings;
-        state.bookingsMeta = action.payload.meta
-          ? {
-              page: action.payload.meta.page,
-              perPage: action.payload.meta.per_page,
-              totalCount: action.payload.meta.total_count,
-              totalPages: action.payload.meta.total_pages,
-              paginated: true,
-            }
-          : {
-              page: action.payload.request.page,
-              perPage: action.payload.request.perPage,
-              totalCount: action.payload.bookings.length,
-              totalPages: 1,
-              paginated: false,
-            };
+        state.bookingsMeta = normalizeMeta(action.payload.meta, {
+          page: action.payload.request.page,
+          perPage: action.payload.request.perPage,
+          totalCount: action.payload.bookings.length,
+          totalPages: 1,
+        });
       })
       .addCase(fetchAdminBookingsThunk.rejected, (state, action) => {
         setRejected(state, "bookings", action);
@@ -987,21 +935,12 @@ const adminSlice = createSlice({
       .addCase(fetchAdminCoachesThunk.fulfilled, (state, action) => {
         setFulfilled(state, "coaches");
         state.coaches = action.payload.coaches;
-        state.coachesMeta = action.payload.meta
-          ? {
-              page: action.payload.meta.page,
-              perPage: action.payload.meta.per_page,
-              totalCount: action.payload.meta.total_count,
-              totalPages: action.payload.meta.total_pages,
-              paginated: true,
-            }
-          : {
-              page: action.payload.request.page,
-              perPage: action.payload.request.perPage,
-              totalCount: action.payload.coaches.length,
-              totalPages: 1,
-              paginated: false,
-            };
+        state.coachesMeta = normalizeMeta(action.payload.meta, {
+          page: action.payload.request.page,
+          perPage: action.payload.request.perPage,
+          totalCount: action.payload.coaches.length,
+          totalPages: 1,
+        });
       })
       .addCase(fetchAdminCoachesThunk.rejected, (state, action) => {
         setRejected(state, "coaches", action);
@@ -1042,21 +981,12 @@ const adminSlice = createSlice({
       .addCase(fetchAdminFareRulesThunk.fulfilled, (state, action) => {
         setFulfilled(state, "fareRules");
         state.fareRules = action.payload.fareRules;
-        state.fareRulesMeta = action.payload.meta
-          ? {
-              page: action.payload.meta.page,
-              perPage: action.payload.meta.per_page,
-              totalCount: action.payload.meta.total_count,
-              totalPages: action.payload.meta.total_pages,
-              paginated: true,
-            }
-          : {
-              page: action.payload.request.page,
-              perPage: action.payload.request.perPage,
-              totalCount: action.payload.fareRules.length,
-              totalPages: 1,
-              paginated: false,
-            };
+        state.fareRulesMeta = normalizeMeta(action.payload.meta, {
+          page: action.payload.request.page,
+          perPage: action.payload.request.perPage,
+          totalCount: action.payload.fareRules.length,
+          totalPages: 1,
+        });
       })
       .addCase(fetchAdminFareRulesThunk.rejected, (state, action) => {
         setRejected(state, "fareRules", action);
@@ -1097,21 +1027,12 @@ const adminSlice = createSlice({
       .addCase(fetchAdminSchedulesThunk.fulfilled, (state, action) => {
         setFulfilled(state, "schedules");
         state.schedules = action.payload.schedules;
-        state.schedulesMeta = action.payload.meta
-          ? {
-              page: action.payload.meta.page,
-              perPage: action.payload.meta.per_page,
-              totalCount: action.payload.meta.total_count,
-              totalPages: action.payload.meta.total_pages,
-              paginated: true,
-            }
-          : {
-              page: action.payload.request.page,
-              perPage: action.payload.request.perPage,
-              totalCount: action.payload.schedules.length,
-              totalPages: 1,
-              paginated: false,
-            };
+        state.schedulesMeta = normalizeMeta(action.payload.meta, {
+          page: action.payload.request.page,
+          perPage: action.payload.request.perPage,
+          totalCount: action.payload.schedules.length,
+          totalPages: 1,
+        });
       })
       .addCase(fetchAdminSchedulesThunk.rejected, (state, action) => {
         setRejected(state, "schedules", action);

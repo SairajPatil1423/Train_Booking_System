@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useDispatch, useSelector } from "react-redux";
 import EmptyState from "@/components/empty-state";
 import PageSection from "@/components/layout/page-section";
@@ -12,6 +12,7 @@ import PageShell from "@/components/page-shell";
 import Badge from "@/components/ui/badge";
 import Button from "@/components/ui/button";
 import Card from "@/components/ui/card";
+import PaginationToolbar from "@/components/ui/pagination-toolbar";
 import Skeleton from "@/components/ui/skeleton";
 import {
   setSearchError,
@@ -21,15 +22,21 @@ import { buildScheduleViewModel } from "@/utils/view-models";
 
 function SearchResultsPageContent() {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const dispatch = useDispatch();
-  const { results, status, error } = useSelector((state) => state.trainsSearch);
+  const { results, meta, status, error } = useSelector((state) => state.trainsSearch);
 
   const fromStationId = searchParams.get("src_station_id") || "";
   const toStationId = searchParams.get("dst_station_id") || "";
   const journeyDate = searchParams.get("travel_date") || "";
   const fromLabel = searchParams.get("from_label") || "Source";
   const toLabel = searchParams.get("to_label") || "Destination";
+  const requestedPage = Number(searchParams.get("page") || 1);
+  const requestedPerPage = Number(searchParams.get("per_page") || 10);
+  const currentPage = Number.isFinite(requestedPage) && requestedPage > 0 ? requestedPage : 1;
+  const currentPerPage =
+    Number.isFinite(requestedPerPage) && requestedPerPage > 0 ? requestedPerPage : 10;
   const [sortBy, setSortBy] = useState("departure");
 
   useEffect(() => {
@@ -43,9 +50,19 @@ function SearchResultsPageContent() {
         fromStationId,
         toStationId,
         journeyDate,
+        page: currentPage,
+        perPage: currentPerPage,
       }),
     );
-  }, [dispatch, fromStationId, journeyDate, toStationId]);
+  }, [currentPage, currentPerPage, dispatch, fromStationId, journeyDate, toStationId]);
+
+  useEffect(() => {
+    if (status === "succeeded" && meta.totalPages > 0 && currentPage > meta.totalPages) {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("page", String(meta.totalPages));
+      router.replace(`${pathname}?${params.toString()}`);
+    }
+  }, [currentPage, meta.totalPages, pathname, router, searchParams, status]);
 
   const scheduleCards = useMemo(() => {
     const mapped = results.map((schedule) =>
@@ -64,6 +81,22 @@ function SearchResultsPageContent() {
       return left.departureLabel.localeCompare(right.departureLabel);
     });
   }, [fromLabel, results, sortBy, toLabel]);
+
+  function handlePageChange(nextPage) {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("page", String(nextPage));
+    params.set("per_page", String(currentPerPage));
+    router.push(`${pathname}?${params.toString()}`);
+  }
+
+  function handlePerPageChange(nextPerPage) {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("page", "1");
+    params.set("per_page", String(nextPerPage));
+    router.push(`${pathname}?${params.toString()}`);
+  }
 
   return (
     <PageShell className="max-w-6xl px-6 py-8 sm:px-10 lg:px-12">
@@ -89,7 +122,7 @@ function SearchResultsPageContent() {
             </h2>
           </div>
           <div className="rounded-full bg-[var(--color-surface-soft)] px-4 py-2.5 text-sm font-medium text-[var(--color-muted)] ring-1 ring-[var(--color-line)]">
-            {status === "loading" ? "Loading" : `${scheduleCards.length} trains`}
+            {status === "loading" ? "Loading" : `${meta.totalCount || scheduleCards.length} trains`}
           </div>
         </div>
 
@@ -109,11 +142,14 @@ function SearchResultsPageContent() {
         </div>
 
         <div className="mt-6 space-y-4">
-          {status === "loading" ? (
+          {status === "loading" && scheduleCards.length === 0 ? (
             <>
               <Skeleton className="h-72 rounded-[1.8rem]" />
               <Skeleton className="h-72 rounded-[1.8rem]" />
             </>
+          ) : null}
+          {status === "loading" && scheduleCards.length > 0 ? (
+            <div className="text-sm font-medium text-[var(--color-muted)]">Loading page {currentPage}...</div>
           ) : null}
 
           {error ? (
@@ -237,6 +273,19 @@ function SearchResultsPageContent() {
               </div>
             </Card>
           ))}
+
+          {scheduleCards.length > 0 ? (
+            <PaginationToolbar
+              page={meta.page}
+              perPage={meta.perPage}
+              totalCount={meta.totalCount || scheduleCards.length}
+              totalPages={meta.totalPages}
+              onPageChange={handlePageChange}
+              onPerPageChange={handlePerPageChange}
+              disabled={status === "loading"}
+              loading={status === "loading"}
+            />
+          ) : null}
         </div>
       </Card>
     </PageShell>

@@ -4,31 +4,12 @@ class Admin::CoachesController < Admin::BaseController
   def index
     authorize Coach
     coaches_scope = Coach.includes(:train, :seats).order(:train_id, :coach_number)
+    coaches = paginate_scope(coaches_scope)
 
-    if pagination_requested?
-      total_count = coaches_scope.count
-      page = normalized_page
-      per_page = normalized_per_page
-      total_pages = [(total_count.to_f / per_page).ceil, 1].max
-      page = [page, total_pages].min
-      offset = (page - 1) * per_page
-      coaches = coaches_scope.offset(offset).limit(per_page)
-
-      render json: {
-        coaches: coaches.map { |coach| serialize_coach(coach) },
-        meta: {
-          page: page,
-          per_page: per_page,
-          total_count: total_count,
-          total_pages: total_pages
-        }
-      }, status: :ok
-      return
-    end
-
-    render json: {
-      coaches: coaches_scope.map { |coach| serialize_coach(coach) }
-    }, status: :ok
+    render json: paginated_response(
+      data: coaches.map { |coach| serialize_coach(coach) },
+      records: coaches
+    ), status: :ok
   end
 
   def create
@@ -75,20 +56,6 @@ class Admin::CoachesController < Admin::BaseController
   end
 
   private
-
-  def pagination_requested?
-    params[:page].present? || params[:per_page].present?
-  end
-
-  def normalized_page
-    [params[:page].to_i, 1].max
-  end
-
-  def normalized_per_page
-    requested = params[:per_page].to_i
-    requested = 10 if requested <= 0
-    [requested, 50].min
-  end
 
   def set_coach
     @coach = Coach.find(params[:id])
