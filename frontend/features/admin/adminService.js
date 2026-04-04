@@ -1,17 +1,31 @@
 import api from "@/services/api";
 
-export async function fetchAdminTrains() {
-  const response = await api.get("/admin/trains");
+function buildPaginationQuery(params = {}, defaultPerPage = 10) {
+  const requestedPage = Number(params.page || 1);
+  const requestedPerPage = Number(params.perPage || defaultPerPage);
+
+  return {
+    page: Number.isFinite(requestedPage) && requestedPage > 0 ? requestedPage : 1,
+    per_page: Number.isFinite(requestedPerPage) && requestedPerPage > 0 ? requestedPerPage : defaultPerPage,
+  };
+}
+
+export async function fetchAdminTrains(params = {}) {
+  const response = await api.get("/admin/trains", { params: buildPaginationQuery(params) });
   return response.data;
 }
 
 export async function fetchAdminStations() {
-  const response = await api.get("/admin/stations");
+  const response = await api.get("/admin/stations", {
+    params: buildPaginationQuery({ page: 1, perPage: 50 }),
+  });
   return response.data;
 }
 
 export async function fetchAdminCities() {
-  const response = await api.get("/admin/cities");
+  const response = await api.get("/admin/cities", {
+    params: buildPaginationQuery({ page: 1, perPage: 50 }),
+  });
   return response.data;
 }
 
@@ -41,7 +55,9 @@ export async function deleteAdminTrain(id) {
 }
 
 export async function fetchAdminTrainStops() {
-  const response = await api.get("/admin/train_stops");
+  const response = await api.get("/admin/train_stops", {
+    params: buildPaginationQuery({ page: 1, perPage: 50 }),
+  });
   return response.data;
 }
 
@@ -60,18 +76,18 @@ export async function deleteAdminTrainStop(id) {
   return response.data;
 }
 
-export async function fetchAdminBookings() {
-  const response = await api.get("/admin/bookings");
+export async function fetchAdminBookings(params = {}) {
+  const response = await api.get("/admin/bookings", { params: buildPaginationQuery(params) });
   return response.data;
 }
 
-export async function updateAdminBookingStatus(id, status) {
-  const response = await api.patch(`/admin/bookings/${id}`, { status });
+export async function createAdminUser(payload) {
+  const response = await api.post("/admin/users", { user: payload });
   return response.data;
 }
 
-export async function fetchAdminCoaches() {
-  const response = await api.get("/admin/coaches");
+export async function fetchAdminCoaches(params = {}) {
+  const response = await api.get("/admin/coaches", { params: buildPaginationQuery(params) });
   return response.data;
 }
 
@@ -90,8 +106,8 @@ export async function deleteAdminCoach(id) {
   return response.data;
 }
 
-export async function fetchAdminFareRules() {
-  const response = await api.get("/admin/fare_rules");
+export async function fetchAdminFareRules(params = {}) {
+  const response = await api.get("/admin/fare_rules", { params: buildPaginationQuery(params) });
   return response.data;
 }
 
@@ -110,8 +126,8 @@ export async function deleteAdminFareRule(id) {
   return response.data;
 }
 
-export async function fetchAdminSchedules() {
-  const response = await api.get("/admin/schedules");
+export async function fetchAdminSchedules(params = {}) {
+  const response = await api.get("/admin/schedules", { params: buildPaginationQuery(params) });
   return response.data;
 }
 

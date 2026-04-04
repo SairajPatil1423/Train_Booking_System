@@ -2,10 +2,9 @@
 
 import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useDispatch, useSelector } from "react-redux";
 import EmptyState from "@/components/empty-state";
-import PageHero from "@/components/layout/page-hero";
 import PageSection from "@/components/layout/page-section";
 import { formatCoachType } from "@/utils/coach-formatters";
 import LoadingState from "@/components/loading-state";
@@ -13,6 +12,8 @@ import PageShell from "@/components/page-shell";
 import Badge from "@/components/ui/badge";
 import Button from "@/components/ui/button";
 import Card from "@/components/ui/card";
+import PaginationToolbar from "@/components/ui/pagination-toolbar";
+import Skeleton from "@/components/ui/skeleton";
 import {
   setSearchError,
   searchSchedulesThunk,
@@ -21,15 +22,21 @@ import { buildScheduleViewModel } from "@/utils/view-models";
 
 function SearchResultsPageContent() {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const dispatch = useDispatch();
-  const { results, status, error } = useSelector((state) => state.trainsSearch);
+  const { results, meta, status, error } = useSelector((state) => state.trainsSearch);
 
   const fromStationId = searchParams.get("src_station_id") || "";
   const toStationId = searchParams.get("dst_station_id") || "";
   const journeyDate = searchParams.get("travel_date") || "";
   const fromLabel = searchParams.get("from_label") || "Source";
   const toLabel = searchParams.get("to_label") || "Destination";
+  const requestedPage = Number(searchParams.get("page") || 1);
+  const requestedPerPage = Number(searchParams.get("per_page") || 10);
+  const currentPage = Number.isFinite(requestedPage) && requestedPage > 0 ? requestedPage : 1;
+  const currentPerPage =
+    Number.isFinite(requestedPerPage) && requestedPerPage > 0 ? requestedPerPage : 10;
   const [sortBy, setSortBy] = useState("departure");
 
   useEffect(() => {
@@ -43,9 +50,19 @@ function SearchResultsPageContent() {
         fromStationId,
         toStationId,
         journeyDate,
+        page: currentPage,
+        perPage: currentPerPage,
       }),
     );
-  }, [dispatch, fromStationId, journeyDate, toStationId]);
+  }, [currentPage, currentPerPage, dispatch, fromStationId, journeyDate, toStationId]);
+
+  useEffect(() => {
+    if (status === "succeeded" && meta.totalPages > 0 && currentPage > meta.totalPages) {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("page", String(meta.totalPages));
+      router.replace(`${pathname}?${params.toString()}`);
+    }
+  }, [currentPage, meta.totalPages, pathname, router, searchParams, status]);
 
   const scheduleCards = useMemo(() => {
     const mapped = results.map((schedule) =>
@@ -65,44 +82,58 @@ function SearchResultsPageContent() {
     });
   }, [fromLabel, results, sortBy, toLabel]);
 
-  return (
-    <PageShell className="max-w-6xl px-6 py-10 sm:px-10 lg:px-12">
-      <div className="pointer-events-none absolute inset-x-6 top-0 h-72 rounded-[3rem] bg-[radial-gradient(circle_at_top_left,_rgba(27,116,180,0.1),_transparent_34%),radial-gradient(circle_at_top_right,_rgba(19,95,151,0.1),_transparent_34%)] sm:inset-x-10 lg:inset-x-12" />
-      <PageHero
-        eyebrow="Matching schedules"
-        title={`${fromLabel} to ${toLabel}`}
-        description={`Journey date: ${journeyDate}`}
-        actions={
-          <Button as={Link} href="/search" variant="secondary">
-            Modify search
-          </Button>
-        }
-        meta={["Live availability", "Compare timings", "Continue to booking"]}
-      />
+  function handlePageChange(nextPage) {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("page", String(nextPage));
+    params.set("per_page", String(currentPerPage));
+    router.push(`${pathname}?${params.toString()}`);
+  }
 
-      <PageSection>
-        <div className="flex items-center justify-between gap-4 border-b border-[var(--color-line)] pb-4">
+  function handlePerPageChange(nextPerPage) {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("page", "1");
+    params.set("per_page", String(nextPerPage));
+    router.push(`${pathname}?${params.toString()}`);
+  }
+
+  return (
+    <PageShell className="max-w-6xl px-6 py-8 sm:px-10 lg:px-12">
+      <Card tone="panel" className="rounded-[2.2rem] p-6 sm:p-8 lg:p-10">
+        <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-[var(--color-accent)]">
-              Available trains
+            <h1 className="text-4xl font-semibold leading-[1.02] tracking-tight text-[var(--color-ink)] sm:text-[3rem]">
+              {fromLabel} to {toLabel}
+            </h1>
+            <p className="mt-3 text-sm text-[var(--color-muted)]">
+              {journeyDate}
             </p>
-            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-[var(--color-ink)]">
-              Search results
+          </div>
+          <Button as={Link} href="/search" variant="secondary">
+            Change
+          </Button>
+        </div>
+
+        <div className="mt-8 flex flex-wrap items-center justify-between gap-4 border-y border-[var(--color-line)] py-5">
+          <div>
+            <h2 className="text-2xl font-semibold tracking-tight text-[var(--color-ink)]">
+              Results
             </h2>
           </div>
-          <div className="rounded-full bg-[var(--color-surface-soft)] px-4 py-2 text-sm font-medium text-[var(--color-muted)] ring-1 ring-black/5">
-            {scheduleCards.length} found
+          <div className="rounded-full bg-[var(--color-surface-soft)] px-4 py-2.5 text-sm font-medium text-[var(--color-muted)] ring-1 ring-[var(--color-line)]">
+            {status === "loading" ? "Loading" : `${meta.totalCount || scheduleCards.length} trains`}
           </div>
         </div>
 
         <div className="mt-5 flex flex-wrap items-center gap-3">
-          <div className="rounded-full bg-[var(--color-surface-soft)] px-4 py-2 text-sm text-[var(--color-muted-strong)] ring-1 ring-[var(--color-line)]">
-            Sort by
+          <div className="rounded-full bg-[var(--color-surface-soft)] px-4 py-2.5 text-sm text-[var(--color-muted-strong)] ring-1 ring-[var(--color-line)]">
+            Sort
           </div>
           <select
             value={sortBy}
             onChange={(event) => setSortBy(event.target.value)}
-            className="field-input max-w-[14rem]"
+            className="field-input min-h-[3.25rem] max-w-[15rem]"
           >
             <option value="departure">Departure time</option>
             <option value="availability">Availability</option>
@@ -111,19 +142,27 @@ function SearchResultsPageContent() {
         </div>
 
         <div className="mt-6 space-y-4">
-          {status === "loading" ? <LoadingState label="Searching matching schedules..." /> : null}
+          {status === "loading" && scheduleCards.length === 0 ? (
+            <>
+              <Skeleton className="h-72 rounded-[1.8rem]" />
+              <Skeleton className="h-72 rounded-[1.8rem]" />
+            </>
+          ) : null}
+          {status === "loading" && scheduleCards.length > 0 ? (
+            <div className="text-sm font-medium text-[var(--color-muted)]">Loading page {currentPage}...</div>
+          ) : null}
 
           {error ? (
-            <div className="rounded-[1.2rem] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <div className="rounded-[1.2rem] border border-[color-mix(in_srgb,var(--color-danger)_26%,var(--color-line))] bg-[color-mix(in_srgb,var(--color-danger-soft)_84%,var(--color-panel-strong))] px-4 py-3 text-sm text-[var(--color-danger)]">
               {error}
             </div>
           ) : null}
 
           {status !== "loading" && !error && scheduleCards.length === 0 ? (
             <EmptyState
-              title="No matching trains found"
-              description="Try a different station pair or choose another date."
-              ctaLabel="Start a new search"
+              title="No trains found"
+              description="Try another date or route."
+              ctaLabel="Search Again"
               ctaHref="/search"
             />
           ) : null}
@@ -132,25 +171,25 @@ function SearchResultsPageContent() {
             <Card
               as="article"
               key={schedule.id}
-              className="rounded-[1.8rem] p-5"
+              className="rounded-[1.8rem] p-5 ui-card-hover"
             >
               <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
                 <div className="space-y-4">
                   <div className="flex flex-wrap items-center gap-3">
                     <Badge variant="primary">{schedule.trainNumber}</Badge>
-                    <span className="rounded-full bg-[#edf5fd] px-4 py-2 text-sm font-medium text-[var(--color-panel-dark)]">
+                    <span className="rounded-full bg-[var(--color-accent-soft)] px-4 py-2 text-sm font-medium text-[var(--color-panel-dark)]">
                       {schedule.trainType}
                     </span>
                     <Badge variant="neutral" className="px-4 py-2 text-xs">
                       {schedule.statusLabel}
                     </Badge>
                     {schedule.rating ? (
-                      <span className="rounded-full bg-amber-50 px-4 py-2 text-sm font-bold text-amber-700 ring-1 ring-amber-200">
+                      <span className="rounded-full border border-[color-mix(in_srgb,var(--color-warning)_24%,var(--color-line))] bg-[color-mix(in_srgb,var(--color-warning-soft)_82%,var(--color-panel-strong))] px-4 py-2 text-sm font-bold text-[var(--color-warning)]">
                         ★ {schedule.rating}
                       </span>
                     ) : null}
                     {schedule.grade ? (
-                      <span className="rounded-full bg-sky-50 px-4 py-2 text-sm font-bold uppercase text-sky-700 ring-1 ring-sky-200">
+                      <span className="rounded-full border border-[color-mix(in_srgb,var(--color-accent)_24%,var(--color-line))] bg-[color-mix(in_srgb,var(--color-accent-soft)_82%,var(--color-panel-strong))] px-4 py-2 text-sm font-bold uppercase text-[var(--color-panel-dark)]">
                         {schedule.grade}
                       </span>
                     ) : null}
@@ -192,10 +231,10 @@ function SearchResultsPageContent() {
                     </div>
                     <div className="rounded-[1.2rem] bg-[var(--color-surface-soft)] px-4 py-3">
                       <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--color-muted)]">
-                        Available seats
+                        Seats
                       </p>
                       <p className="mt-2 text-sm font-semibold text-[var(--color-panel-dark)]">
-                        {schedule.availableSeats} seats
+                        {schedule.availableSeats}
                       </p>
                     </div>
                   </div>
@@ -205,7 +244,7 @@ function SearchResultsPageContent() {
                       {schedule.coachAvailability.map((coach) => (
                         <div
                           key={coach.coachType}
-                          className="rounded-full bg-[#eef6ff] px-4 py-2 text-sm font-medium text-[var(--color-panel-dark)]"
+                          className="rounded-full bg-[var(--color-accent-soft)] px-4 py-2 text-sm font-medium text-[var(--color-panel-dark)]"
                         >
                           {formatCoachType(coach.coachType)}: {coach.availableSeats}/{coach.totalSeats}
                         </div>
@@ -214,9 +253,9 @@ function SearchResultsPageContent() {
                   ) : null}
                 </div>
 
-                <div className="flex min-w-[13rem] flex-col items-start gap-3 lg:items-end">
-                  <div className="rounded-[1.25rem] border border-[var(--color-line)] bg-white px-4 py-3 text-sm text-[var(--color-muted-strong)]">
-                    Schedule #{schedule.id}
+                <div className="flex min-w-[15rem] flex-col items-start gap-3 lg:items-end">
+                  <div className="rounded-[1.35rem] border border-[var(--color-line)] bg-[var(--color-surface-soft)] px-4 py-3.5 text-sm text-[var(--color-muted-strong)]">
+                    {schedule.availableSeats > 0 ? `${schedule.availableSeats} available` : "Waitlist"}
                   </div>
                   <Button
                     type="button"
@@ -225,16 +264,30 @@ function SearchResultsPageContent() {
                         `/booking?schedule_id=${schedule.id}&src_station_id=${fromStationId}&dst_station_id=${toStationId}&travel_date=${encodeURIComponent(journeyDate)}&from_label=${encodeURIComponent(fromLabel)}&to_label=${encodeURIComponent(toLabel)}`,
                       )
                     }
-                    className="w-full lg:w-auto"
+                    size="xl"
+                    className="min-h-[3.75rem] w-full lg:min-w-[14rem]"
                   >
-                    Continue booking
+                    Select
                   </Button>
                 </div>
               </div>
             </Card>
           ))}
+
+          {scheduleCards.length > 0 ? (
+            <PaginationToolbar
+              page={meta.page}
+              perPage={meta.perPage}
+              totalCount={meta.totalCount || scheduleCards.length}
+              totalPages={meta.totalPages}
+              onPageChange={handlePageChange}
+              onPerPageChange={handlePerPageChange}
+              disabled={status === "loading"}
+              loading={status === "loading"}
+            />
+          ) : null}
         </div>
-      </PageSection>
+      </Card>
     </PageShell>
   );
 }

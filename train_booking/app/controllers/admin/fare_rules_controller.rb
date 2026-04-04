@@ -1,8 +1,13 @@
 class Admin::FareRulesController < Admin::BaseController
   def index
     authorize FareRule
-    fare_rules = FareRule.includes(:train).order(valid_from: :desc)
-    render json: { fare_rules: fare_rules.as_json(include: :train) }, status: :ok
+    fare_rules_scope = FareRule.includes(:train).order(valid_from: :desc)
+    fare_rules = paginate_scope(fare_rules_scope)
+
+    render json: paginated_response(
+      data: fare_rules.as_json(include: :train),
+      records: fare_rules
+    ), status: :ok
   end
 
   def create

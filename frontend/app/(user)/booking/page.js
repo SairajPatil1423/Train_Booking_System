@@ -3,7 +3,10 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useFieldArray, useForm, useWatch } from "react-hook-form";
 import { useDispatch, useSelector } from "react-redux";
+import { z } from "zod";
 import BookingSummary from "@/components/booking-summary";
 import EmptyState from "@/components/empty-state";
 import PageHero from "@/components/layout/page-hero";
@@ -24,6 +27,7 @@ import {
 } from "@/utils/formatters";
 import {
   clearSeatSelection,
+  removeSeatSelection,
   setSelectedSchedule,
   toggleSeatSelection,
   checkoutThunk,
@@ -45,6 +49,50 @@ const passengerTemplate = () => ({
   gender: "male",
   id_type: "Aadhaar",
   id_number: "",
+});
+
+const passengerNameSchema = z
+  .string()
+  .min(1, "Required")
+  .regex(/^[A-Za-z]+$/, "Only alphabets allowed");
+
+const passengerSchema = z
+  .object({
+    first_name: passengerNameSchema,
+    last_name: passengerNameSchema,
+    age: z
+      .string()
+      .min(1, "Required")
+      .refine((value) => /^\d+$/.test(value), "Only numbers allowed")
+      .refine((value) => Number(value) > 0, "Age must be greater than 0"),
+    gender: z.string().min(1, "Required"),
+    id_type: z.string().min(1, "Required"),
+    id_number: z.string().min(1, "Required"),
+  })
+  .superRefine((value, context) => {
+    if (value.id_type === "Aadhaar" && !/^\d{12}$/.test(value.id_number)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["id_number"],
+        message: "Aadhaar must be 12 digits",
+      });
+    }
+  });
+
+const passengersFormSchema = z.object({
+  passengers: z.array(passengerSchema),
+});
+
+const confirmationSchema = z.object({
+  contactEmail: z.email("Enter a valid email"),
+  contactPhone: z
+    .string()
+    .min(10, "Phone must be at least 10 digits")
+    .max(15, "Phone must be at most 15 digits")
+    .regex(/^\d+$/, "Only numbers allowed"),
+  agreeToTerms: z.literal(true, {
+    errorMap: () => ({ message: "Confirm the details to continue" }),
+  }),
 });
 
 function BookingPageContent() {
@@ -72,13 +120,51 @@ function BookingPageContent() {
   const [currentStep, setCurrentStep] = useState(0);
   const [selectedCoachType, setSelectedCoachType] = useState("");
   const [passengerCount, setPassengerCount] = useState(1);
-  const [passengersState, setPassengersState] = useState([passengerTemplate()]);
   const [paymentMethod, setPaymentMethod] = useState("upi");
-  const [contactEmail, setContactEmail] = useState("");
-  const [contactPhone, setContactPhone] = useState("");
-  const [agreeToTerms, setAgreeToTerms] = useState(false);
   const [isBooked, setIsBooked] = useState(false);
+  const [seatSelectionNote, setSeatSelectionNote] = useState("");
+  const [passengerCountNote, setPassengerCountNote] = useState("");
   const today = new Date().toISOString().slice(0, 10);
+
+  const {
+    control,
+    formState: { errors: passengerErrors, isValid: isPassengerFormValid },
+    getValues,
+    register,
+    setValue,
+    trigger,
+  } = useForm({
+    resolver: zodResolver(passengersFormSchema),
+    mode: "onChange",
+    reValidateMode: "onChange",
+    defaultValues: {
+      passengers: [passengerTemplate()],
+    },
+  });
+
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: "passengers",
+  });
+
+  const {
+    formState: {
+      errors: confirmationErrors,
+      isValid: isConfirmationValid,
+    },
+    register: registerConfirmation,
+    reset: resetConfirmation,
+    setValue: setConfirmationValue,
+  } = useForm({
+    resolver: zodResolver(confirmationSchema),
+    mode: "onChange",
+    reValidateMode: "onChange",
+    defaultValues: {
+      contactEmail: user?.email || "",
+      contactPhone: user?.phone || "",
+      agreeToTerms: false,
+    },
+  });
 
   useEffect(() => {
     if (!isAuthenticated || !scheduleId || !srcStationId || !dstStationId) {
@@ -121,6 +207,30 @@ function BookingPageContent() {
       cancelled = true;
     };
   }, [dispatch, dstStationId, isAuthenticated, scheduleId, srcStationId]);
+
+  useEffect(() => {
+    if (!seatSelectionNote) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setSeatSelectionNote("");
+    }, 1800);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [seatSelectionNote]);
+
+  useEffect(() => {
+    if (!passengerCountNote) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setPassengerCountNote("");
+    }, 2200);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [passengerCountNote]);
 
   const routeStops = useMemo(() => {
     const stops = details?.stops || [];
@@ -169,8 +279,14 @@ function BookingPageContent() {
   const allocatedSeatLabels = (confirmation?.booking?.ticket_allocations || [])
     .map((allocation) => allocation.seat?.seat_number)
     .filter(Boolean);
-  const resolvedContactEmail = contactEmail || user?.email || "";
-  const resolvedContactPhone = contactPhone || user?.phone || "";
+  const resolvedContactEmail = useWatch({
+    control,
+    name: "contactEmail",
+  }) || "";
+  const resolvedContactPhone = useWatch({
+    control,
+    name: "contactPhone",
+  }) || "";
   const fromLabel = routeStops[0]?.station?.name || initialFromLabel;
   const toLabel = routeStops[routeStops.length - 1]?.station?.name || initialToLabel;
   const selectedTravelDate = details?.schedule?.travel_date || initialTravelDate || today;
@@ -180,38 +296,77 @@ function BookingPageContent() {
 
   function updatePassengerCount(nextCount) {
     const normalized = Math.max(1, Math.min(6, Number(nextCount) || 1));
+    const previousSeatCount = selectedSeatIds.length;
     setPassengerCount(normalized);
-    setPassengersState((current) => {
-      let next;
-      if (current.length === normalized) {
-        next = current;
-      } else if (current.length > normalized) {
-        next = current.slice(0, normalized);
-      } else {
-        next = [...current, ...Array.from({ length: normalized - current.length }, passengerTemplate)];
-      }
-      return next;
-    });
-    dispatch(clearSeatSelection());
-  }
 
-  function updatePassenger(index, key, value) {
-    setPassengersState((current) =>
-      current.map((passenger, passengerIndex) =>
-        passengerIndex === index ? { ...passenger, [key]: value } : passenger,
-      ),
+    const currentCount = fields.length;
+    if (currentCount < normalized) {
+      Array.from({ length: normalized - currentCount }).forEach(() => append(passengerTemplate()));
+    } else if (currentCount > normalized) {
+      remove(Array.from({ length: currentCount - normalized }, (_, index) => normalized + index));
+    }
+
+    dispatch(clearSeatSelection());
+    setSeatSelectionNote("");
+    setPassengerCountNote(
+      previousSeatCount
+        ? "Passenger count changed. Seats cleared."
+        : `Passengers: ${normalized}`,
     );
   }
+
+  useEffect(() => {
+    resetConfirmation({
+      contactEmail: user?.email || "",
+      contactPhone: user?.phone || "",
+      agreeToTerms: false,
+    });
+  }, [resetConfirmation, user?.email, user?.phone]);
 
   function toggleSeat(seat) {
     const coach = (details?.coaches || []).find((item) => item.seats.some((candidate) => candidate.id === seat.id));
     if (!coach) return;
 
-    if (!selectedSeatIds.includes(seat.id) && selectedSeatIds.length >= passengerCount) {
+    const isSelected = selectedSeatIds.includes(seat.id);
+
+    if (isSelected) {
+      dispatch(toggleSeatSelection({ coachId: coach.id, seatId: seat.id }));
+      setSeatSelectionNote(`Removed ${seat.seat_number}`);
+      return;
+    }
+
+    if (passengerCount === 1) {
+      const previousSeatLabel = selectedSeats[0]?.seat_number;
+      dispatch(clearSeatSelection());
+      dispatch(toggleSeatSelection({ coachId: coach.id, seatId: seat.id }));
+      setSeatSelectionNote(
+        previousSeatLabel ? `Replaced ${previousSeatLabel} with ${seat.seat_number}` : `Selected ${seat.seat_number}`,
+      );
+      return;
+    }
+
+    if (selectedSeatIds.length >= passengerCount) {
+      const seatToReplaceId = selectedSeatIds[selectedSeatIds.length - 1];
+      const seatToReplace = selectedSeats.find((selectedSeat) => selectedSeat.id === seatToReplaceId);
+      const coachToReplace = (details?.coaches || []).find((item) =>
+        item.seats.some((candidate) => candidate.id === seatToReplaceId),
+      );
+
+      if (coachToReplace) {
+        dispatch(removeSeatSelection({ coachId: coachToReplace.id, seatId: seatToReplaceId }));
+      }
+
+      dispatch(toggleSeatSelection({ coachId: coach.id, seatId: seat.id }));
+      setSeatSelectionNote(
+        seatToReplace?.seat_number
+          ? `Replaced ${seatToReplace.seat_number} with ${seat.seat_number}`
+          : `Selected ${seat.seat_number}`,
+      );
       return;
     }
 
     dispatch(toggleSeatSelection({ coachId: coach.id, seatId: seat.id }));
+    setSeatSelectionNote(`Selected ${seat.seat_number}`);
   }
 
   function canContinue() {
@@ -220,15 +375,7 @@ function BookingPageContent() {
     }
 
     if (currentStep === 1) {
-      return passengersState.every(
-        (passenger) =>
-          passenger.first_name &&
-          passenger.last_name &&
-          passenger.age &&
-          passenger.gender &&
-          passenger.id_type &&
-          passenger.id_number,
-      );
+      return isPassengerFormValid;
     }
 
     if (currentStep === 2) {
@@ -238,6 +385,22 @@ function BookingPageContent() {
     return true;
   }
 
+  const stepActionHint = useMemo(() => {
+    if (currentStep === 0 && !selectedCoachType) {
+      return "Select class";
+    }
+
+    if (currentStep === 1 && !isPassengerFormValid) {
+      return "Complete passenger details";
+    }
+
+    if (currentStep === 2 && selectedSeatIds.length !== passengerCount) {
+      return `Select ${passengerCount} seat${passengerCount > 1 ? "s" : ""}`;
+    }
+
+    return "";
+  }, [currentStep, isPassengerFormValid, passengerCount, selectedCoachType, selectedSeatIds.length]);
+
   async function handleBookingSubmit() {
     const payload = {
       schedule_id: scheduleId,
@@ -246,7 +409,7 @@ function BookingPageContent() {
       coach_type: selectedCoachType,
       seat_ids: selectedSeatIds,
       ...(selectedSeatIds.length === 1 ? { seat_id: selectedSeatIds[0] } : {}),
-      passengers: passengersState,
+      passengers: getValues("passengers"),
       payment: {
         payment_method: paymentMethod,
         gateway_txn_id: `AUTO-${Date.now()}`,
@@ -275,11 +438,35 @@ function BookingPageContent() {
     }
   }
 
+  async function reloadBookingDetails() {
+    if (!scheduleId || !srcStationId || !dstStationId) {
+      return;
+    }
+
+    setStatus("loading");
+    setError("");
+
+    try {
+      const data = await fetchScheduleDetails(scheduleId, {
+        srcStationId,
+        dstStationId,
+      });
+
+      dispatch(setSelectedSchedule(data));
+      setStatus("succeeded");
+    } catch (requestError) {
+      setStatus("failed");
+      setError(
+        requestError?.response?.data?.error || "Unable to load booking details.",
+      );
+    }
+  }
+
   if (!hydrated) {
     return (
       <PageShell className="items-center px-6 py-12 sm:px-10">
         <div className="w-full">
-          <LoadingState label="Preparing booking flow..." />
+          <LoadingState label="Loading booking..." />
         </div>
       </PageShell>
     );
@@ -290,9 +477,8 @@ function BookingPageContent() {
       <PageShell className="items-center px-6 py-12 sm:px-10">
         <PageSection className="w-full">
           <SectionHeader
-            eyebrow="Protected area"
-            title="Sign in before continuing to booking."
-            description="Login to review route details, select seats, and confirm your journey."
+            eyebrow="Booking"
+            title="Sign In"
             actions={<Button as={Link} href="/login">Go to login</Button>}
           />
         </PageSection>
@@ -305,8 +491,7 @@ function BookingPageContent() {
       <PageShell>
         <div className="w-full">
           <EmptyState
-            title="Booking details are missing"
-            description="Please start from the train search results page and choose a schedule first."
+            title="Booking Not Available"
             ctaLabel="Search trains"
             ctaHref="/search"
           />
@@ -320,16 +505,15 @@ function BookingPageContent() {
       <div className="grid w-full gap-6 lg:grid-cols-[1.2fr_0.8fr]">
         <div className="space-y-6">
           <PageHero
-            eyebrow="Train booking"
-            title="Complete your journey details"
-            description="Review the route, add passenger details, choose seats, and continue to confirmation."
+            eyebrow="Booking"
+            title="Journey Details"
             actions={
               <Button as={Link} href={resultsHref} variant="secondary">
-                Back to results
+                Back
               </Button>
             }
             meta={[
-              `Route: ${fromLabel} to ${toLabel}`,
+              `${fromLabel} to ${toLabel}`,
               `Passengers: ${passengerCount}`,
               selectedCoachType ? `Class: ${formatCoachType(selectedCoachType)}` : "Class: not selected",
             ]}
@@ -342,9 +526,9 @@ function BookingPageContent() {
                   key={label}
                   className={`rounded-[1.2rem] border px-4 py-3 text-sm font-medium transition ${
                     currentStep === index
-                      ? "border-[rgba(37,99,235,0.18)] bg-[#edf5fd] text-[var(--color-panel-dark)]"
+                      ? "border-[color-mix(in_srgb,var(--color-accent)_28%,var(--color-line))] bg-[var(--color-accent-soft)] text-[var(--color-panel-dark)]"
                       : currentStep > index
-                        ? "border-[rgba(31,138,91,0.16)] bg-[#eaf6f1] text-[#1f7a57]"
+                        ? "border-[color-mix(in_srgb,var(--color-success)_24%,var(--color-line))] bg-[var(--color-success-soft)] text-[var(--color-success)]"
                         : "border-[var(--color-line)] bg-[var(--color-surface-soft)] text-[var(--color-muted-strong)]"
                   }`}
                 >
@@ -357,12 +541,17 @@ function BookingPageContent() {
             </div>
           </PageSection>
 
-          {status === "loading" ? <LoadingState label="Loading train details..." /> : null}
+          {status === "loading" ? <LoadingState label="Loading train..." compact /> : null}
 
           {error ? (
-            <div className="rounded-[1.2rem] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-              {error}
-            </div>
+            <PageSection className="p-5">
+              <div className="flex flex-col gap-4 rounded-[1.4rem] border border-[color-mix(in_srgb,var(--color-danger)_26%,var(--color-line))] bg-[color-mix(in_srgb,var(--color-danger-soft)_84%,var(--color-panel-strong))] p-4 text-sm text-[var(--color-danger)] sm:flex-row sm:items-center sm:justify-between">
+                <span>{error}</span>
+                <Button type="button" variant="secondary" onClick={reloadBookingDetails}>
+                  Retry
+                </Button>
+              </div>
+            </PageSection>
           ) : null}
 
           {status === "succeeded" && details ? (
@@ -370,7 +559,7 @@ function BookingPageContent() {
               {currentStep === 0 ? (
                 <PageSection>
                   <div className="grid gap-6">
-                    <div className="rounded-[1.5rem] border border-[var(--color-line)] bg-[linear-gradient(180deg,_#ffffff_0%,_#f9fcff_100%)] p-5">
+                    <div className="rounded-[1.5rem] border border-[var(--color-line)] bg-[linear-gradient(180deg,_color-mix(in_srgb,var(--color-surface-strong)_94%,transparent)_0%,_color-mix(in_srgb,var(--color-surface-soft)_98%,transparent)_100%)] p-5 shadow-[var(--shadow-soft)]">
                       <div className="flex flex-wrap items-center gap-3">
                         <Badge variant="primary">{details.schedule?.train?.train_number}</Badge>
                         <Badge variant="neutral">{details.schedule?.train?.train_type}</Badge>
@@ -396,13 +585,13 @@ function BookingPageContent() {
                       </div>
                     </div>
 
-                    <div className="rounded-[1.5rem] bg-[var(--color-surface-soft)] p-5">
+                    <div className="rounded-[1.5rem] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-5 shadow-[var(--shadow-soft)]">
                       <p className="text-sm font-semibold text-[var(--color-ink)]">Route overview</p>
                       <div className="mt-4 flex flex-wrap gap-2">
                         {routeStops.map((stop) => (
                           <div
                             key={stop.id}
-                            className="rounded-full bg-white px-4 py-2 text-sm text-[var(--color-muted-strong)] ring-1 ring-[var(--color-line)]"
+                            className="rounded-full border border-[var(--color-line)] bg-[var(--color-surface-strong)] px-4 py-2 text-sm text-[var(--color-muted-strong)] shadow-[0_8px_20px_rgba(15,23,42,0.04)]"
                           >
                             {stop.station?.name}
                           </div>
@@ -444,6 +633,11 @@ function BookingPageContent() {
                           onChange={(event) => updatePassengerCount(event.target.value)}
                           className="field-input"
                         />
+                        {passengerCountNote ? (
+                          <p className="mt-2 text-sm text-[var(--color-panel-dark)]">
+                            {passengerCountNote}
+                          </p>
+                        ) : null}
                       </div>
                     </div>
                   </div>
@@ -453,33 +647,87 @@ function BookingPageContent() {
               {currentStep === 1 ? (
                 <PageSection>
                   <SectionHeader
-                    eyebrow="Passenger details"
-                    title="Add traveller information"
-                    description="Each passenger must have a valid identity detail before you continue to seat selection."
+                    eyebrow="Passengers"
+                    title="Passenger Details"
                   />
                   <div className="mt-8 space-y-5">
-                    {passengersState.map((passenger, index) => (
-                      <div key={index} className="rounded-[1.6rem] border border-[var(--color-line)] bg-[linear-gradient(180deg,_#ffffff_0%,_#f9fcff_100%)] p-5">
+                    {fields.map((field, index) => (
+                      <div key={index} className="rounded-[1.6rem] border border-[var(--color-line)] bg-[linear-gradient(180deg,_color-mix(in_srgb,var(--color-surface-strong)_94%,transparent)_0%,_color-mix(in_srgb,var(--color-surface-soft)_98%,transparent)_100%)] p-5 shadow-[var(--shadow-soft)]">
                         <p className="text-sm font-semibold text-[var(--color-ink)]">
                           Passenger {index + 1}
                         </p>
                         <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                          <Field label="First name" value={passenger.first_name} onChange={(value) => updatePassenger(index, "first_name", value)} />
-                          <Field label="Last name" value={passenger.last_name} onChange={(value) => updatePassenger(index, "last_name", value)} />
-                          <Field label="Age" type="number" value={passenger.age} onChange={(value) => updatePassenger(index, "age", value)} />
+                          <Field
+                            label="First name"
+                            error={passengerErrors.passengers?.[index]?.first_name?.message}
+                            {...register(`passengers.${index}.first_name`)}
+                            onChange={(event) => {
+                              const nextValue = event.target.value.replace(/[^A-Za-z]/g, "");
+                              setValue(`passengers.${index}.first_name`, nextValue, {
+                                shouldDirty: true,
+                                shouldTouch: true,
+                                shouldValidate: true,
+                              });
+                            }}
+                          />
+                          <Field
+                            label="Last name"
+                            error={passengerErrors.passengers?.[index]?.last_name?.message}
+                            {...register(`passengers.${index}.last_name`)}
+                            onChange={(event) => {
+                              const nextValue = event.target.value.replace(/[^A-Za-z]/g, "");
+                              setValue(`passengers.${index}.last_name`, nextValue, {
+                                shouldDirty: true,
+                                shouldTouch: true,
+                                shouldValidate: true,
+                              });
+                            }}
+                          />
+                          <Field
+                            label="Age"
+                            inputMode="numeric"
+                            error={passengerErrors.passengers?.[index]?.age?.message}
+                            {...register(`passengers.${index}.age`)}
+                            onChange={(event) => {
+                              const nextValue = event.target.value.replace(/\D/g, "");
+                              setValue(`passengers.${index}.age`, nextValue, {
+                                shouldDirty: true,
+                                shouldTouch: true,
+                                shouldValidate: true,
+                              });
+                            }}
+                          />
                           <SelectField
                             label="Gender"
-                            value={passenger.gender}
+                            error={passengerErrors.passengers?.[index]?.gender?.message}
+                            {...register(`passengers.${index}.gender`)}
                             options={["male", "female", "other"]}
-                            onChange={(value) => updatePassenger(index, "gender", value)}
                           />
                           <SelectField
                             label="ID type"
-                            value={passenger.id_type}
+                            error={passengerErrors.passengers?.[index]?.id_type?.message}
+                            {...register(`passengers.${index}.id_type`)}
                             options={["Aadhaar", "PAN", "Passport", "Driving Licence"]}
-                            onChange={(value) => updatePassenger(index, "id_type", value)}
                           />
-                          <Field label="ID number" value={passenger.id_number} onChange={(value) => updatePassenger(index, "id_number", value)} />
+                          <Field
+                            label="ID number"
+                            error={passengerErrors.passengers?.[index]?.id_number?.message}
+                            {...register(`passengers.${index}.id_number`)}
+                            onChange={(event) => {
+                              const idType = getValues(`passengers.${index}.id_type`);
+                              const rawValue = event.target.value;
+                              const nextValue =
+                                idType === "Aadhaar"
+                                  ? rawValue.replace(/\D/g, "").slice(0, 12)
+                                  : rawValue;
+
+                              setValue(`passengers.${index}.id_number`, nextValue, {
+                                shouldDirty: true,
+                                shouldTouch: true,
+                                shouldValidate: true,
+                              });
+                            }}
+                          />
                         </div>
                       </div>
                     ))}
@@ -490,9 +738,8 @@ function BookingPageContent() {
               {currentStep === 2 ? (
                 <PageSection>
                   <SectionHeader
-                    eyebrow="Seat selection"
-                    title="Review coach layout and seat availability"
-                    description="Choose the exact seats you want. The backend will book these same seats only if the requested segment is still available."
+                    eyebrow="Seats"
+                    title="Select Seats"
                   />
                   <div className="mt-8">
                     <SeatMap
@@ -504,15 +751,37 @@ function BookingPageContent() {
                       onToggleSeat={toggleSeat}
                     />
                   </div>
-                  <div className="mt-6 flex flex-wrap items-center gap-3 rounded-[1.4rem] bg-[var(--color-surface-soft)] px-5 py-4 text-sm text-[var(--color-muted-strong)]">
-                    <Badge variant={selectedSeatLabels.length ? "primary" : "neutral"}>
-                      {selectedSeatLabels.length}/{passengerCount} selected
-                    </Badge>
-                    <span>
-                      {selectedSeatLabels.length
-                        ? `Selected seats: ${selectedSeatLabels.join(", ")}. These exact seats will be sent to the backend for booking.`
-                        : "Select the exact seats you want to book."}
-                    </span>
+                  <div className="mt-6 rounded-[1.5rem] border border-[var(--color-line)] bg-[var(--color-panel-strong)] px-5 py-4 text-sm text-[var(--color-muted-strong)] shadow-[var(--shadow-soft)]">
+                    <div className="flex flex-wrap items-center gap-3">
+                      <Badge variant={selectedSeatLabels.length ? "primary" : "neutral"}>
+                        {selectedSeatLabels.length}/{passengerCount}
+                      </Badge>
+                      <span>Selected Seats</span>
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {selectedSeatLabels.length ? (
+                        selectedSeatLabels.map((label) => (
+                          <span
+                            key={label}
+                            className="rounded-full bg-[var(--color-accent-soft)] px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-panel-dark)]"
+                          >
+                            {label}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-sm text-[var(--color-muted)]">None</span>
+                      )}
+                    </div>
+                    {seatSelectionNote ? (
+                      <p className="mt-3 text-sm font-medium text-[var(--color-panel-dark)]">
+                        {seatSelectionNote}
+                      </p>
+                    ) : null}
+                    {selectedSeatLabels.length === passengerCount ? (
+                      <p className="mt-2 text-xs uppercase tracking-[0.16em] text-[var(--color-success)]">
+                        Seats ready
+                      </p>
+                    ) : null}
                   </div>
                 </PageSection>
               ) : null}
@@ -520,55 +789,76 @@ function BookingPageContent() {
               {currentStep === 3 && !isBooked ? (
                 <PageSection>
                   <SectionHeader
-                    eyebrow="Final confirmation"
-                    title="Confirm your booking details"
-                    description="Review the fare and passenger details before finalizing your booking."
+                    eyebrow="Confirm"
+                    title="Confirm Booking"
                   />
 
                   <div className="mt-8 grid gap-6 lg:grid-cols-2">
                     <div className="space-y-6">
-                      <div className="rounded-[1.6rem] border border-[var(--color-line)] bg-white p-6 shadow-sm">
+                      <div className="rounded-[1.8rem] border border-[var(--color-line)] bg-[var(--color-panel-strong)] p-6 shadow-[var(--shadow-soft)]">
                         <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-[var(--color-accent)]">
-                          Contact info
+                          Contact
                         </p>
                         <div className="mt-4 grid gap-4 sm:grid-cols-2">
                           <Field
                             label="Email"
                             type="email"
-                            value={resolvedContactEmail}
-                            onChange={setContactEmail}
+                            error={confirmationErrors.contactEmail?.message}
+                            {...registerConfirmation("contactEmail")}
+                            onChange={(event) =>
+                              setConfirmationValue("contactEmail", event.target.value, {
+                                shouldDirty: true,
+                                shouldTouch: true,
+                                shouldValidate: true,
+                              })
+                            }
                           />
                           <Field
                             label="Phone"
-                            type="tel"
-                            value={resolvedContactPhone}
-                            onChange={setContactPhone}
+                            type="text"
+                            inputMode="numeric"
+                            error={confirmationErrors.contactPhone?.message}
+                            {...registerConfirmation("contactPhone")}
+                            onChange={(event) =>
+                              setConfirmationValue(
+                                "contactPhone",
+                                event.target.value.replace(/\D/g, "").slice(0, 15),
+                                {
+                                  shouldDirty: true,
+                                  shouldTouch: true,
+                                  shouldValidate: true,
+                                },
+                              )
+                            }
                           />
                         </div>
                         <label className="mt-6 flex items-start gap-3 rounded-[1.2rem] bg-[var(--color-surface-soft)] px-4 py-3 text-sm text-[var(--color-muted-strong)]">
                           <input
                             type="checkbox"
-                            checked={agreeToTerms}
-                            onChange={(event) => setAgreeToTerms(event.target.checked)}
+                            {...registerConfirmation("agreeToTerms")}
                             className="mt-1 h-4 w-4 rounded border-[var(--color-line)]"
                           />
                           <span>
-                            I confirm that the passenger details are correct and I agree to proceed with this booking.
+                            I confirm the details.
                           </span>
                         </label>
-                      </div>
-
-                      <div className="rounded-[1.6rem] bg-indigo-50/50 p-6 ring-1 ring-indigo-100">
-                        <p className="text-sm font-semibold text-indigo-900">Premium Booking</p>
-                        <p className="mt-2 text-sm text-indigo-700">
-                          Your payment will be processed automatically using the selected payment mode.
-                          Final seat numbers are assigned by the booking engine at confirmation, not by the preview grid.
-                        </p>
+                        {confirmationErrors.agreeToTerms?.message ? (
+                          <p className="mt-2 text-sm text-[var(--color-danger)]">
+                            {confirmationErrors.agreeToTerms.message}
+                          </p>
+                        ) : null}
                       </div>
                     </div>
 
-                    <div className="rounded-[1.6rem] bg-[var(--color-surface-soft)] p-6 shadow-inner">
-                      <p className="text-sm font-semibold text-[var(--color-ink)]">Fare summary</p>
+                    <div className="rounded-[1.8rem] bg-[var(--color-panel-strong)] p-6 shadow-[var(--shadow-panel)]">
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <p className="text-sm font-semibold text-[var(--color-ink)]">Summary</p>
+                        </div>
+                        <Badge variant="success" className="px-4 py-2 text-[11px]">
+                          Payment
+                        </Badge>
+                      </div>
                       <div className="mt-4 space-y-3 text-sm text-[var(--color-muted-strong)]">
                         <div className="flex items-center justify-between">
                           <span>Journey date</span>
@@ -596,25 +886,29 @@ function BookingPageContent() {
                         </div>
                       </div>
 
+                      <div className="mt-6 rounded-[1.4rem] bg-[var(--color-accent-soft)] px-4 py-4 text-sm text-[var(--color-panel-dark)]">
+                        Payment: <span className="font-semibold">{paymentOptions.find((option) => option.value === paymentMethod)?.label || "UPI"}</span>
+                      </div>
+
                       <div className="mt-8">
                         <Button
                           type="button"
                           onClick={handleBookingSubmit}
                           disabled={
                             checkoutStatus === "loading" ||
-                            !agreeToTerms ||
                             !resolvedContactEmail ||
-                            !resolvedContactPhone
+                            !resolvedContactPhone ||
+                            !isConfirmationValid
                           }
-                          className="w-full py-4 text-base shadow-[0_12px_36px_rgba(12,79,129,0.2)] disabled:opacity-50 disabled:shadow-none"
+                          className="w-full py-4 text-base disabled:opacity-50 disabled:shadow-none"
                         >
-                          {checkoutStatus === "loading" ? "Processing..." : "Confirm & Book Now"}
+                          {checkoutStatus === "loading" ? "Processing..." : "Confirm Booking"}
                         </Button>
                       </div>
                     </div>
                   </div>
                   {bookingError ? (
-                    <div className="mt-4 rounded-[1.2rem] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                    <div className="mt-4 rounded-[1.4rem] border border-[color-mix(in_srgb,var(--color-danger)_26%,var(--color-line))] bg-[color-mix(in_srgb,var(--color-danger-soft)_84%,var(--color-panel-strong))] p-4 text-sm text-[var(--color-danger)]">
                       {typeof bookingError === "string" ? bookingError : JSON.stringify(bookingError)}
                     </div>
                   ) : null}
@@ -624,14 +918,11 @@ function BookingPageContent() {
               {(currentStep === 3 && isBooked) || currentStep === 4 ? (
                 <PageSection>
                   <SectionHeader
-                    eyebrow="Booking confirmed"
-                    title="Your train booking has been created"
-                    description="Your confirmation details are ready below."
+                    eyebrow="Confirmed"
+                    title="Booking Confirmed"
                   />
                   <div className="mt-8 rounded-[1.6rem] bg-[linear-gradient(180deg,_#145f97_0%,_#0e4770_100%)] p-6 text-white shadow-[0_24px_60px_rgba(12,79,129,0.16)]">
-                    <p className="text-sm text-white/76">
-                      Booking successful. Please keep the booking reference and seat details ready for travel.
-                    </p>
+                    <p className="text-sm text-white/76">Booking successful</p>
                   </div>
 
                   <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -648,9 +939,9 @@ function BookingPageContent() {
                       value={paymentOptions.find((option) => option.value === paymentMethod)?.label || "Not available"}
                     />
                   </div>
-                  <div className="mt-6 rounded-[1.4rem] bg-[var(--color-surface-soft)] p-5">
+                  <div className="mt-6 rounded-[1.5rem] bg-[var(--color-surface-soft)] p-5">
                     <p className="text-sm font-semibold text-[var(--color-ink)]">
-                      Passenger seat allocation
+                      Seats
                     </p>
                     <div className="mt-4 space-y-3">
                       {(confirmation?.booking?.ticket_allocations || []).map((allocation, index) => {
@@ -659,7 +950,7 @@ function BookingPageContent() {
                         return (
                           <div
                             key={allocation.id}
-                            className="flex flex-col gap-2 rounded-[1.2rem] bg-white px-4 py-4 ring-1 ring-[var(--color-line)] sm:flex-row sm:items-center sm:justify-between"
+                            className="flex flex-col gap-2 rounded-[1.2rem] border border-[var(--color-line)] bg-[var(--color-surface-strong)] px-4 py-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)] sm:flex-row sm:items-center sm:justify-between"
                           >
                             <div>
                               <p className="font-semibold text-[var(--color-ink)]">
@@ -671,7 +962,7 @@ function BookingPageContent() {
                                 Seat {allocation.seat?.seat_number || "NA"} • {allocation.pnr || "PNR pending"}
                               </p>
                             </div>
-                            <div className="rounded-full bg-[#edf5fd] px-4 py-2 text-sm font-medium text-[var(--color-panel-dark)]">
+                            <div className="rounded-full bg-[var(--color-accent-soft)] px-4 py-2 text-sm font-medium text-[var(--color-panel-dark)]">
                               {formatCurrency(allocation.fare)}
                             </div>
                           </div>
@@ -701,13 +992,26 @@ function BookingPageContent() {
                     Back
                   </Button>
 
-                  <Button
-                    type="button"
-                    onClick={() => setCurrentStep((step) => step + 1)}
-                    disabled={!canContinue()}
-                  >
-                    {currentStep === 2 ? "Review booking" : "Continue"}
-                  </Button>
+                  <div className="flex flex-col items-end gap-2">
+                    <Button
+                      type="button"
+                      onClick={async () => {
+                        if (currentStep === 1) {
+                          const isStepValid = await trigger("passengers");
+                          if (!isStepValid) {
+                            return;
+                          }
+                        }
+                        setCurrentStep((step) => step + 1);
+                      }}
+                      disabled={!canContinue()}
+                    >
+                      {currentStep === 2 ? "Review booking" : "Continue"}
+                    </Button>
+                    {!canContinue() && stepActionHint ? (
+                      <p className="text-sm text-[var(--color-muted)]">{stepActionHint}</p>
+                    ) : null}
+                  </div>
                 </div>
               ) : currentStep === 3 && !isBooked ? (
                 <div className="flex flex-wrap items-center gap-3">
@@ -724,7 +1028,7 @@ function BookingPageContent() {
           ) : null}
         </div>
 
-        <div className="space-y-6">
+        <div className="space-y-6 lg:sticky lg:top-24 lg:self-start">
           <BookingSummary
             schedule={details?.schedule}
             fromLabel={fromLabel}
@@ -740,21 +1044,22 @@ function BookingPageContent() {
 
           {details?.availability ? (
             <PageSection className="p-6">
-              <p className="eyebrow">Availability</p>
-              <h2 className="mt-3 text-2xl font-semibold tracking-tight text-[var(--color-ink)]">
-                Class-wise seats
+              <h2 className="text-xl font-semibold tracking-tight text-[var(--color-ink)]">
+                Availability
               </h2>
-              <div className="mt-5 space-y-3">
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 {Object.entries(details.availability.coach_type_availability || {}).map(
                   ([coachType, value]) => (
                     <div
                       key={coachType}
-                      className="flex items-center justify-between rounded-[1.25rem] bg-[var(--color-surface-soft)] px-4 py-3"
+                      className="rounded-[1.25rem] bg-[var(--color-surface-soft)] px-4 py-3"
                     >
-                      <span className="font-semibold text-[var(--color-ink)]">{formatCoachType(coachType)}</span>
-                      <span className="text-sm text-[var(--color-muted-strong)]">
-                        {value.available_seats}/{value.total_active_seats} seats
-                      </span>
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="font-semibold text-[var(--color-ink)]">{formatCoachType(coachType)}</span>
+                        <span className="text-sm text-[var(--color-muted-strong)]">
+                          {value.available_seats}/{value.total_active_seats}
+                        </span>
+                      </div>
                     </div>
                   ),
                 )}
@@ -772,7 +1077,7 @@ export default function BookingPage() {
     <Suspense fallback={
       <PageShell className="items-center px-6 py-12 sm:px-10">
         <div className="w-full">
-          <LoadingState label="Preparing booking flow..." />
+          <LoadingState label="Loading booking..." />
         </div>
       </PageShell>
     }>
@@ -792,7 +1097,7 @@ function DetailInfo({ label, value }) {
   );
 }
 
-function Field({ label, value, onChange, type = "text" }) {
+function Field({ label, error, type = "text", className = "", ...props }) {
   return (
     <div>
       <label className="field-label">
@@ -800,24 +1105,23 @@ function Field({ label, value, onChange, type = "text" }) {
       </label>
       <input
         type={type}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="field-input"
+        {...props}
+        className={`field-input ${error ? "border-[var(--color-danger)]" : ""} ${className}`.trim()}
       />
+      {error ? <p className="field-error">{error}</p> : null}
     </div>
   );
 }
 
-function SelectField({ label, value, options, onChange }) {
+function SelectField({ label, error, options, className = "", ...props }) {
   return (
     <div>
       <label className="field-label">
         {label}
       </label>
       <select
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="field-input"
+        {...props}
+        className={`field-input ${error ? "border-[var(--color-danger)]" : ""} ${className}`.trim()}
       >
         {options.map((option) => (
           <option key={option} value={option}>
@@ -825,6 +1129,7 @@ function SelectField({ label, value, options, onChange }) {
           </option>
         ))}
       </select>
+      {error ? <p className="field-error">{error}</p> : null}
     </div>
   );
 }

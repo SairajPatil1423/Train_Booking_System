@@ -3,8 +3,10 @@ class Admin::CitiesController < Admin::BaseController
 
   def index
     authorize City
-    cities = City.order(:country, :state, :name)
-    render json: { cities: cities }, status: :ok
+    cities_scope = City.order(:country, :state, :name)
+    cities = paginate_scope(cities_scope)
+
+    render json: paginated_response(data: cities, records: cities), status: :ok
   end
 
   def create

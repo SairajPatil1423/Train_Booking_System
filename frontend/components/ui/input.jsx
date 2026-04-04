@@ -4,14 +4,18 @@ export default function Input({
   label,
   error,
   hint,
+  id,
   className = "",
   inputClassName = "",
   ...props
 }) {
+  const inputId = id || props.name;
+
   return (
     <div className={className}>
-      {label ? <label className="field-label">{label}</label> : null}
+      {label ? <label htmlFor={inputId} className="field-label">{label}</label> : null}
       <input
+        id={inputId}
         className={cn("field-input ui-focus-ring", inputClassName)}
         {...props}
       />

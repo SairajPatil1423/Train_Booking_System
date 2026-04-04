@@ -3,9 +3,25 @@ class BookingsController < ApplicationController
   before_action :set_booking, only: %i[show update cancel_ticket]
 
   def index
-    bookings = policy_scope(Booking).includes(:passengers, :ticket_allocations, :payment).order(booked_at: :desc)
+    bookings_scope = policy_scope(Booking)
+    bookings_scope = bookings_scope.joins(:cancellations).distinct if with_cancellations?
+    bookings_scope = bookings_scope
+      .includes(
+        :payment,
+        :passengers,
+        :src_station,
+        :dst_station,
+        :cancellations,
+        { ticket_allocations: :seat },
+        { schedule: :train }
+      )
+      .order(booked_at: :desc)
     authorize Booking
-    render json: { bookings: bookings.as_json(include: booking_includes) }, status: :ok
+
+    bookings = paginate_scope(bookings_scope)
+    serialized_bookings = bookings.as_json(include: booking_includes)
+
+    render json: paginated_response(data: serialized_bookings, records: bookings), status: :ok
   end
 
   def show
@@ -120,5 +136,9 @@ class BookingsController < ApplicationController
       payment: {},
       cancellations: {}
     }
+  end
+
+  def with_cancellations?
+    ActiveModel::Type::Boolean.new.cast(params[:with_cancellations])
   end
 end

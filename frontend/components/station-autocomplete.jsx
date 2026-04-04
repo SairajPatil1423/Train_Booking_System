@@ -1,6 +1,7 @@
 "use client";
 
 import { useDeferredValue, useMemo, useState } from "react";
+import { cn } from "@/utils/cn";
 
 export default function StationAutocomplete({
   label,
@@ -10,6 +11,11 @@ export default function StationAutocomplete({
   disabled = false,
   onInputChange,
   onSelect,
+  helperText,
+  className = "",
+  labelClassName = "",
+  inputClassName = "",
+  helperClassName = "",
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const deferredValue = useDeferredValue(value);
@@ -35,10 +41,8 @@ export default function StationAutocomplete({
   }
 
   return (
-    <div className="relative">
-      <label className="field-label">
-        {label}
-      </label>
+    <div className={cn("relative", className)}>
+      <label className={cn("field-label", labelClassName)}>{label}</label>
       <input
         type="text"
         value={value}
@@ -55,11 +59,12 @@ export default function StationAutocomplete({
             setIsOpen(false);
           }, 120);
         }}
-        className="field-input ui-focus-ring"
+        className={cn("field-input ui-focus-ring", inputClassName)}
       />
+      {helperText ? <p className={cn("field-hint", helperClassName)}>{helperText}</p> : null}
 
       {isOpen && filteredOptions.length > 0 ? (
-        <div className="absolute left-0 right-0 top-[calc(100%+0.6rem)] z-30 overflow-hidden rounded-[1.35rem] border border-[var(--color-line)] bg-white/98 shadow-[0_22px_46px_rgba(19,36,47,0.12)] backdrop-blur-xl">
+        <div className="absolute left-0 right-0 top-[calc(100%+0.6rem)] z-30 overflow-hidden rounded-[1.35rem] border border-[var(--color-line)] bg-[var(--color-panel-strong)] shadow-[var(--shadow-card)] backdrop-blur-xl">
           <ul className="py-2">
             {filteredOptions.map((option) => (
               <li key={option.value}>
@@ -67,7 +72,10 @@ export default function StationAutocomplete({
                   type="button"
                   onMouseDown={(event) => event.preventDefault()}
                   onClick={() => handleSelect(option)}
-                  className="flex w-full flex-col px-4 py-3 text-left transition hover:bg-[var(--color-surface-soft)]"
+                  className={cn(
+                    "flex w-full flex-col px-4 py-3 text-left transition",
+                    "hover:bg-[var(--color-accent-soft)]",
+                  )}
                 >
                   <span className="text-sm font-semibold text-[var(--color-ink)]">
                     {option.label}

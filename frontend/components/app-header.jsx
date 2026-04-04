@@ -5,9 +5,11 @@ import { usePathname, useRouter } from "next/navigation";
 import { useDispatch, useSelector } from "react-redux";
 import Button from "@/components/ui/button";
 import Badge from "@/components/ui/badge";
+import ThemeToggle from "@/components/ui/theme-toggle";
 import { clearCredentials } from "@/features/auth/authSlice";
 import { logoutUser } from "@/features/auth/authService";
 import { getUserDisplayName } from "@/utils/user-formatters";
+import { cn } from "@/utils/cn";
 
 const publicLinks = [
   { href: "/dashboard", label: "Dashboard" },
@@ -23,6 +25,8 @@ const privateLinks = [
 
 const adminLinks = [
   { href: "/admin", label: "Admin Panel" },
+  { href: "/admin/bookings", label: "All bookings" },
+  { href: "/admin/users", label: "Create admin" },
   { href: "/admin/trains", label: "Trains" },
   { href: "/admin/schedules", label: "Schedules" },
   { href: "/admin/coaches", label: "Coaches" },
@@ -35,6 +39,7 @@ export default function AppHeader() {
   const dispatch = useDispatch();
   const { isAuthenticated, user } = useSelector((state) => state.auth);
   const displayName = getUserDisplayName(user);
+  const homeHref = user?.role === "admin" ? "/admin" : "/dashboard";
 
   async function handleLogout() {
     try {
@@ -53,31 +58,38 @@ export default function AppHeader() {
     : [...publicLinks];
 
   return (
-    <header className="sticky top-0 z-30 border-b border-[var(--color-line)] bg-[rgba(255,255,255,0.92)] backdrop-blur-xl">
+    <header className="sticky top-0 z-40 border-b border-[var(--color-line)] bg-[color-mix(in_srgb,var(--color-surface)_76%,transparent)] backdrop-blur-xl">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-6 py-4 sm:px-10 lg:px-12">
         <div className="flex items-center justify-between gap-4">
-          <Link href="/" className="min-w-0">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.35em] text-[var(--color-accent)]">
-              RailYatra
-            </div>
-            <div className="mt-1 truncate text-sm font-medium text-[var(--color-muted)]">
-              Online train reservation
+          <Link href={homeHref} className="min-w-0">
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-[1.1rem] bg-[var(--gradient-brand)] text-sm font-black tracking-[0.18em] text-white shadow-[var(--shadow-button)]">
+                RY
+              </div>
+              <div className="min-w-0">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.35em] text-[var(--color-accent)]">
+                  RailYatra
+                </div>
+                <div className="mt-1 truncate text-sm font-medium text-[var(--color-muted)]">
+                  Reservation workspace
+                </div>
+              </div>
             </div>
           </Link>
 
-          <nav className="hidden items-center gap-2 rounded-full border border-[var(--color-line)] bg-[#fdfefe] p-1 shadow-[0_10px_28px_rgba(16,33,49,0.05)] md:flex">
+          <nav className="hidden items-center gap-2 rounded-full border border-[var(--color-line)] bg-[color-mix(in_srgb,var(--color-surface-strong)_88%,transparent)] p-1 shadow-[var(--shadow-soft)] md:flex">
             {links.map((link) => {
-              const isActive = pathname === link.href;
+              const isActive = pathname === link.href || pathname.startsWith(`${link.href}/`);
 
               return (
                 <Link
                   key={link.href}
                   href={link.href}
-                  className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+                  className={cn(`rounded-full px-4 py-2 text-sm font-semibold transition ${
                     isActive
-                      ? "bg-[var(--color-panel-dark)] text-white shadow-[0_10px_24px_rgba(12,79,129,0.18)]"
-                      : "text-[var(--color-muted-strong)] hover:bg-[#f2f8fe] hover:text-[var(--color-ink)]"
-                  }`}
+                      ? "bg-[var(--gradient-brand)] text-white shadow-[var(--shadow-button)]"
+                      : "text-[var(--color-muted-strong)] hover:bg-[var(--color-accent-soft)] hover:text-[var(--color-ink)]"
+                  }`)}
                 >
                   {link.label}
                 </Link>
@@ -86,22 +98,19 @@ export default function AppHeader() {
           </nav>
 
           <div className="hidden items-center gap-3 md:flex">
+            <ThemeToggle />
             {isAuthenticated ? (
               <>
-                <div className="hidden rounded-full border border-[var(--color-line)] bg-[#fdfefe] px-4 py-2 text-sm text-[var(--color-ink)] shadow-[0_10px_26px_rgba(16,33,49,0.04)] md:block">
-                  {displayName}
+                <div className="hidden items-center gap-3 rounded-full border border-[var(--color-line)] bg-[color-mix(in_srgb,var(--color-surface-strong)_88%,transparent)] px-3 py-2 text-sm shadow-[var(--shadow-soft)] md:flex">
+                  <span className="max-w-[12rem] truncate font-medium text-[var(--color-ink)]">{displayName}</span>
                 </div>
-                <Button
-                  type="button"
-                  onClick={handleLogout}
-                  variant="danger"
-                  size="sm"
-                >
+                <Button type="button" onClick={handleLogout} variant="ghost" size="sm">
                   Logout
                 </Button>
               </>
             ) : (
               <>
+                <ThemeToggle />
                 <Button as={Link} href="/register" variant="secondary" size="sm">
                   Register
                 </Button>
@@ -125,6 +134,10 @@ export default function AppHeader() {
               </Badge>
             )}
           </div>
+        </div>
+
+        <div className="md:hidden">
+          <ThemeToggle className="w-full" />
         </div>
 
         {!isAuthenticated ? (
@@ -153,17 +166,17 @@ export default function AppHeader() {
 
         <nav className="flex gap-2 overflow-x-auto pb-1 md:hidden">
           {links.map((link) => {
-            const isActive = pathname === link.href;
+            const isActive = pathname === link.href || pathname.startsWith(`${link.href}/`);
 
             return (
               <Link
                 key={link.href}
                 href={link.href}
-                className={`shrink-0 rounded-full px-4 py-2 text-sm font-semibold transition ${
+                className={cn(`shrink-0 rounded-full px-4 py-2 text-sm font-semibold transition ${
                   isActive
-                    ? "bg-[var(--color-panel-dark)] text-white shadow-[0_10px_24px_rgba(12,79,129,0.18)]"
-                    : "border border-[var(--color-line)] bg-white text-[var(--color-muted-strong)]"
-                }`}
+                    ? "bg-[var(--gradient-brand)] text-white shadow-[var(--shadow-button)]"
+                    : "border border-[var(--color-line)] bg-[var(--color-panel-strong)] text-[var(--color-muted-strong)]"
+                }`)}
               >
                 {link.label}
               </Link>

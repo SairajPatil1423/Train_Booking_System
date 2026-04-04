@@ -10,7 +10,7 @@ export function AdminErrorBox({ message, className = "" }) {
   return (
     <div
       className={cn(
-        "rounded-[1.2rem] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700",
+        "rounded-[1.2rem] border border-[color-mix(in_srgb,var(--color-danger)_26%,var(--color-line))] bg-[color-mix(in_srgb,var(--color-danger-soft)_84%,var(--color-panel-strong))] px-4 py-3 text-sm text-[var(--color-danger)]",
         className,
       )}
     >
@@ -66,7 +66,7 @@ export function CoachLayoutPreview({ coach, compact = false }) {
             {index === coach.aisleIndex ? (
               <div className="h-8 w-4 rounded-full bg-[var(--color-disabled-soft)]" aria-hidden="true" />
             ) : null}
-            <div className="flex h-10 min-w-10 items-center justify-center rounded-2xl border border-[var(--color-line)] bg-white px-2 text-xs font-semibold text-[var(--color-ink)] shadow-sm">
+            <div className="flex h-10 min-w-10 items-center justify-center rounded-2xl border border-[var(--color-line)] bg-[var(--color-surface-strong)] px-2 text-xs font-semibold text-[var(--color-ink)] shadow-sm">
               {seatType}
             </div>
           </div>
@@ -76,7 +76,7 @@ export function CoachLayoutPreview({ coach, compact = false }) {
       <div className={cn("grid gap-3", compact ? "grid-cols-2" : "sm:grid-cols-3")}>
         <AdminInfoBlock label="Columns" value={String(coach.columns)} />
         <AdminInfoBlock label="Pattern" value={coach.pattern} />
-        <AdminInfoBlock label="Generated seats" value={String(coach.totalSeats)} accent />
+        <AdminInfoBlock label=" seats" value={String(coach.totalSeats)} accent />
       </div>
     </Card>
   );

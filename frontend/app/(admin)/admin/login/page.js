@@ -72,6 +72,24 @@ export default function AdminLoginPage() {
       eyebrow="Admin access"
       title="Sign in to manage trains, schedules, and bookings."
       description="This area is reserved for authorised railway operations users."
+      mode="admin"
+      highlights={[
+        {
+          title: "Control inventory centrally",
+          description:
+            "Update trains, schedules, coach templates, and fares from a single admin workflow.",
+        },
+        {
+          title: "Monitor booking health",
+          description:
+            "Track booking volume, statuses, and revenue context without leaving the control panel.",
+        },
+      ]}
+      stats={[
+        { label: "Role", value: "Operations only" },
+        { label: "Scope", value: "Admin dashboard" },
+        { label: "Access", value: "Protected route" },
+      ]}
       footer={
         <>
           Regular passenger?{" "}
@@ -83,6 +101,9 @@ export default function AdminLoginPage() {
     >
       <div>
         <div className="mb-6">
+          <div className="mb-4 inline-flex rounded-full bg-[var(--color-accent-soft)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--color-accent)]">
+            Operations control
+          </div>
           <h2 className="text-2xl font-semibold tracking-tight text-[var(--color-ink)]">
             Admin login
           </h2>
@@ -97,6 +118,7 @@ export default function AdminLoginPage() {
             label="Admin email"
             {...register("email")}
             placeholder="admin1@trainbooking.com"
+            hint="Use the administrator email provisioned for operations access."
             error={errors.email?.message}
           />
 
@@ -105,16 +127,17 @@ export default function AdminLoginPage() {
             label="Password"
             {...register("password")}
             placeholder="Enter your password"
+            hint="Only admin accounts can continue into the control panel."
             error={errors.password?.message}
           />
 
           {error ? (
-            <div className="rounded-[1.2rem] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <div className="rounded-[1.2rem] border border-[color-mix(in_srgb,var(--color-danger)_26%,var(--color-line))] bg-[color-mix(in_srgb,var(--color-danger-soft)_84%,var(--color-panel-strong))] px-4 py-3 text-sm text-[var(--color-danger)]">
               {error}
             </div>
           ) : null}
 
-          <Button type="submit" disabled={status === "loading"} className="w-full">
+          <Button type="submit" size="lg" disabled={status === "loading"} className="w-full">
             {status === "loading" ? "Signing in..." : "Login as admin"}
           </Button>
         </form>

@@ -18,12 +18,13 @@ export default function BookingSummary({
   const stepLabel = ["Review", "Passengers", "Seats", "Payment", "Confirm"][currentStep] || "Booking";
 
   return (
-    <aside className="surface-panel rounded-[2rem] p-6 lg:sticky lg:top-24">
-      <p className="eyebrow">Booking summary</p>
-      <h2 className="mt-3 text-2xl font-semibold tracking-tight text-[var(--color-ink)]">
-        Journey details
-      </h2>
-      <div className="mt-4 flex items-center justify-between gap-3 rounded-[1.2rem] bg-[#edf5fd] px-4 py-3">
+    <aside className="surface-panel rounded-[2rem] p-6">
+      <div className="rounded-[1.7rem] bg-[var(--gradient-brand)] p-5 text-white shadow-[var(--shadow-button)]">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/70">Summary</p>
+        <h2 className="mt-3 text-2xl font-semibold tracking-tight">Journey Details</h2>
+      </div>
+
+      <div className="mt-4 flex items-center justify-between gap-3 rounded-[1.2rem] bg-[var(--color-accent-soft)] px-4 py-3">
         <span className="text-sm font-medium text-[var(--color-panel-dark)]">Current step</span>
         <Badge variant="primary" className="px-3 py-1.5 text-[11px]">
           {stepLabel}
@@ -46,7 +47,7 @@ export default function BookingSummary({
               Coach class
             </p>
             <p className="mt-2 text-sm font-semibold text-[var(--color-ink)]">
-              {selectedCoachType ? formatCoachType(selectedCoachType) : "Choose a coach class"}
+              {selectedCoachType ? formatCoachType(selectedCoachType) : "-"}
             </p>
           </div>
           <div className="rounded-[1.2rem] bg-[var(--color-surface-soft)] px-4 py-3">
@@ -59,32 +60,32 @@ export default function BookingSummary({
           </div>
           <div className="rounded-[1.2rem] bg-[var(--color-surface-soft)] px-4 py-3">
             <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--color-muted)]">
-              {allocatedSeatLabels.length ? "Allocated seats" : "Seat preview"}
+              Selected Seats
             </p>
             <p className="mt-2 text-sm font-semibold leading-6 text-[var(--color-ink)]">
               {allocatedSeatLabels.length
                 ? allocatedSeatLabels.join(", ")
                 : selectedSeatLabels.length
                   ? selectedSeatLabels.join(", ")
-                  : "Select seats to continue"}
+                  : "-"}
             </p>
           </div>
-          <div className="rounded-[1.2rem] bg-[#edf5fd] px-4 py-3">
+          <div className="rounded-[1.2rem] bg-[var(--color-accent-soft)] px-4 py-3">
             <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--color-muted)]">
-              Estimated total
+              Total
             </p>
             <p className="mt-2 text-sm font-semibold text-[var(--color-panel-dark)]">
-              {farePerSeat ? formatCurrency(totalFare) : "Select a coach class"}
+              {farePerSeat ? formatCurrency(totalFare) : "-"}
             </p>
           </div>
         </div>
 
         <div className="rounded-[1.2rem] bg-[var(--color-surface-soft)] px-4 py-3">
           <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--color-muted)]">
-            Payment method
+            Payment
           </p>
           <p className="mt-2 text-sm font-semibold text-[var(--color-ink)]">
-            {paymentMethod ? paymentMethod.toUpperCase() : "Choose payment option"}
+            {paymentMethod ? paymentMethod.toUpperCase() : "-"}
           </p>
         </div>
       </div>

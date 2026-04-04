@@ -33,7 +33,7 @@ export default function PageHero({
               {meta.map((item) => (
                 <div
                   key={item}
-                  className="rounded-full border border-[var(--color-line)] bg-white/85 px-4 py-2 text-sm font-medium text-[var(--color-muted-strong)]"
+                  className="rounded-full border border-[var(--color-line)] bg-[color-mix(in_srgb,var(--color-surface-strong)_92%,transparent)] px-4 py-2 text-sm font-medium text-[var(--color-muted-strong)] shadow-[0_8px_18px_rgba(15,23,42,0.04)]"
                 >
                   {item}
                 </div>

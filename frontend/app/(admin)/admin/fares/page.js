@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useDispatch, useSelector } from "react-redux";
 import PageHero from "@/components/layout/page-hero";
 import PageSection from "@/components/layout/page-section";
@@ -11,32 +12,51 @@ import Input from "@/components/ui/input";
 import { formatCoachType } from "@/utils/coach-formatters";
 import { ADMIN_COACH_CONFIGS } from "@/utils/admin-coach-config";
 import LoadingState from "@/components/loading-state";
+import PaginationToolbar from "@/components/ui/pagination-toolbar";
 import {
   createAdminFareRuleThunk,
   deleteAdminFareRuleThunk,
+  fetchAdminTrainCatalogThunk,
   fetchAdminFareRulesThunk,
-  fetchAdminTrainsThunk,
   updateAdminFareRuleThunk,
 } from "@/features/admin/adminSlice";
 import { AdminErrorBox, AdminInfoBlock, AdminInfoPill } from "@/components/admin/admin-ui";
 import { toastError, toastInfo, toastSuccess } from "@/utils/toast";
 
+const DEFAULT_PAGE_SIZE = 10;
+
 export default function AdminFaresPage() {
   const dispatch = useDispatch();
-  const { fareRules, trains, resources } = useSelector((state) => state.admin);
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const { fareRules, fareRulesMeta, trainCatalog, trainCatalogStatus, trainCatalogError, resources } = useSelector((state) => state.admin);
   const fareRulesStatus = resources.fareRules.status;
   const fareRulesError = resources.fareRules.error;
-  const trainsStatus = resources.trains.status;
-  const trainsError = resources.trains.error;
   const [editingRule, setEditingRule] = useState(null);
   const [formError, setFormError] = useState("");
+  const requestedPage = Number(searchParams.get("page") || 1);
+  const requestedPerPage = Number(searchParams.get("per_page") || DEFAULT_PAGE_SIZE);
+  const currentPage = Number.isFinite(requestedPage) && requestedPage > 0 ? requestedPage : 1;
+  const currentPerPage =
+    Number.isFinite(requestedPerPage) && requestedPerPage > 0 ? requestedPerPage : DEFAULT_PAGE_SIZE;
 
   useEffect(() => {
-    dispatch(fetchAdminFareRulesThunk());
-    if (trainsStatus === "idle") {
-      dispatch(fetchAdminTrainsThunk());
+    dispatch(fetchAdminFareRulesThunk({ page: currentPage, perPage: currentPerPage }));
+    dispatch(fetchAdminTrainCatalogThunk());
+  }, [currentPage, currentPerPage, dispatch]);
+
+  useEffect(() => {
+    if (
+      fareRulesStatus === "succeeded" &&
+      fareRulesMeta.totalPages > 0 &&
+      currentPage > fareRulesMeta.totalPages
+    ) {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("page", String(fareRulesMeta.totalPages));
+      router.replace(`${pathname}?${params.toString()}`);
     }
-  }, [dispatch, trainsStatus]);
+  }, [fareRulesMeta.totalPages, fareRulesStatus, currentPage, pathname, router, searchParams]);
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -67,6 +87,7 @@ export default function AdminFaresPage() {
         toastSuccess("Fare rule created successfully.");
       }
 
+      setFormError("");
       setEditingRule(null);
       event.currentTarget.reset();
     } catch (requestError) {
@@ -85,6 +106,7 @@ export default function AdminFaresPage() {
 
     try {
       await dispatch(deleteAdminFareRuleThunk(id)).unwrap();
+      setFormError("");
       toastSuccess("Fare rule deleted successfully.");
     } catch (requestError) {
       const message = Array.isArray(requestError) ? requestError.join(", ") : String(requestError);
@@ -93,19 +115,37 @@ export default function AdminFaresPage() {
     }
   }
 
+  function handlePageChange(nextPage) {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("page", String(nextPage));
+    params.set("per_page", String(currentPerPage));
+    router.push(`${pathname}?${params.toString()}`);
+  }
+
+  function handlePerPageChange(nextPerPage) {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("page", "1");
+    params.set("per_page", String(nextPerPage));
+    router.push(`${pathname}?${params.toString()}`);
+  }
+
   return (
     <main className="mx-auto max-w-6xl px-6 py-10 sm:px-10 lg:px-12">
       <div className="space-y-6">
         <PageHero
           eyebrow="Fare rules"
-          title="Price fixed coach types with clean operational rules"
-          description="Fare rules now follow the same deterministic coach model as coach creation and seat rendering. Only 1AC, 2AC, and Sleeper are supported."
-          meta={["No legacy coach labels", "Date-range aware", "Booking-aligned pricing"]}
+          title="Fare Rules"
+          meta={[`${fareRulesMeta.totalCount || fareRules.length} rules`, `Page ${fareRulesMeta.page}`]}
         />
 
         <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
           <PageSection className="p-6 sm:p-8">
             {fareRulesStatus === "loading" && fareRules.length === 0 ? <LoadingState label="Loading fare rules..." /> : null}
+            {fareRulesStatus === "loading" && fareRules.length > 0 ? (
+              <div className="pb-4 text-sm font-medium text-[var(--color-muted)]">Loading page {currentPage}...</div>
+            ) : null}
             <AdminErrorBox message={Array.isArray(fareRulesError) ? fareRulesError.join(", ") : fareRulesError} />
 
             {fareRules.length > 0 ? (
@@ -157,8 +197,22 @@ export default function AdminFaresPage() {
             {fareRules.length === 0 && fareRulesStatus !== "loading" ? (
               <EmptyState
                 title="No fare rules configured yet"
-                description="Create pricing rules for 1AC, 2AC, or Sleeper so search results and bookings can price each coach deterministically."
               />
+            ) : null}
+
+            {fareRules.length > 0 ? (
+              <div className="pt-6">
+                <PaginationToolbar
+                  page={fareRulesMeta.page}
+                  perPage={fareRulesMeta.perPage}
+                  totalCount={fareRulesMeta.totalCount || fareRules.length}
+                  totalPages={fareRulesMeta.totalPages}
+                  onPageChange={handlePageChange}
+                  onPerPageChange={handlePerPageChange}
+                  disabled={fareRulesStatus === "loading"}
+                  loading={fareRulesStatus === "loading"}
+                />
+              </div>
             ) : null}
           </PageSection>
 
@@ -178,19 +232,19 @@ export default function AdminFaresPage() {
                   defaultValue={editingRule?.train_id || ""}
                   className="field-input"
                   required
-                  disabled={trainsStatus === "loading"}
+                  disabled={trainCatalogStatus === "loading"}
                 >
                   <option value="">Select train</option>
-                  {trains.map((train) => (
+                  {trainCatalog.map((train) => (
                     <option key={train.id} value={train.id}>
                       {train.train_number} - {train.name}
                     </option>
                   ))}
                 </select>
-                {trainsStatus === "loading" ? <p className="field-hint">Loading train options...</p> : null}
-                {trainsError ? (
+                {trainCatalogStatus === "loading" ? <p className="field-hint">Loading train options...</p> : null}
+                {trainCatalogError ? (
                   <p className="field-error">
-                    {Array.isArray(trainsError) ? trainsError.join(", ") : trainsError}
+                    {Array.isArray(trainCatalogError) ? trainCatalogError.join(", ") : trainCatalogError}
                   </p>
                 ) : null}
               </div>

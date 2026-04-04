@@ -43,19 +43,12 @@ export default function AccountPage() {
     <PageShell>
       <div className="w-full space-y-6">
         <PageHero
-          eyebrow="My profile"
-          title="Account details"
-          description="Review the personal details connected to your reservation account."
-          meta={["Reservation identity", "Quick booking shortcuts", "Profile overview"]}
+          eyebrow="Profile"
+          title="Account Details"
           aside={
             <div className="rounded-[1.75rem] bg-[linear-gradient(180deg,_#145f97_0%,_#0e4770_100%)] p-6 text-white shadow-[0_24px_60px_rgba(12,79,129,0.16)]">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-white/70">
-                Account role
-              </p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-white/70">Role</p>
               <p className="mt-3 text-xl font-semibold capitalize">{user?.role || "user"}</p>
-              <p className="mt-3 text-sm leading-7 text-white/78">
-                Use this area to review the details currently tied to your train reservations.
-              </p>
             </div>
           }
         />
@@ -78,19 +71,16 @@ export default function AccountPage() {
 
           <aside className="space-y-6">
             <PageSection className="p-8">
-              <Badge variant="primary">Quick actions</Badge>
-              <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.3em] text-[var(--color-muted)]">
-                Quick actions
-              </p>
+              <Badge variant="primary">Actions</Badge>
               <div className="mt-5 flex flex-col gap-3">
                 <Button as={Link} href="/search" variant="secondary" className="justify-start">
-                  Search trains
+                  Search Trains
                 </Button>
                 <Button as={Link} href="/bookings" variant="secondary" className="justify-start">
-                  View my bookings
+                  My Bookings
                 </Button>
                 <Button as={Link} href="/cancellations" variant="secondary" className="justify-start">
-                  View cancellations
+                  Cancellations
                 </Button>
               </div>
             </PageSection>

@@ -3,10 +3,13 @@ class Admin::CoachesController < Admin::BaseController
 
   def index
     authorize Coach
-    coaches = Coach.includes(:train, :seats).order(:train_id, :coach_number)
-    render json: {
-      coaches: coaches.map { |coach| serialize_coach(coach) }
-    }, status: :ok
+    coaches_scope = Coach.includes(:train, :seats).order(:train_id, :coach_number)
+    coaches = paginate_scope(coaches_scope)
+
+    render json: paginated_response(
+      data: coaches.map { |coach| serialize_coach(coach) },
+      records: coaches
+    ), status: :ok
   end
 
   def create
@@ -50,12 +53,6 @@ class Admin::CoachesController < Admin::BaseController
     else
       render json: { errors: result[:errors] }, status: :unprocessable_entity
     end
-  end
-
-  def seats_index
-    authorize Seat
-    coach = Coach.find(params[:coach_id])
-    render json: { seats: coach.seats.order(:seat_number) }, status: :ok
   end
 
   private

@@ -1,8 +1,10 @@
 class Admin::TrainsController < Admin::BaseController
   def index
     authorize Train
-    trains = Train.order(:train_number)
-    render json: { trains: trains }, status: :ok
+    trains_scope = Train.order(:train_number)
+    trains = paginate_scope(trains_scope)
+
+    render json: paginated_response(data: trains, records: trains), status: :ok
   end
 
   def create

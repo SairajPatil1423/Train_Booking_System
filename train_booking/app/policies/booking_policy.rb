@@ -1,9 +1,11 @@
 class BookingPolicy < ApplicationPolicy
   def index?
-    user.present? && !user.admin?
+    user.present?
   end
 
   def show?
+    return true if user&.admin?
+
     record.user_id == user&.id
   end
 
@@ -22,7 +24,7 @@ class BookingPolicy < ApplicationPolicy
   class Scope < Scope
     def resolve
       return scope.none unless user
-      return scope.none if user.admin?
+      return scope.all if user.admin?
 
       scope.where(user_id: user.id)
     end

@@ -3,8 +3,13 @@ class Admin::TrainStopsController < Admin::BaseController
 
   def index
     authorize TrainStop
-    stops = TrainStop.includes(:train, :station).order(:train_id, :stop_order)
-    render json: { train_stops: stops.map { |stop| serialize_train_stop(stop) } }, status: :ok
+    stops_scope = TrainStop.includes(:train, :station).order(:train_id, :stop_order)
+    stops = paginate_scope(stops_scope)
+
+    render json: paginated_response(
+      data: stops.map { |stop| serialize_train_stop(stop) },
+      records: stops
+    ), status: :ok
   end
 
   def create

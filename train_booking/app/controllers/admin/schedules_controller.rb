@@ -3,8 +3,13 @@ class Admin::SchedulesController < Admin::BaseController
 
   def index
     authorize Schedule
-    schedules = Schedule.includes(:train).order(travel_date: :asc)
-    render json: { schedules: schedules.as_json(include: { train: { only: %i[id train_number name train_type] } }) }, status: :ok
+    schedules_scope = Schedule.includes(:train).order(travel_date: :asc)
+    schedules = paginate_scope(schedules_scope)
+
+    render json: paginated_response(
+      data: schedules.as_json(include: { train: { only: %i[id train_number name train_type] } }),
+      records: schedules
+    ), status: :ok
   end
 
   def create

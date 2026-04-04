@@ -5,12 +5,14 @@ const variantClasses = {
   secondary: "secondary-button",
   ghost: "ghost-button",
   danger: "danger-button text-white",
+  quiet: "button-quiet border border-[var(--color-line)] bg-[var(--color-panel)] text-[var(--color-muted-strong)]",
 };
 
 const sizeClasses = {
   sm: "px-4 py-2 text-sm",
   md: "px-5 py-3 text-sm",
   lg: "px-6 py-3.5 text-base",
+  xl: "px-7 py-4 text-base sm:px-8 sm:py-[1.125rem] sm:text-lg",
 };
 
 export default function Button({
@@ -29,7 +31,7 @@ export default function Button({
       className={cn(
         variantClasses[variant] || variantClasses.primary,
         sizeClasses[size] || sizeClasses.md,
-        "ui-focus-ring justify-center disabled:cursor-not-allowed disabled:opacity-60",
+        "ui-focus-ring justify-center font-semibold disabled:cursor-not-allowed disabled:opacity-60",
         className,
       )}
       disabled={disabled}

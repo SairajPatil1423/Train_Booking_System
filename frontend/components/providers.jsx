@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import { Provider, useDispatch, useSelector } from "react-redux";
 import { store } from "@/store";
 import {
@@ -15,6 +15,43 @@ import {
 } from "@/utils/authStorage";
 import ToastViewport from "@/components/toast-viewport";
 import { toastError } from "@/utils/toast";
+
+const ThemeContext = createContext({
+  theme: "light",
+  setTheme: () => {},
+  toggleTheme: () => {},
+});
+
+function ThemeProvider({ children }) {
+  const [theme, setThemeState] = useState(() => {
+    if (typeof window === "undefined") {
+      return "light";
+    }
+
+    const storedTheme = window.localStorage.getItem("railyatra-theme");
+    if (storedTheme) {
+      return storedTheme;
+    }
+
+    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  });
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+  }, [theme]);
+
+  function setTheme(nextTheme) {
+    setThemeState(nextTheme);
+    document.documentElement.dataset.theme = nextTheme;
+    window.localStorage.setItem("railyatra-theme", nextTheme);
+  }
+
+  function toggleTheme() {
+    setTheme(theme === "dark" ? "light" : "dark");
+  }
+
+  return <ThemeContext.Provider value={{ theme, setTheme, toggleTheme }}>{children}</ThemeContext.Provider>;
+}
 
 function AuthBootstrap({ children }) {
   const dispatch = useDispatch();
@@ -65,10 +102,16 @@ function AuthBootstrap({ children }) {
 export default function Providers({ children }) {
   return (
     <Provider store={store}>
-      <AuthBootstrap>
-        {children}
-        <ToastViewport />
-      </AuthBootstrap>
+      <ThemeProvider>
+        <AuthBootstrap>
+          {children}
+          <ToastViewport />
+        </AuthBootstrap>
+      </ThemeProvider>
     </Provider>
   );
+}
+
+export function useTheme() {
+  return useContext(ThemeContext);
 }

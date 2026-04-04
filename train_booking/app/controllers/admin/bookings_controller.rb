@@ -1,23 +1,28 @@
 class Admin::BookingsController < Admin::BaseController
-  before_action :set_booking, only: :show
-
   def index
     authorize Booking
-    bookings = policy_scope(Booking).includes(:user, :passengers, :ticket_allocations, :payment).order(booked_at: :desc)
+    bookings_scope = policy_scope(Booking)
+      .includes(
+        :user,
+        :passengers,
+        :payment,
+        :src_station,
+        :dst_station,
+        :cancellations,
+        { ticket_allocations: :seat },
+        { schedule: :train }
+      )
+      .order(booked_at: :desc)
 
-    render json: { bookings: bookings.as_json(include: booking_includes) }, status: :ok
-  end
+    bookings = paginate_scope(bookings_scope)
 
-  def show
-    authorize @booking
-    render json: { booking: @booking.as_json(include: booking_includes) }, status: :ok
+    render json: paginated_response(
+      data: bookings.as_json(include: booking_includes),
+      records: bookings
+    ), status: :ok
   end
 
   private
-
-  def set_booking
-    @booking = policy_scope(Booking).find(params[:id])
-  end
 
   def booking_includes
     {
