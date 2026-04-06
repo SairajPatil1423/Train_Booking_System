@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useDispatch, useSelector } from "react-redux";
@@ -21,7 +22,22 @@ import { toastError, toastSuccess } from "@/utils/toast";
 export default function AdminLoginPage() {
   const dispatch = useDispatch();
   const router = useRouter();
-  const { status, error } = useSelector((state) => state.auth);
+  const { status, error, hydrated, token, user } = useSelector((state) => state.auth);
+
+  useEffect(() => {
+    if (!hydrated) {
+      return;
+    }
+
+    if (token && user?.role === "admin") {
+      router.replace("/admin");
+      return;
+    }
+
+    if (token && user?.role !== "admin") {
+      dispatch(clearCredentials());
+    }
+  }, [dispatch, hydrated, router, token, user]);
 
   const {
     register,

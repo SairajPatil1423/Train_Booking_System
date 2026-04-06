@@ -11,10 +11,15 @@ const api = axios.create({
 
 api.interceptors.request.use(
   (config) => {
+    const requestUrl = String(config.url || "");
+    const isAuthBootstrapRequest =
+      requestUrl === "/users/sign_in" ||
+      requestUrl === "/users";
+
     const authState = readAuthState();
     const token = authState?.token;
 
-    if (token) {
+    if (token && !isAuthBootstrapRequest) {
       config.headers.Authorization = `Bearer ${token}`;
     }
 

@@ -226,7 +226,7 @@ export default function BookingsPage() {
                 booking.status === "booked" ||
                 booking.status === "confirmed" ||
                 booking.status === "partially_cancelled";
-
+               
               return (
                 <Card as="article" key={booking.id} className="rounded-[1.8rem] p-5">
                   <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
@@ -390,8 +390,8 @@ function CancellationDrawer({
   const isOpen = Boolean(intent);
   const isProcessing = Boolean(
     intent &&
-      processingAction ===
-        (intent.kind === "booking" ? `booking:${intent.bookingId}` : `ticket:${intent.ticketAllocationId}`),
+    processingAction ===
+    (intent.kind === "booking" ? `booking:${intent.bookingId}` : `ticket:${intent.ticketAllocationId}`),
   );
 
   return (

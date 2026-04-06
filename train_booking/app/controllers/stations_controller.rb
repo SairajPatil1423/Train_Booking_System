@@ -1,3 +1,4 @@
+# StationsController provides station search data for the user flow.
 class StationsController < ApplicationController
   def index
     authorize Station, :search?

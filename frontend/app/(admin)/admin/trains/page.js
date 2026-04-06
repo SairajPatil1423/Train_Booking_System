@@ -78,7 +78,8 @@ export default function AdminTrainsPage() {
     event.preventDefault();
     setFormError("");
 
-    const formData = new FormData(event.currentTarget);
+    const form = event.currentTarget;
+    const formData = new FormData(form);
     const trainData = {
       train_number: formData.get("train_number"),
       name: formData.get("name"),
@@ -107,7 +108,7 @@ export default function AdminTrainsPage() {
 
       setFormError("");
       setEditingTrain(null);
-      event.currentTarget.reset();
+      form.reset();
     } catch (requestError) {
       const message = formatErrorMessage(requestError);
       setFormError(message);
@@ -119,7 +120,8 @@ export default function AdminTrainsPage() {
     event.preventDefault();
     setRouteFormError("");
 
-    const formData = new FormData(event.currentTarget);
+    const form = event.currentTarget;
+    const formData = new FormData(form);
     const trainStopData = {
       train_id: formData.get("train_id"),
       station_id: formData.get("station_id"),
@@ -146,7 +148,7 @@ export default function AdminTrainsPage() {
 
       setRouteFormError("");
       setEditingStop(null);
-      event.currentTarget.reset();
+      form.reset();
     } catch (requestError) {
       const message = formatErrorMessage(requestError);
       setRouteFormError(message);
@@ -158,7 +160,8 @@ export default function AdminTrainsPage() {
     event.preventDefault();
     setCityFormError("");
 
-    const formData = new FormData(event.currentTarget);
+    const form = event.currentTarget;
+    const formData = new FormData(form);
     const cityData = {
       name: formData.get("name"),
       state: formData.get("state"),
@@ -169,7 +172,7 @@ export default function AdminTrainsPage() {
       const createdCity = await dispatch(createAdminCityThunk(cityData)).unwrap();
       setCityFormError("");
       toastSuccess("City created successfully.");
-      event.currentTarget.reset();
+      form.reset();
       return createdCity;
     } catch (requestError) {
       const message = formatErrorMessage(requestError);
@@ -183,7 +186,8 @@ export default function AdminTrainsPage() {
     event.preventDefault();
     setStationFormError("");
 
-    const formData = new FormData(event.currentTarget);
+    const form = event.currentTarget;
+    const formData = new FormData(form);
     const stationData = {
       city_id: formData.get("city_id"),
       name: formData.get("name"),
@@ -196,7 +200,7 @@ export default function AdminTrainsPage() {
       const createdStation = await dispatch(createAdminStationThunk(stationData)).unwrap();
       setStationFormError("");
       toastSuccess("Station created successfully.");
-      event.currentTarget.reset();
+      form.reset();
       return createdStation;
     } catch (requestError) {
       const message = formatErrorMessage(requestError);
