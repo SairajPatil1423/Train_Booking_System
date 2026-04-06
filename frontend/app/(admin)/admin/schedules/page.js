@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useDispatch, useSelector } from "react-redux";
 import PageHero from "@/components/layout/page-hero";
 import PageSection from "@/components/layout/page-section";
@@ -19,7 +18,10 @@ import {
   fetchAdminSchedulesThunk,
   updateAdminScheduleThunk,
 } from "@/features/admin/adminSlice";
+import AdminConfirmDialog from "@/components/admin/admin-confirm-dialog";
 import { AdminErrorBox, AdminInfoBlock, AdminInfoPill } from "@/components/admin/admin-ui";
+import { usePaginatedRouteState } from "@/hooks/use-paginated-route-state";
+import { formatErrorMessage } from "@/utils/errors";
 import { toastError, toastInfo, toastSuccess } from "@/utils/toast";
 
 const SCHEDULE_STATUS_OPTIONS = [
@@ -29,40 +31,23 @@ const SCHEDULE_STATUS_OPTIONS = [
   { value: "cancelled", label: "Cancelled", variant: "danger" },
 ];
 
-const DEFAULT_PAGE_SIZE = 10;
-
 export default function AdminSchedulesPage() {
   const dispatch = useDispatch();
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
   const { schedules, schedulesMeta, trainCatalog, trainCatalogStatus, trainCatalogError, resources } = useSelector((state) => state.admin);
   const schedulesStatus = resources.schedules.status;
   const schedulesError = resources.schedules.error;
   const [editingSchedule, setEditingSchedule] = useState(null);
   const [formError, setFormError] = useState("");
-  const requestedPage = Number(searchParams.get("page") || 1);
-  const requestedPerPage = Number(searchParams.get("per_page") || DEFAULT_PAGE_SIZE);
-  const currentPage = Number.isFinite(requestedPage) && requestedPage > 0 ? requestedPage : 1;
-  const currentPerPage =
-    Number.isFinite(requestedPerPage) && requestedPerPage > 0 ? requestedPerPage : DEFAULT_PAGE_SIZE;
+  const [scheduleToDelete, setScheduleToDelete] = useState(null);
+  const { currentPage, currentPerPage, setPage, setPerPage } = usePaginatedRouteState({
+    totalPages: schedulesMeta.totalPages,
+    status: schedulesStatus,
+  });
 
   useEffect(() => {
     dispatch(fetchAdminSchedulesThunk({ page: currentPage, perPage: currentPerPage }));
     dispatch(fetchAdminTrainCatalogThunk());
   }, [currentPage, currentPerPage, dispatch]);
-
-  useEffect(() => {
-    if (
-      schedulesStatus === "succeeded" &&
-      schedulesMeta.totalPages > 0 &&
-      currentPage > schedulesMeta.totalPages
-    ) {
-      const params = new URLSearchParams(searchParams.toString());
-      params.set("page", String(schedulesMeta.totalPages));
-      router.replace(`${pathname}?${params.toString()}`);
-    }
-  }, [schedulesMeta.totalPages, schedulesStatus, currentPage, pathname, router, searchParams]);
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -103,44 +88,29 @@ export default function AdminSchedulesPage() {
       setEditingSchedule(null);
       event.currentTarget.reset();
     } catch (requestError) {
-      const message = Array.isArray(requestError) ? requestError.join(", ") : String(requestError);
+      const message = formatErrorMessage(requestError);
       setFormError(message);
       toastError(message, "Schedule action failed");
     }
   }
 
-  async function handleDelete(id) {
-    setFormError("");
-
-    if (!window.confirm("Delete this schedule?")) {
+  async function handleDeleteSchedule() {
+    if (!scheduleToDelete) {
       return;
     }
 
+    setFormError("");
+
     try {
-      await dispatch(deleteAdminScheduleThunk(id)).unwrap();
+      await dispatch(deleteAdminScheduleThunk(scheduleToDelete.id)).unwrap();
       setFormError("");
+      setScheduleToDelete(null);
       toastSuccess("Schedule deleted successfully.");
     } catch (requestError) {
-      const message = Array.isArray(requestError) ? requestError.join(", ") : String(requestError);
+      const message = formatErrorMessage(requestError);
       setFormError(message);
       toastError(message, "Schedule deletion failed");
     }
-  }
-
-  function handlePageChange(nextPage) {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("page", String(nextPage));
-    params.set("per_page", String(currentPerPage));
-    router.push(`${pathname}?${params.toString()}`);
-  }
-
-  function handlePerPageChange(nextPerPage) {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("page", "1");
-    params.set("per_page", String(nextPerPage));
-    router.push(`${pathname}?${params.toString()}`);
   }
 
   return (
@@ -207,7 +177,7 @@ export default function AdminSchedulesPage() {
                         >
                           Edit schedule
                         </Button>
-                        <Button type="button" variant="danger" size="sm" onClick={() => handleDelete(schedule.id)}>
+                        <Button type="button" variant="danger" size="sm" onClick={() => setScheduleToDelete(schedule)}>
                           Delete schedule
                         </Button>
                       </div>
@@ -230,8 +200,8 @@ export default function AdminSchedulesPage() {
                   perPage={schedulesMeta.perPage}
                   totalCount={schedulesMeta.totalCount || schedules.length}
                   totalPages={schedulesMeta.totalPages}
-                  onPageChange={handlePageChange}
-                  onPerPageChange={handlePerPageChange}
+                  onPageChange={setPage}
+                  onPerPageChange={setPerPage}
                   disabled={schedulesStatus === "loading"}
                   loading={schedulesStatus === "loading"}
                 />
@@ -364,6 +334,16 @@ export default function AdminSchedulesPage() {
           </PageSection>
         </div>
       </div>
+
+      <AdminConfirmDialog
+        open={Boolean(scheduleToDelete)}
+        title="Delete schedule"
+        description="This schedule will be removed permanently."
+        confirmLabel="Delete schedule"
+        busy={schedulesStatus === "loading"}
+        onClose={() => setScheduleToDelete(null)}
+        onConfirm={handleDeleteSchedule}
+      />
     </main>
   );
 }

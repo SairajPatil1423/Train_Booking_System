@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useDispatch, useSelector } from "react-redux";
 import {
   createAdminCityThunk,
@@ -18,6 +17,7 @@ import {
   updateAdminTrainStopThunk,
   updateAdminTrainThunk,
 } from "@/features/admin/adminSlice";
+import AdminConfirmDialog from "@/components/admin/admin-confirm-dialog";
 import PageHero from "@/components/layout/page-hero";
 import PageSection from "@/components/layout/page-section";
 import Button from "@/components/ui/button";
@@ -27,7 +27,9 @@ import Input from "@/components/ui/input";
 import LoadingState from "@/components/loading-state";
 import Badge from "@/components/ui/badge";
 import PaginationToolbar from "@/components/ui/pagination-toolbar";
+import { usePaginatedRouteState } from "@/hooks/use-paginated-route-state";
 import { AdminErrorBox, AdminInfoBlock, AdminInfoPill } from "@/components/admin/admin-ui";
+import { formatErrorMessage } from "@/utils/errors";
 import { toastError, toastInfo, toastSuccess } from "@/utils/toast";
 
 const TRAIN_TYPE_OPTIONS = [
@@ -36,13 +38,8 @@ const TRAIN_TYPE_OPTIONS = [
   { value: "passenger", label: "Passenger" },
 ];
 
-const DEFAULT_PAGE_SIZE = 10;
-
 export default function AdminTrainsPage() {
   const dispatch = useDispatch();
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
   const { trains, trainCatalog, trainsMeta, cities, stations, trainStops, resources } = useSelector((state) => state.admin);
   const { isAuthenticated, user } = useSelector((state) => state.auth);
   const trainsStatus = resources.trains.status;
@@ -60,12 +57,12 @@ export default function AdminTrainsPage() {
   const [routeFormError, setRouteFormError] = useState("");
   const [cityFormError, setCityFormError] = useState("");
   const [stationFormError, setStationFormError] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState(null);
   const routeEditorRef = useRef(null);
-  const requestedPage = Number(searchParams.get("page") || 1);
-  const requestedPerPage = Number(searchParams.get("per_page") || DEFAULT_PAGE_SIZE);
-  const currentPage = Number.isFinite(requestedPage) && requestedPage > 0 ? requestedPage : 1;
-  const currentPerPage =
-    Number.isFinite(requestedPerPage) && requestedPerPage > 0 ? requestedPerPage : DEFAULT_PAGE_SIZE;
+  const { currentPage, currentPerPage, setPage, setPerPage } = usePaginatedRouteState({
+    totalPages: trainsMeta.totalPages,
+    status: trainsStatus,
+  });
 
   useEffect(() => {
     if (isAuthenticated && user?.role === "admin") {
@@ -76,18 +73,6 @@ export default function AdminTrainsPage() {
       dispatch(fetchAdminCitiesThunk());
     }
   }, [currentPage, currentPerPage, dispatch, isAuthenticated, user]);
-
-  useEffect(() => {
-    if (
-      trainsStatus === "succeeded" &&
-      trainsMeta.totalPages > 0 &&
-      currentPage > trainsMeta.totalPages
-    ) {
-      const params = new URLSearchParams(searchParams.toString());
-      params.set("page", String(trainsMeta.totalPages));
-      router.replace(`${pathname}?${params.toString()}`);
-    }
-  }, [trainsMeta.totalPages, trainsStatus, currentPage, pathname, router, searchParams]);
 
   async function handleSave(event) {
     event.preventDefault();
@@ -124,7 +109,7 @@ export default function AdminTrainsPage() {
       setEditingTrain(null);
       event.currentTarget.reset();
     } catch (requestError) {
-      const message = Array.isArray(requestError) ? requestError.join(", ") : String(requestError);
+      const message = formatErrorMessage(requestError);
       setFormError(message);
       toastError(message, "Train action failed");
     }
@@ -163,7 +148,7 @@ export default function AdminTrainsPage() {
       setEditingStop(null);
       event.currentTarget.reset();
     } catch (requestError) {
-      const message = Array.isArray(requestError) ? requestError.join(", ") : String(requestError);
+      const message = formatErrorMessage(requestError);
       setRouteFormError(message);
       toastError(message, "Route stop action failed");
     }
@@ -187,7 +172,7 @@ export default function AdminTrainsPage() {
       event.currentTarget.reset();
       return createdCity;
     } catch (requestError) {
-      const message = Array.isArray(requestError) ? requestError.join(", ") : String(requestError);
+      const message = formatErrorMessage(requestError);
       setCityFormError(message);
       toastError(message, "City creation failed");
       return null;
@@ -214,26 +199,27 @@ export default function AdminTrainsPage() {
       event.currentTarget.reset();
       return createdStation;
     } catch (requestError) {
-      const message = Array.isArray(requestError) ? requestError.join(", ") : String(requestError);
+      const message = formatErrorMessage(requestError);
       setStationFormError(message);
       toastError(message, "Station creation failed");
       return null;
     }
   }
 
-  async function handleDeleteStop(id) {
-    setRouteFormError("");
-
-    if (!window.confirm("Remove this route stop?")) {
+  async function handleDeleteStop() {
+    if (!deleteTarget || deleteTarget.type !== "stop") {
       return;
     }
 
+    setRouteFormError("");
+
     try {
-      await dispatch(deleteAdminTrainStopThunk(id)).unwrap();
+      await dispatch(deleteAdminTrainStopThunk(deleteTarget.id)).unwrap();
       setRouteFormError("");
+      setDeleteTarget(null);
       toastSuccess("Route stop removed successfully.");
     } catch (requestError) {
-      const message = Array.isArray(requestError) ? requestError.join(", ") : String(requestError);
+      const message = formatErrorMessage(requestError);
       setRouteFormError(message);
       toastError(message, "Route stop removal failed");
     }
@@ -251,38 +237,23 @@ export default function AdminTrainsPage() {
     .filter((stop) => stop.train_id === selectedTrainId)
     .sort((left, right) => Number(left.stop_order || 0) - Number(right.stop_order || 0));
 
-  async function handleDelete(id) {
-    setFormError("");
-
-    if (!window.confirm("Are you sure you want to delete this train?")) {
+  async function handleDeleteTrain() {
+    if (!deleteTarget || deleteTarget.type !== "train") {
       return;
     }
 
+    setFormError("");
+
     try {
-      await dispatch(deleteAdminTrainThunk(id)).unwrap();
+      await dispatch(deleteAdminTrainThunk(deleteTarget.id)).unwrap();
       setFormError("");
+      setDeleteTarget(null);
       toastSuccess("Train deleted successfully.");
     } catch (requestError) {
-      const message = Array.isArray(requestError) ? requestError.join(", ") : String(requestError);
+      const message = formatErrorMessage(requestError);
       setFormError(message);
       toastError(message, "Train deletion failed");
     }
-  }
-
-  function handlePageChange(nextPage) {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("page", String(nextPage));
-    params.set("per_page", String(currentPerPage));
-    router.push(`${pathname}?${params.toString()}`);
-  }
-
-  function handlePerPageChange(nextPerPage) {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("page", "1");
-    params.set("per_page", String(nextPerPage));
-    router.push(`${pathname}?${params.toString()}`);
   }
 
   if (!isAuthenticated || user?.role !== "admin") {
@@ -419,7 +390,18 @@ export default function AdminTrainsPage() {
                         >
                           Manage route
                         </Button>
-                      <Button type="button" variant="danger" size="sm" onClick={() => handleDelete(train.id)}>
+                      <Button
+                        type="button"
+                        variant="danger"
+                        size="sm"
+                        onClick={() =>
+                          setDeleteTarget({
+                            type: "train",
+                            id: train.id,
+                            label: train.name || train.train_number,
+                          })
+                        }
+                      >
                         Delete train
                       </Button>
                     </div>
@@ -441,8 +423,8 @@ export default function AdminTrainsPage() {
                   perPage={trainsMeta.perPage}
                   totalCount={trainsMeta.totalCount || trains.length}
                   totalPages={trainsMeta.totalPages}
-                  onPageChange={handlePageChange}
-                  onPerPageChange={handlePerPageChange}
+                  onPageChange={setPage}
+                  onPerPageChange={setPerPage}
                   disabled={trainsStatus === "loading"}
                   loading={trainsStatus === "loading"}
                 />
@@ -614,7 +596,13 @@ export default function AdminTrainsPage() {
                           type="button"
                           variant="danger"
                           size="sm"
-                          onClick={() => handleDeleteStop(stop.id)}
+                          onClick={() =>
+                            setDeleteTarget({
+                              type: "stop",
+                              id: stop.id,
+                              label: stop.station?.name || `Stop ${stop.stop_order}`,
+                            })
+                          }
                         >
                           Remove stop
                         </Button>
@@ -792,6 +780,20 @@ export default function AdminTrainsPage() {
           </PageSection>
         </div>
       </div>
+
+      <AdminConfirmDialog
+        open={Boolean(deleteTarget)}
+        title={deleteTarget?.type === "stop" ? "Remove route stop" : "Delete train"}
+        description={
+          deleteTarget?.type === "stop"
+            ? `Remove ${deleteTarget?.label || "this stop"} from the route?`
+            : `Delete ${deleteTarget?.label || "this train"}? This action cannot be undone.`
+        }
+        confirmLabel={deleteTarget?.type === "stop" ? "Remove stop" : "Delete train"}
+        busy={trainsStatus === "loading" || trainStopsStatus === "loading"}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={deleteTarget?.type === "stop" ? handleDeleteStop : handleDeleteTrain}
+      />
     </main>
   );
 }

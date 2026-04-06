@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useDispatch, useSelector } from "react-redux";
 import EmptyState from "@/components/empty-state";
 import PageSection from "@/components/layout/page-section";
@@ -18,11 +18,11 @@ import {
   setSearchError,
   searchSchedulesThunk,
 } from "@/features/trains/searchSlice";
+import { usePaginatedRouteState } from "@/hooks/use-paginated-route-state";
 import { buildScheduleViewModel } from "@/utils/view-models";
 
 function SearchResultsPageContent() {
   const router = useRouter();
-  const pathname = usePathname();
   const searchParams = useSearchParams();
   const dispatch = useDispatch();
   const { results, meta, status, error } = useSelector((state) => state.trainsSearch);
@@ -32,11 +32,10 @@ function SearchResultsPageContent() {
   const journeyDate = searchParams.get("travel_date") || "";
   const fromLabel = searchParams.get("from_label") || "Source";
   const toLabel = searchParams.get("to_label") || "Destination";
-  const requestedPage = Number(searchParams.get("page") || 1);
-  const requestedPerPage = Number(searchParams.get("per_page") || 10);
-  const currentPage = Number.isFinite(requestedPage) && requestedPage > 0 ? requestedPage : 1;
-  const currentPerPage =
-    Number.isFinite(requestedPerPage) && requestedPerPage > 0 ? requestedPerPage : 10;
+  const { currentPage, currentPerPage, setPage, setPerPage } = usePaginatedRouteState({
+    totalPages: meta.totalPages,
+    status,
+  });
   const [sortBy, setSortBy] = useState("departure");
 
   useEffect(() => {
@@ -56,14 +55,6 @@ function SearchResultsPageContent() {
     );
   }, [currentPage, currentPerPage, dispatch, fromStationId, journeyDate, toStationId]);
 
-  useEffect(() => {
-    if (status === "succeeded" && meta.totalPages > 0 && currentPage > meta.totalPages) {
-      const params = new URLSearchParams(searchParams.toString());
-      params.set("page", String(meta.totalPages));
-      router.replace(`${pathname}?${params.toString()}`);
-    }
-  }, [currentPage, meta.totalPages, pathname, router, searchParams, status]);
-
   const scheduleCards = useMemo(() => {
     const mapped = results.map((schedule) =>
       buildScheduleViewModel(schedule, { fromLabel, toLabel }),
@@ -81,22 +72,6 @@ function SearchResultsPageContent() {
       return left.departureLabel.localeCompare(right.departureLabel);
     });
   }, [fromLabel, results, sortBy, toLabel]);
-
-  function handlePageChange(nextPage) {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("page", String(nextPage));
-    params.set("per_page", String(currentPerPage));
-    router.push(`${pathname}?${params.toString()}`);
-  }
-
-  function handlePerPageChange(nextPerPage) {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("page", "1");
-    params.set("per_page", String(nextPerPage));
-    router.push(`${pathname}?${params.toString()}`);
-  }
 
   return (
     <PageShell className="max-w-6xl px-6 py-8 sm:px-10 lg:px-12">
@@ -280,8 +255,8 @@ function SearchResultsPageContent() {
               perPage={meta.perPage}
               totalCount={meta.totalCount || scheduleCards.length}
               totalPages={meta.totalPages}
-              onPageChange={handlePageChange}
-              onPerPageChange={handlePerPageChange}
+              onPageChange={setPage}
+              onPerPageChange={setPerPage}
               disabled={status === "loading"}
               loading={status === "loading"}
             />

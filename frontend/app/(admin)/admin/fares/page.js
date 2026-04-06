@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useDispatch, useSelector } from "react-redux";
 import PageHero from "@/components/layout/page-hero";
 import PageSection from "@/components/layout/page-section";
@@ -20,43 +19,29 @@ import {
   fetchAdminFareRulesThunk,
   updateAdminFareRuleThunk,
 } from "@/features/admin/adminSlice";
+import AdminConfirmDialog from "@/components/admin/admin-confirm-dialog";
 import { AdminErrorBox, AdminInfoBlock, AdminInfoPill } from "@/components/admin/admin-ui";
+import { usePaginatedRouteState } from "@/hooks/use-paginated-route-state";
+import { formatErrorMessage } from "@/utils/errors";
 import { toastError, toastInfo, toastSuccess } from "@/utils/toast";
-
-const DEFAULT_PAGE_SIZE = 10;
 
 export default function AdminFaresPage() {
   const dispatch = useDispatch();
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
   const { fareRules, fareRulesMeta, trainCatalog, trainCatalogStatus, trainCatalogError, resources } = useSelector((state) => state.admin);
   const fareRulesStatus = resources.fareRules.status;
   const fareRulesError = resources.fareRules.error;
   const [editingRule, setEditingRule] = useState(null);
   const [formError, setFormError] = useState("");
-  const requestedPage = Number(searchParams.get("page") || 1);
-  const requestedPerPage = Number(searchParams.get("per_page") || DEFAULT_PAGE_SIZE);
-  const currentPage = Number.isFinite(requestedPage) && requestedPage > 0 ? requestedPage : 1;
-  const currentPerPage =
-    Number.isFinite(requestedPerPage) && requestedPerPage > 0 ? requestedPerPage : DEFAULT_PAGE_SIZE;
+  const [ruleToDelete, setRuleToDelete] = useState(null);
+  const { currentPage, currentPerPage, setPage, setPerPage } = usePaginatedRouteState({
+    totalPages: fareRulesMeta.totalPages,
+    status: fareRulesStatus,
+  });
 
   useEffect(() => {
     dispatch(fetchAdminFareRulesThunk({ page: currentPage, perPage: currentPerPage }));
     dispatch(fetchAdminTrainCatalogThunk());
   }, [currentPage, currentPerPage, dispatch]);
-
-  useEffect(() => {
-    if (
-      fareRulesStatus === "succeeded" &&
-      fareRulesMeta.totalPages > 0 &&
-      currentPage > fareRulesMeta.totalPages
-    ) {
-      const params = new URLSearchParams(searchParams.toString());
-      params.set("page", String(fareRulesMeta.totalPages));
-      router.replace(`${pathname}?${params.toString()}`);
-    }
-  }, [fareRulesMeta.totalPages, fareRulesStatus, currentPage, pathname, router, searchParams]);
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -91,44 +76,29 @@ export default function AdminFaresPage() {
       setEditingRule(null);
       event.currentTarget.reset();
     } catch (requestError) {
-      const message = Array.isArray(requestError) ? requestError.join(", ") : String(requestError);
+      const message = formatErrorMessage(requestError);
       setFormError(message);
       toastError(message, "Fare rule action failed");
     }
   }
 
-  async function handleDelete(id) {
-    setFormError("");
-
-    if (!window.confirm("Delete this fare rule?")) {
+  async function handleDeleteRule() {
+    if (!ruleToDelete) {
       return;
     }
 
+    setFormError("");
+
     try {
-      await dispatch(deleteAdminFareRuleThunk(id)).unwrap();
+      await dispatch(deleteAdminFareRuleThunk(ruleToDelete.id)).unwrap();
       setFormError("");
+      setRuleToDelete(null);
       toastSuccess("Fare rule deleted successfully.");
     } catch (requestError) {
-      const message = Array.isArray(requestError) ? requestError.join(", ") : String(requestError);
+      const message = formatErrorMessage(requestError);
       setFormError(message);
       toastError(message, "Fare rule deletion failed");
     }
-  }
-
-  function handlePageChange(nextPage) {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("page", String(nextPage));
-    params.set("per_page", String(currentPerPage));
-    router.push(`${pathname}?${params.toString()}`);
-  }
-
-  function handlePerPageChange(nextPerPage) {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("page", "1");
-    params.set("per_page", String(nextPerPage));
-    router.push(`${pathname}?${params.toString()}`);
   }
 
   return (
@@ -185,7 +155,7 @@ export default function AdminFaresPage() {
                       >
                         Edit fare rule
                       </Button>
-                      <Button type="button" variant="danger" size="sm" onClick={() => handleDelete(rule.id)}>
+                      <Button type="button" variant="danger" size="sm" onClick={() => setRuleToDelete(rule)}>
                         Delete rule
                       </Button>
                     </div>
@@ -207,8 +177,8 @@ export default function AdminFaresPage() {
                   perPage={fareRulesMeta.perPage}
                   totalCount={fareRulesMeta.totalCount || fareRules.length}
                   totalPages={fareRulesMeta.totalPages}
-                  onPageChange={handlePageChange}
-                  onPerPageChange={handlePerPageChange}
+                  onPageChange={setPage}
+                  onPerPageChange={setPerPage}
                   disabled={fareRulesStatus === "loading"}
                   loading={fareRulesStatus === "loading"}
                 />
@@ -327,6 +297,16 @@ export default function AdminFaresPage() {
           </PageSection>
         </div>
       </div>
+
+      <AdminConfirmDialog
+        open={Boolean(ruleToDelete)}
+        title="Delete fare rule"
+        description="This fare rule will be removed permanently."
+        confirmLabel="Delete rule"
+        busy={fareRulesStatus === "loading"}
+        onClose={() => setRuleToDelete(null)}
+        onConfirm={handleDeleteRule}
+      />
     </main>
   );
 }
