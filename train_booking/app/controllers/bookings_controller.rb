@@ -1,3 +1,4 @@
+# BookingsController handles user booking APIs.
 class BookingsController < ApplicationController
   before_action :authenticate_user!
   before_action :set_booking, only: %i[show update cancel_ticket]
@@ -16,6 +17,7 @@ class BookingsController < ApplicationController
         { schedule: :train }
       )
       .order(booked_at: :desc)
+
     authorize Booking
 
     bookings = paginate_scope(bookings_scope)
@@ -32,63 +34,60 @@ class BookingsController < ApplicationController
   def create
     authorize Booking
 
-    result = Booking::Operation::Create.call(
-      current_user: current_user,
-      params: booking_params.to_h.deep_symbolize_keys.merge(user_id: current_user.id)
-    )
-
-    if result.success?
+    result = run Booking::Operation::Create,
+                 current_user: current_user,
+                 params: booking_params.to_h.deep_symbolize_keys.merge(user_id: current_user.id) do |operation_result|
       render json: {
         message: "Booking confirmed successfully.",
-        booking: result[:booking].as_json(include: booking_includes),
-        fare_per_seat: result[:fare_per_seat],
-        total_fare: result[:total_fare]
+        booking: operation_result[:booking].as_json(include: booking_includes),
+        fare_per_seat: operation_result[:fare_per_seat],
+        total_fare: operation_result[:total_fare]
       }, status: :created
-    else
-      render json: { errors: Array(result[:error] || result[:errors]) }, status: :unprocessable_entity
     end
+
+    return if performed?
+
+    render json: { errors: Array(result[:error] || result[:errors]) }, status: :unprocessable_entity
   end
 
   def update
     authorize @booking, :cancel?
 
-    result = Booking::Operation::Cancel.call(
-      current_user: current_user,
-      params: { booking_id: @booking.id, reason: cancellation_params[:reason] }
-    )
-
-    if result.success?
+    result = run Booking::Operation::Cancel,
+                 current_user: current_user,
+                 params: { booking_id: @booking.id, reason: cancellation_params[:reason] } do |operation_result|
       render json: {
         message: "Booking cancelled successfully.",
-        booking: result[:booking].as_json(include: booking_includes),
-        refund_amount: result[:refund_amount]
+        booking: operation_result[:booking].as_json(include: booking_includes),
+        refund_amount: operation_result[:refund_amount]
       }, status: :ok
-    else
-      render json: { errors: Array(result[:error] || result[:errors]) }, status: :unprocessable_entity
     end
+
+    return if performed?
+
+    render json: { errors: Array(result[:error] || result[:errors]) }, status: :unprocessable_entity
   end
 
   def cancel_ticket
     authorize @booking, :cancel?
 
-    result = Booking::Operation::CancelTicket.call(
-      current_user: current_user,
-      params: {
-        booking_id: @booking.id,
-        ticket_allocation_id: cancel_ticket_params[:ticket_allocation_id],
-        reason: cancel_ticket_params[:reason]
-      }
-    )
-
-    if result.success?
+    result = run Booking::Operation::CancelTicket,
+                 current_user: current_user,
+                 params: {
+                   booking_id: @booking.id,
+                   ticket_allocation_id: cancel_ticket_params[:ticket_allocation_id],
+                   reason: cancel_ticket_params[:reason]
+                 } do |operation_result|
       render json: {
         message: "Ticket cancelled successfully.",
-        booking: result[:booking].as_json(include: booking_includes),
-        refund_amount: result[:refund_amount]
+        booking: operation_result[:booking].as_json(include: booking_includes),
+        refund_amount: operation_result[:refund_amount]
       }, status: :ok
-    else
-      render json: { errors: Array(result[:error] || result[:errors]) }, status: :unprocessable_entity
     end
+
+    return if performed?
+
+    render json: { errors: Array(result[:error] || result[:errors]) }, status: :unprocessable_entity
   end
 
   private

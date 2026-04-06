@@ -17,7 +17,7 @@ Rails.application.routes.draw do
 
   namespace :admin do
     resources :users, only: [:create]
-    resources :bookings, only: [:index]
+    resources :bookings, only: [:index, :show, :create]
     resources :cities, only: [:index, :create, :update, :destroy]
     resources :trains, only: [:index, :create, :update, :destroy]
     resources :train_stops, only: [:index, :create, :update, :destroy]

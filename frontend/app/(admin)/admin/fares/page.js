@@ -47,7 +47,8 @@ export default function AdminFaresPage() {
     event.preventDefault();
     setFormError("");
 
-    const formData = new FormData(event.currentTarget);
+    const form = event.currentTarget;
+    const formData = new FormData(form);
     const fareRuleData = {
       train_id: formData.get("train_id"),
       coach_type: formData.get("coach_type"),
@@ -74,7 +75,7 @@ export default function AdminFaresPage() {
 
       setFormError("");
       setEditingRule(null);
-      event.currentTarget.reset();
+      form.reset();
     } catch (requestError) {
       const message = formatErrorMessage(requestError);
       setFormError(message);

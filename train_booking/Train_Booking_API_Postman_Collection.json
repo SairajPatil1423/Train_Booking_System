@@ -1,8 +1,8 @@
 {
   "info": {
-    "_postman_id": "9eb09d4f-4dd9-4bc8-9bbd-a7d7e63279f2",
+    "_postman_id": "8a29d0e8-aac2-4c1a-9b93-2e809cc79901",
     "name": "Train Booking API",
-    "description": "Postman collection for the Train Booking System backend.\n\nBefore running requests:\n1. Start the Rails server.\n2. Seed the database.\n3. Run `Admin Login` and `User Login` to populate tokens.\n4. Run admin create flows in order to populate IDs automatically.\n\nNotes:\n- Admin endpoints use `{{admin_token}}`.\n- User endpoints use `{{user_token}}`.\n- Many requests save IDs into collection variables for the next request.",
+    "description": "Complete Postman collection for the Train Booking backend.\n\nSuggested run order:\n1. Health Check\n2. User Register or User Login\n3. Admin Login\n4. Admin bootstrap requests: cities, stations, train, train stops, coach, fare rule, schedule\n5. User search and booking requests\n6. Admin and user follow-up read/update/delete requests\n\nImportant notes:\n- Admin requests use {{admin_token}}\n- User requests use {{user_token}}\n- The collection saves important IDs into collection variables automatically\n- Ticket allocation cancellation is included via PATCH /bookings/:id/cancel_ticket",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -13,18 +13,24 @@
     { "key": "user_password", "value": "password123" },
     { "key": "admin_token", "value": "" },
     { "key": "user_token", "value": "" },
+    { "key": "user_id", "value": "" },
+    { "key": "admin_id", "value": "" },
     { "key": "city_id", "value": "" },
+    { "key": "city_two_id", "value": "" },
     { "key": "station_id", "value": "" },
+    { "key": "station_two_id", "value": "" },
+    { "key": "src_station_id", "value": "" },
+    { "key": "dst_station_id", "value": "" },
     { "key": "train_id", "value": "" },
     { "key": "train_stop_id", "value": "" },
-    { "key": "fare_rule_id", "value": "" },
+    { "key": "train_stop_two_id", "value": "" },
     { "key": "coach_id", "value": "" },
     { "key": "seat_id", "value": "" },
+    { "key": "seat_id_2", "value": "" },
+    { "key": "fare_rule_id", "value": "" },
     { "key": "schedule_id", "value": "" },
     { "key": "booking_id", "value": "" },
-    { "key": "ticket_allocation_id", "value": "" },
-    { "key": "src_station_id", "value": "" },
-    { "key": "dst_station_id", "value": "" }
+    { "key": "ticket_allocation_id", "value": "" }
   ],
   "item": [
     {
@@ -63,7 +69,7 @@
       "name": "Authentication",
       "item": [
         {
-          "name": "User Registration",
+          "name": "User Register",
           "event": [
             {
               "listen": "test",
@@ -74,9 +80,8 @@
                   "  pm.response.to.have.status(201);",
                   "});",
                   "var data = pm.response.json();",
-                  "if (data.token) {",
-                  "  pm.collectionVariables.set('user_token', data.token);",
-                  "}"
+                  "if (data.token) pm.collectionVariables.set('user_token', data.token);",
+                  "if (data.user && data.user.id) pm.collectionVariables.set('user_id', data.user.id);"
                 ]
               }
             }
@@ -89,7 +94,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"user\": {\n    \"email\": \"postman_user@example.com\",\n    \"password\": \"password123\",\n    \"password_confirmation\": \"password123\",\n    \"phone\": \"7999999999\"\n  }\n}",
+              "raw": "{\n  \"user\": {\n    \"email\": \"postman_user@example.com\",\n    \"password\": \"password123\",\n    \"password_confirmation\": \"password123\",\n    \"phone\": \"7999999999\",\n    \"full_name\": \"Postman User\",\n    \"username\": \"postman_user\",\n    \"address\": \"User address\"\n  }\n}",
               "options": { "raw": { "language": "json" } }
             },
             "url": {
@@ -111,7 +116,8 @@
                   "  pm.response.to.have.status(200);",
                   "});",
                   "var data = pm.response.json();",
-                  "pm.collectionVariables.set('user_token', data.token || '');"
+                  "if (data.token) pm.collectionVariables.set('user_token', data.token);",
+                  "if (data.user && data.user.id) pm.collectionVariables.set('user_id', data.user.id);"
                 ]
               }
             }
@@ -146,7 +152,8 @@
                   "  pm.response.to.have.status(200);",
                   "});",
                   "var data = pm.response.json();",
-                  "pm.collectionVariables.set('admin_token', data.token || '');"
+                  "if (data.token) pm.collectionVariables.set('admin_token', data.token);",
+                  "if (data.user && data.user.id) pm.collectionVariables.set('admin_id', data.user.id);"
                 ]
               }
             }
@@ -171,19 +178,6 @@
         },
         {
           "name": "User Logout",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status is 200', function () {",
-                  "  pm.response.to.have.status(200);",
-                  "});"
-                ]
-              }
-            }
-          ],
           "request": {
             "method": "DELETE",
             "header": [
@@ -199,19 +193,6 @@
         },
         {
           "name": "Admin Logout",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status is 200', function () {",
-                  "  pm.response.to.have.status(200);",
-                  "});"
-                ]
-              }
-            }
-          ],
           "request": {
             "method": "DELETE",
             "header": [
@@ -228,23 +209,10 @@
       ]
     },
     {
-      "name": "Admin Setup",
+      "name": "Admin Bootstrap",
       "item": [
         {
           "name": "Create Admin User",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status is 201', function () {",
-                  "  pm.response.to.have.status(201);",
-                  "});"
-                ]
-              }
-            }
-          ],
           "request": {
             "method": "POST",
             "header": [
@@ -254,7 +222,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"user\": {\n    \"email\": \"new_admin@example.com\",\n    \"password\": \"password123\",\n    \"phone\": \"9111111111\"\n  }\n}",
+              "raw": "{\n  \"user\": {\n    \"email\": \"another_admin@example.com\",\n    \"password\": \"password123\",\n    \"password_confirmation\": \"password123\",\n    \"phone\": \"9000000000\",\n    \"full_name\": \"Another Admin\",\n    \"username\": \"another_admin\",\n    \"address\": \"Admin address\"\n  }\n}",
               "options": { "raw": { "language": "json" } }
             },
             "url": {
@@ -265,35 +233,15 @@
           }
         },
         {
-          "name": "List Cities",
-          "request": {
-            "method": "GET",
-            "header": [
-              { "key": "Accept", "value": "application/json", "type": "text" },
-              { "key": "Authorization", "value": "Bearer {{admin_token}}", "type": "text" }
-            ],
-            "url": {
-              "raw": "{{base_url}}/admin/cities",
-              "host": ["{{base_url}}"],
-              "path": ["admin", "cities"]
-            }
-          }
-        },
-        {
-          "name": "Create City",
+          "name": "Create City 1",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Status is 201', function () {",
-                  "  pm.response.to.have.status(201);",
-                  "});",
                   "var data = pm.response.json();",
-                  "if (data.city && data.city.id) {",
-                  "  pm.collectionVariables.set('city_id', data.city.id);",
-                  "}"
+                  "if (data.city && data.city.id) pm.collectionVariables.set('city_id', data.city.id);"
                 ]
               }
             }
@@ -318,9 +266,21 @@
           }
         },
         {
-          "name": "Update City",
+          "name": "Create City 2",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var data = pm.response.json();",
+                  "if (data.city && data.city.id) pm.collectionVariables.set('city_two_id', data.city.id);"
+                ]
+              }
+            }
+          ],
           "request": {
-            "method": "PATCH",
+            "method": "POST",
             "header": [
               { "key": "Content-Type", "value": "application/json", "type": "text" },
               { "key": "Accept", "value": "application/json", "type": "text" },
@@ -328,27 +288,24 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"city\": {\n    \"state\": \"MH\"\n  }\n}",
+              "raw": "{\n  \"city\": {\n    \"name\": \"Mumbai\",\n    \"state\": \"Maharashtra\",\n    \"country\": \"India\"\n  }\n}",
               "options": { "raw": { "language": "json" } }
             },
             "url": {
-              "raw": "{{base_url}}/admin/cities/{{city_id}}",
+              "raw": "{{base_url}}/admin/cities",
               "host": ["{{base_url}}"],
-              "path": ["admin", "cities", "{{city_id}}"]
+              "path": ["admin", "cities"]
             }
           }
         },
         {
-          "name": "Create Station",
+          "name": "Create Source Station",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Status is 201', function () {",
-                  "  pm.response.to.have.status(201);",
-                  "});",
                   "var data = pm.response.json();",
                   "if (data.station && data.station.id) {",
                   "  pm.collectionVariables.set('station_id', data.station.id);",
@@ -378,13 +335,34 @@
           }
         },
         {
-          "name": "List Stations",
+          "name": "Create Destination Station",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var data = pm.response.json();",
+                  "if (data.station && data.station.id) {",
+                  "  pm.collectionVariables.set('station_two_id', data.station.id);",
+                  "  pm.collectionVariables.set('dst_station_id', data.station.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
           "request": {
-            "method": "GET",
+            "method": "POST",
             "header": [
+              { "key": "Content-Type", "value": "application/json", "type": "text" },
               { "key": "Accept", "value": "application/json", "type": "text" },
               { "key": "Authorization", "value": "Bearer {{admin_token}}", "type": "text" }
             ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"station\": {\n    \"city_id\": \"{{city_two_id}}\",\n    \"name\": \"Mumbai Central\",\n    \"code\": \"BCT\",\n    \"latitude\": 18.9696,\n    \"longitude\": 72.8193\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
             "url": {
               "raw": "{{base_url}}/admin/stations",
               "host": ["{{base_url}}"],
@@ -400,13 +378,8 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Status is 201', function () {",
-                  "  pm.response.to.have.status(201);",
-                  "});",
                   "var data = pm.response.json();",
-                  "if (data.train && data.train.id) {",
-                  "  pm.collectionVariables.set('train_id', data.train.id);",
-                  "}"
+                  "if (data.train && data.train.id) pm.collectionVariables.set('train_id', data.train.id);"
                 ]
               }
             }
@@ -420,7 +393,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"train\": {\n    \"train_number\": \"TB9001\",\n    \"name\": \"Postman Express\",\n    \"train_type\": \"Express\",\n    \"is_active\": true\n  }\n}",
+              "raw": "{\n  \"train\": {\n    \"train_number\": \"TB9001\",\n    \"name\": \"Postman Express\",\n    \"train_type\": \"Express\",\n    \"rating\": 4.5,\n    \"grade\": \"A\",\n    \"is_active\": true\n  }\n}",
               "options": { "raw": { "language": "json" } }
             },
             "url": {
@@ -431,35 +404,15 @@
           }
         },
         {
-          "name": "List Trains",
-          "request": {
-            "method": "GET",
-            "header": [
-              { "key": "Accept", "value": "application/json", "type": "text" },
-              { "key": "Authorization", "value": "Bearer {{admin_token}}", "type": "text" }
-            ],
-            "url": {
-              "raw": "{{base_url}}/admin/trains",
-              "host": ["{{base_url}}"],
-              "path": ["admin", "trains"]
-            }
-          }
-        },
-        {
-          "name": "Create Train Stop",
+          "name": "Create Train Stop 1",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Status is 201', function () {",
-                  "  pm.response.to.have.status(201);",
-                  "});",
                   "var data = pm.response.json();",
-                  "if (data.train_stop && data.train_stop.id) {",
-                  "  pm.collectionVariables.set('train_stop_id', data.train_stop.id);",
-                  "}"
+                  "if (data.train_stop && data.train_stop.id) pm.collectionVariables.set('train_stop_id', data.train_stop.id);"
                 ]
               }
             }
@@ -473,7 +426,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"train_stop\": {\n    \"train_id\": \"{{train_id}}\",\n    \"station_id\": \"{{station_id}}\",\n    \"stop_order\": 1,\n    \"departure_time\": \"07:00\",\n    \"distance_from_origin_km\": 0\n  }\n}",
+              "raw": "{\n  \"train_stop\": {\n    \"train_id\": \"{{train_id}}\",\n    \"station_id\": \"{{src_station_id}}\",\n    \"stop_order\": 1,\n    \"arrival_time\": \"07:00\",\n    \"departure_time\": \"07:10\",\n    \"distance_from_origin_km\": 0\n  }\n}",
               "options": { "raw": { "language": "json" } }
             },
             "url": {
@@ -482,42 +435,17 @@
               "path": ["admin", "train_stops"]
             }
           }
-        }
-      ]
-    },
-    {
-      "name": "Admin Operations",
-      "item": [
-        {
-          "name": "List Train Stops",
-          "request": {
-            "method": "GET",
-            "header": [
-              { "key": "Accept", "value": "application/json", "type": "text" },
-              { "key": "Authorization", "value": "Bearer {{admin_token}}", "type": "text" }
-            ],
-            "url": {
-              "raw": "{{base_url}}/admin/train_stops",
-              "host": ["{{base_url}}"],
-              "path": ["admin", "train_stops"]
-            }
-          }
         },
         {
-          "name": "Create Fare Rule",
+          "name": "Create Train Stop 2",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Status is 201', function () {",
-                  "  pm.response.to.have.status(201);",
-                  "});",
                   "var data = pm.response.json();",
-                  "if (data.fare_rule && data.fare_rule.id) {",
-                  "  pm.collectionVariables.set('fare_rule_id', data.fare_rule.id);",
-                  "}"
+                  "if (data.train_stop && data.train_stop.id) pm.collectionVariables.set('train_stop_two_id', data.train_stop.id);"
                 ]
               }
             }
@@ -531,28 +459,13 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"fare_rule\": {\n    \"train_id\": \"{{train_id}}\",\n    \"coach_type\": \"Sleeper\",\n    \"base_fare_per_km\": 1.50,\n    \"dynamic_multiplier\": 1.00,\n    \"valid_from\": \"2026-01-01\",\n    \"valid_to\": \"2026-12-31\"\n  }\n}",
+              "raw": "{\n  \"train_stop\": {\n    \"train_id\": \"{{train_id}}\",\n    \"station_id\": \"{{dst_station_id}}\",\n    \"stop_order\": 2,\n    \"arrival_time\": \"11:45\",\n    \"departure_time\": \"11:55\",\n    \"distance_from_origin_km\": 150\n  }\n}",
               "options": { "raw": { "language": "json" } }
             },
             "url": {
-              "raw": "{{base_url}}/admin/fare_rules",
+              "raw": "{{base_url}}/admin/train_stops",
               "host": ["{{base_url}}"],
-              "path": ["admin", "fare_rules"]
-            }
-          }
-        },
-        {
-          "name": "List Fare Rules",
-          "request": {
-            "method": "GET",
-            "header": [
-              { "key": "Accept", "value": "application/json", "type": "text" },
-              { "key": "Authorization", "value": "Bearer {{admin_token}}", "type": "text" }
-            ],
-            "url": {
-              "raw": "{{base_url}}/admin/fare_rules",
-              "host": ["{{base_url}}"],
-              "path": ["admin", "fare_rules"]
+              "path": ["admin", "train_stops"]
             }
           }
         },
@@ -564,16 +477,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Status is 201', function () {",
-                  "  pm.response.to.have.status(201);",
-                  "});",
                   "var data = pm.response.json();",
-                  "if (data.coach && data.coach.id) {",
-                  "  pm.collectionVariables.set('coach_id', data.coach.id);",
-                  "  if (data.coach.seats && data.coach.seats.length > 0) {",
-                  "    pm.collectionVariables.set('seat_id', data.coach.seats[0].id);",
-                  "  }",
-                  "}"
+                  "if (data.coach && data.coach.id) pm.collectionVariables.set('coach_id', data.coach.id);",
+                  "if (data.coach && data.coach.seats && data.coach.seats.length > 0) pm.collectionVariables.set('seat_id', data.coach.seats[0].id);",
+                  "if (data.coach && data.coach.seats && data.coach.seats.length > 1) pm.collectionVariables.set('seat_id_2', data.coach.seats[1].id);"
                 ]
               }
             }
@@ -587,7 +494,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"coach\": {\n    \"train_id\": \"{{train_id}}\",\n    \"coach_number\": \"S1\",\n    \"coach_type\": \"Sleeper\",\n    \"total_seats\": 12,\n    \"seat_type\": \"Lower\"\n  }\n}",
+              "raw": "{\n  \"coach\": {\n    \"train_id\": \"{{train_id}}\",\n    \"coach_number\": \"S1\",\n    \"coach_type\": \"sleeper\"\n  }\n}",
               "options": { "raw": { "language": "json" } }
             },
             "url": {
@@ -598,35 +505,15 @@
           }
         },
         {
-          "name": "List Coaches",
-          "request": {
-            "method": "GET",
-            "header": [
-              { "key": "Accept", "value": "application/json", "type": "text" },
-              { "key": "Authorization", "value": "Bearer {{admin_token}}", "type": "text" }
-            ],
-            "url": {
-              "raw": "{{base_url}}/admin/coaches",
-              "host": ["{{base_url}}"],
-              "path": ["admin", "coaches"]
-            }
-          }
-        },
-        {
-          "name": "Create Seat",
+          "name": "Create Fare Rule",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Status is 201', function () {",
-                  "  pm.response.to.have.status(201);",
-                  "});",
                   "var data = pm.response.json();",
-                  "if (data.seat && data.seat.id) {",
-                  "  pm.collectionVariables.set('seat_id', data.seat.id);",
-                  "}"
+                  "if (data.fare_rule && data.fare_rule.id) pm.collectionVariables.set('fare_rule_id', data.fare_rule.id);"
                 ]
               }
             }
@@ -640,49 +527,13 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"seat\": {\n    \"seat_number\": \"13\",\n    \"seat_type\": \"Upper\"\n  }\n}",
+              "raw": "{\n  \"fare_rule\": {\n    \"train_id\": \"{{train_id}}\",\n    \"coach_type\": \"sleeper\",\n    \"base_fare_per_km\": 1.5,\n    \"dynamic_multiplier\": 1.0,\n    \"valid_from\": \"2026-01-01\",\n    \"valid_to\": \"2026-12-31\"\n  }\n}",
               "options": { "raw": { "language": "json" } }
             },
             "url": {
-              "raw": "{{base_url}}/admin/coaches/{{coach_id}}/seats",
+              "raw": "{{base_url}}/admin/fare_rules",
               "host": ["{{base_url}}"],
-              "path": ["admin", "coaches", "{{coach_id}}", "seats"]
-            }
-          }
-        },
-        {
-          "name": "Update Seat",
-          "request": {
-            "method": "PATCH",
-            "header": [
-              { "key": "Content-Type", "value": "application/json", "type": "text" },
-              { "key": "Accept", "value": "application/json", "type": "text" },
-              { "key": "Authorization", "value": "Bearer {{admin_token}}", "type": "text" }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"seat\": {\n    \"seat_type\": \"Side Lower\",\n    \"is_active\": true\n  }\n}",
-              "options": { "raw": { "language": "json" } }
-            },
-            "url": {
-              "raw": "{{base_url}}/admin/coaches/{{coach_id}}/seats/{{seat_id}}",
-              "host": ["{{base_url}}"],
-              "path": ["admin", "coaches", "{{coach_id}}", "seats", "{{seat_id}}"]
-            }
-          }
-        },
-        {
-          "name": "List Seats For Coach",
-          "request": {
-            "method": "GET",
-            "header": [
-              { "key": "Accept", "value": "application/json", "type": "text" },
-              { "key": "Authorization", "value": "Bearer {{admin_token}}", "type": "text" }
-            ],
-            "url": {
-              "raw": "{{base_url}}/admin/coaches/{{coach_id}}/seats",
-              "host": ["{{base_url}}"],
-              "path": ["admin", "coaches", "{{coach_id}}", "seats"]
+              "path": ["admin", "fare_rules"]
             }
           }
         },
@@ -694,13 +545,8 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Status is 201', function () {",
-                  "  pm.response.to.have.status(201);",
-                  "});",
                   "var data = pm.response.json();",
-                  "if (data.schedule && data.schedule.id) {",
-                  "  pm.collectionVariables.set('schedule_id', data.schedule.id);",
-                  "}"
+                  "if (data.schedule && data.schedule.id) pm.collectionVariables.set('schedule_id', data.schedule.id);"
                 ]
               }
             }
@@ -714,7 +560,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"schedule\": {\n    \"train_id\": \"{{train_id}}\",\n    \"travel_date\": \"2026-06-01\",\n    \"departure_time\": \"07:00\",\n    \"expected_arrival_time\": \"12:30\",\n    \"status\": \"scheduled\",\n    \"delay_minutes\": 0\n  }\n}",
+              "raw": "{\n  \"schedule\": {\n    \"train_id\": \"{{train_id}}\",\n    \"travel_date\": \"2026-06-01\",\n    \"departure_time\": \"07:10\",\n    \"expected_arrival_time\": \"11:55\",\n    \"status\": \"scheduled\",\n    \"delay_minutes\": 0\n  }\n}",
               "options": { "raw": { "language": "json" } }
             },
             "url": {
@@ -722,6 +568,179 @@
               "host": ["{{base_url}}"],
               "path": ["admin", "schedules"]
             }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin Reads And Maintenance",
+      "item": [
+        {
+          "name": "List Cities",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json", "type": "text" },
+              { "key": "Authorization", "value": "Bearer {{admin_token}}", "type": "text" }
+            ],
+            "url": { "raw": "{{base_url}}/admin/cities", "host": ["{{base_url}}"], "path": ["admin", "cities"] }
+          }
+        },
+        {
+          "name": "Update City",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json", "type": "text" },
+              { "key": "Accept", "value": "application/json", "type": "text" },
+              { "key": "Authorization", "value": "Bearer {{admin_token}}", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"city\": {\n    \"state\": \"MH\"\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{base_url}}/admin/cities/{{city_id}}", "host": ["{{base_url}}"], "path": ["admin", "cities", "{{city_id}}"] }
+          }
+        },
+        {
+          "name": "List Stations (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json", "type": "text" },
+              { "key": "Authorization", "value": "Bearer {{admin_token}}", "type": "text" }
+            ],
+            "url": { "raw": "{{base_url}}/admin/stations", "host": ["{{base_url}}"], "path": ["admin", "stations"] }
+          }
+        },
+        {
+          "name": "Update Station",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json", "type": "text" },
+              { "key": "Accept", "value": "application/json", "type": "text" },
+              { "key": "Authorization", "value": "Bearer {{admin_token}}", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"station\": {\n    \"name\": \"Pune Junction Updated\"\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{base_url}}/admin/stations/{{station_id}}", "host": ["{{base_url}}"], "path": ["admin", "stations", "{{station_id}}"] }
+          }
+        },
+        {
+          "name": "List Trains",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json", "type": "text" },
+              { "key": "Authorization", "value": "Bearer {{admin_token}}", "type": "text" }
+            ],
+            "url": { "raw": "{{base_url}}/admin/trains", "host": ["{{base_url}}"], "path": ["admin", "trains"] }
+          }
+        },
+        {
+          "name": "Update Train",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json", "type": "text" },
+              { "key": "Accept", "value": "application/json", "type": "text" },
+              { "key": "Authorization", "value": "Bearer {{admin_token}}", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"train\": {\n    \"name\": \"Postman Express Updated\",\n    \"rating\": 4.7\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{base_url}}/admin/trains/{{train_id}}", "host": ["{{base_url}}"], "path": ["admin", "trains", "{{train_id}}"] }
+          }
+        },
+        {
+          "name": "List Train Stops",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json", "type": "text" },
+              { "key": "Authorization", "value": "Bearer {{admin_token}}", "type": "text" }
+            ],
+            "url": { "raw": "{{base_url}}/admin/train_stops", "host": ["{{base_url}}"], "path": ["admin", "train_stops"] }
+          }
+        },
+        {
+          "name": "Update Train Stop",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json", "type": "text" },
+              { "key": "Accept", "value": "application/json", "type": "text" },
+              { "key": "Authorization", "value": "Bearer {{admin_token}}", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"train_stop\": {\n    \"arrival_time\": \"11:40\",\n    \"departure_time\": \"12:00\"\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{base_url}}/admin/train_stops/{{train_stop_two_id}}", "host": ["{{base_url}}"], "path": ["admin", "train_stops", "{{train_stop_two_id}}"] }
+          }
+        },
+        {
+          "name": "List Fare Rules",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json", "type": "text" },
+              { "key": "Authorization", "value": "Bearer {{admin_token}}", "type": "text" }
+            ],
+            "url": { "raw": "{{base_url}}/admin/fare_rules", "host": ["{{base_url}}"], "path": ["admin", "fare_rules"] }
+          }
+        },
+        {
+          "name": "Update Fare Rule",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json", "type": "text" },
+              { "key": "Accept", "value": "application/json", "type": "text" },
+              { "key": "Authorization", "value": "Bearer {{admin_token}}", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fare_rule\": {\n    \"dynamic_multiplier\": 1.15\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{base_url}}/admin/fare_rules/{{fare_rule_id}}", "host": ["{{base_url}}"], "path": ["admin", "fare_rules", "{{fare_rule_id}}"] }
+          }
+        },
+        {
+          "name": "List Coaches",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json", "type": "text" },
+              { "key": "Authorization", "value": "Bearer {{admin_token}}", "type": "text" }
+            ],
+            "url": { "raw": "{{base_url}}/admin/coaches", "host": ["{{base_url}}"], "path": ["admin", "coaches"] }
+          }
+        },
+        {
+          "name": "Update Coach",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json", "type": "text" },
+              { "key": "Accept", "value": "application/json", "type": "text" },
+              { "key": "Authorization", "value": "Bearer {{admin_token}}", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"coach\": {\n    \"coach_number\": \"S1A\"\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{base_url}}/admin/coaches/{{coach_id}}", "host": ["{{base_url}}"], "path": ["admin", "coaches", "{{coach_id}}"] }
           }
         },
         {
@@ -732,63 +751,51 @@
               { "key": "Accept", "value": "application/json", "type": "text" },
               { "key": "Authorization", "value": "Bearer {{admin_token}}", "type": "text" }
             ],
-            "url": {
-              "raw": "{{base_url}}/admin/schedules",
-              "host": ["{{base_url}}"],
-              "path": ["admin", "schedules"]
-            }
+            "url": { "raw": "{{base_url}}/admin/schedules", "host": ["{{base_url}}"], "path": ["admin", "schedules"] }
           }
         },
         {
-          "name": "List Admin Bookings",
+          "name": "Update Schedule",
           "request": {
-            "method": "GET",
+            "method": "PATCH",
             "header": [
+              { "key": "Content-Type", "value": "application/json", "type": "text" },
               { "key": "Accept", "value": "application/json", "type": "text" },
               { "key": "Authorization", "value": "Bearer {{admin_token}}", "type": "text" }
             ],
-            "url": {
-              "raw": "{{base_url}}/admin/bookings",
-              "host": ["{{base_url}}"],
-              "path": ["admin", "bookings"]
-            }
-          }
-        },
-        {
-          "name": "Show Admin Booking",
-          "request": {
-            "method": "GET",
-            "header": [
-              { "key": "Accept", "value": "application/json", "type": "text" },
-              { "key": "Authorization", "value": "Bearer {{admin_token}}", "type": "text" }
-            ],
-            "url": {
-              "raw": "{{base_url}}/admin/bookings/{{booking_id}}",
-              "host": ["{{base_url}}"],
-              "path": ["admin", "bookings", "{{booking_id}}"]
-            }
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"schedule\": {\n    \"status\": \"scheduled\",\n    \"delay_minutes\": 10\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{base_url}}/admin/schedules/{{schedule_id}}", "host": ["{{base_url}}"], "path": ["admin", "schedules", "{{schedule_id}}"] }
           }
         }
       ]
     },
     {
-      "name": "User Search And Booking",
+      "name": "User Flow",
       "item": [
         {
-          "name": "Search Schedules Between Stations",
+          "name": "Search Stations",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json", "type": "text" }
+            ],
+            "url": { "raw": "{{base_url}}/stations", "host": ["{{base_url}}"], "path": ["stations"] }
+          }
+        },
+        {
+          "name": "Search Schedules",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Status is 200', function () {",
-                  "  pm.response.to.have.status(200);",
-                  "});",
                   "var data = pm.response.json();",
-                  "if (data.schedules && data.schedules.length > 0) {",
-                  "  pm.collectionVariables.set('schedule_id', data.schedules[0].id || '');",
-                  "}"
+                  "if (data.data && data.data.length > 0) pm.collectionVariables.set('schedule_id', data.data[0].id);"
                 ]
               }
             }
@@ -796,8 +803,7 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Accept", "value": "application/json", "type": "text" },
-              { "key": "Authorization", "value": "Bearer {{user_token}}", "type": "text" }
+              { "key": "Accept", "value": "application/json", "type": "text" }
             ],
             "url": {
               "raw": "{{base_url}}/schedules?src_station_id={{src_station_id}}&dst_station_id={{dst_station_id}}&travel_date=2026-06-01",
@@ -838,16 +844,9 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Status is 201', function () {",
-                  "  pm.response.to.have.status(201);",
-                  "});",
                   "var data = pm.response.json();",
-                  "if (data.booking && data.booking.id) {",
-                  "  pm.collectionVariables.set('booking_id', data.booking.id);",
-                  "}",
-                  "if (data.booking && data.booking.ticket_allocations && data.booking.ticket_allocations.length > 0) {",
-                  "  pm.collectionVariables.set('ticket_allocation_id', data.booking.ticket_allocations[0].id);",
-                  "}"
+                  "if (data.booking && data.booking.id) pm.collectionVariables.set('booking_id', data.booking.id);",
+                  "if (data.booking && data.booking.ticket_allocations && data.booking.ticket_allocations.length > 0) pm.collectionVariables.set('ticket_allocation_id', data.booking.ticket_allocations[0].id);"
                 ]
               }
             }
@@ -861,14 +860,10 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"booking\": {\n    \"schedule_id\": \"{{schedule_id}}\",\n    \"src_station_id\": \"{{src_station_id}}\",\n    \"dst_station_id\": \"{{dst_station_id}}\",\n    \"coach_type\": \"Sleeper\",\n    \"payment\": {\n      \"payment_method\": \"UPI\",\n      \"gateway_txn_id\": \"TXN-POSTMAN-001\"\n    },\n    \"passengers\": [\n      {\n        \"first_name\": \"Aarav\",\n        \"last_name\": \"Sharma\",\n        \"age\": 28,\n        \"gender\": \"male\",\n        \"id_type\": \"Aadhaar\",\n        \"id_number\": \"111122223333\"\n      },\n      {\n        \"first_name\": \"Diya\",\n        \"last_name\": \"Sharma\",\n        \"age\": 25,\n        \"gender\": \"female\",\n        \"id_type\": \"Passport\",\n        \"id_number\": \"N1234567\"\n      }\n    ]\n  }\n}",
+              "raw": "{\n  \"booking\": {\n    \"schedule_id\": \"{{schedule_id}}\",\n    \"src_station_id\": \"{{src_station_id}}\",\n    \"dst_station_id\": \"{{dst_station_id}}\",\n    \"seat_ids\": [\"{{seat_id}}\", \"{{seat_id_2}}\"],\n    \"coach_type\": \"sleeper\",\n    \"payment\": {\n      \"payment_method\": \"upi\",\n      \"gateway_txn_id\": \"TXN-POSTMAN-001\"\n    },\n    \"passengers\": [\n      {\n        \"first_name\": \"Aarav\",\n        \"last_name\": \"Sharma\",\n        \"age\": 28,\n        \"gender\": \"male\",\n        \"id_type\": \"Aadhaar\",\n        \"id_number\": \"111122223333\"\n      },\n      {\n        \"first_name\": \"Diya\",\n        \"last_name\": \"Sharma\",\n        \"age\": 25,\n        \"gender\": \"female\",\n        \"id_type\": \"Passport\",\n        \"id_number\": \"N1234567\"\n      }\n    ]\n  }\n}",
               "options": { "raw": { "language": "json" } }
             },
-            "url": {
-              "raw": "{{base_url}}/bookings",
-              "host": ["{{base_url}}"],
-              "path": ["bookings"]
-            }
+            "url": { "raw": "{{base_url}}/bookings", "host": ["{{base_url}}"], "path": ["bookings"] }
           }
         },
         {
@@ -879,11 +874,7 @@
               { "key": "Accept", "value": "application/json", "type": "text" },
               { "key": "Authorization", "value": "Bearer {{user_token}}", "type": "text" }
             ],
-            "url": {
-              "raw": "{{base_url}}/bookings",
-              "host": ["{{base_url}}"],
-              "path": ["bookings"]
-            }
+            "url": { "raw": "{{base_url}}/bookings", "host": ["{{base_url}}"], "path": ["bookings"] }
           }
         },
         {
@@ -894,13 +885,8 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Status is 200', function () {",
-                  "  pm.response.to.have.status(200);",
-                  "});",
                   "var data = pm.response.json();",
-                  "if (data.booking && data.booking.ticket_allocations && data.booking.ticket_allocations.length > 0) {",
-                  "  pm.collectionVariables.set('ticket_allocation_id', data.booking.ticket_allocations[0].id);",
-                  "}"
+                  "if (data.booking && data.booking.ticket_allocations && data.booking.ticket_allocations.length > 0) pm.collectionVariables.set('ticket_allocation_id', data.booking.ticket_allocations[0].id);"
                 ]
               }
             }
@@ -911,15 +897,11 @@
               { "key": "Accept", "value": "application/json", "type": "text" },
               { "key": "Authorization", "value": "Bearer {{user_token}}", "type": "text" }
             ],
-            "url": {
-              "raw": "{{base_url}}/bookings/{{booking_id}}",
-              "host": ["{{base_url}}"],
-              "path": ["bookings", "{{booking_id}}"]
-            }
+            "url": { "raw": "{{base_url}}/bookings/{{booking_id}}", "host": ["{{base_url}}"], "path": ["bookings", "{{booking_id}}"] }
           }
         },
         {
-          "name": "Cancel Single Ticket",
+          "name": "Cancel Single Ticket Allocation",
           "request": {
             "method": "PATCH",
             "header": [
@@ -929,14 +911,10 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"booking\": {\n    \"ticket_allocation_id\": \"{{ticket_allocation_id}}\",\n    \"reason\": \"Passenger cannot travel\"\n  }\n}",
+              "raw": "{\n  \"booking\": {\n    \"ticket_allocation_id\": \"{{ticket_allocation_id}}\",\n    \"reason\": \"Change of plan\"\n  }\n}",
               "options": { "raw": { "language": "json" } }
             },
-            "url": {
-              "raw": "{{base_url}}/bookings/{{booking_id}}/cancel_ticket",
-              "host": ["{{base_url}}"],
-              "path": ["bookings", "{{booking_id}}", "cancel_ticket"]
-            }
+            "url": { "raw": "{{base_url}}/bookings/{{booking_id}}/cancel_ticket", "host": ["{{base_url}}"], "path": ["bookings", "{{booking_id}}", "cancel_ticket"] }
           }
         },
         {
@@ -950,34 +928,99 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"booking\": {\n    \"reason\": \"Trip cancelled by user\"\n  }\n}",
+              "raw": "{\n  \"booking\": {\n    \"reason\": \"Trip cancelled\"\n  }\n}",
               "options": { "raw": { "language": "json" } }
             },
+            "url": { "raw": "{{base_url}}/bookings/{{booking_id}}", "host": ["{{base_url}}"], "path": ["bookings", "{{booking_id}}"] }
+          }
+        },
+        {
+          "name": "List My Cancellations",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json", "type": "text" },
+              { "key": "Authorization", "value": "Bearer {{user_token}}", "type": "text" }
+            ],
             "url": {
-              "raw": "{{base_url}}/bookings/{{booking_id}}",
+              "raw": "{{base_url}}/bookings?with_cancellations=true",
               "host": ["{{base_url}}"],
-              "path": ["bookings", "{{booking_id}}"]
+              "path": ["bookings"],
+              "query": [
+                { "key": "with_cancellations", "value": "true" }
+              ]
             }
           }
         }
       ]
     },
     {
-      "name": "Cleanup",
+      "name": "Admin Booking Management",
       "item": [
         {
-          "name": "Delete Seat",
+          "name": "List Admin Bookings",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json", "type": "text" },
+              { "key": "Authorization", "value": "Bearer {{admin_token}}", "type": "text" }
+            ],
+            "url": { "raw": "{{base_url}}/admin/bookings", "host": ["{{base_url}}"], "path": ["admin", "bookings"] }
+          }
+        },
+        {
+          "name": "Show Admin Booking",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json", "type": "text" },
+              { "key": "Authorization", "value": "Bearer {{admin_token}}", "type": "text" }
+            ],
+            "url": { "raw": "{{base_url}}/admin/bookings/{{booking_id}}", "host": ["{{base_url}}"], "path": ["admin", "bookings", "{{booking_id}}"] }
+          }
+        },
+        {
+          "name": "Create Admin Booking",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json", "type": "text" },
+              { "key": "Accept", "value": "application/json", "type": "text" },
+              { "key": "Authorization", "value": "Bearer {{admin_token}}", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"booking\": {\n    \"user_id\": \"{{user_id}}\",\n    \"schedule_id\": \"{{schedule_id}}\",\n    \"src_station_id\": \"{{src_station_id}}\",\n    \"dst_station_id\": \"{{dst_station_id}}\",\n    \"seat_ids\": [\"{{seat_id}}\", \"{{seat_id_2}}\"],\n    \"coach_type\": \"sleeper\",\n    \"payment\": {\n      \"payment_method\": \"upi\",\n      \"gateway_txn_id\": \"ADMIN-TXN-001\"\n    },\n    \"passengers\": [\n      {\n        \"first_name\": \"Admin\",\n        \"last_name\": \"Booked\",\n        \"age\": 30,\n        \"gender\": \"male\",\n        \"id_type\": \"Aadhaar\",\n        \"id_number\": \"555566667777\"\n      },\n      {\n        \"first_name\": \"Second\",\n        \"last_name\": \"Passenger\",\n        \"age\": 27,\n        \"gender\": \"female\",\n        \"id_type\": \"Passport\",\n        \"id_number\": \"P1234567\"\n      }\n    ]\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{base_url}}/admin/bookings", "host": ["{{base_url}}"], "path": ["admin", "bookings"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin Delete Requests",
+      "item": [
+        {
+          "name": "Delete Schedule",
           "request": {
             "method": "DELETE",
             "header": [
               { "key": "Accept", "value": "application/json", "type": "text" },
               { "key": "Authorization", "value": "Bearer {{admin_token}}", "type": "text" }
             ],
-            "url": {
-              "raw": "{{base_url}}/admin/coaches/{{coach_id}}/seats/{{seat_id}}",
-              "host": ["{{base_url}}"],
-              "path": ["admin", "coaches", "{{coach_id}}", "seats", "{{seat_id}}"]
-            }
+            "url": { "raw": "{{base_url}}/admin/schedules/{{schedule_id}}", "host": ["{{base_url}}"], "path": ["admin", "schedules", "{{schedule_id}}"] }
+          }
+        },
+        {
+          "name": "Delete Coach",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Accept", "value": "application/json", "type": "text" },
+              { "key": "Authorization", "value": "Bearer {{admin_token}}", "type": "text" }
+            ],
+            "url": { "raw": "{{base_url}}/admin/coaches/{{coach_id}}", "host": ["{{base_url}}"], "path": ["admin", "coaches", "{{coach_id}}"] }
           }
         },
         {
@@ -988,41 +1031,18 @@
               { "key": "Accept", "value": "application/json", "type": "text" },
               { "key": "Authorization", "value": "Bearer {{admin_token}}", "type": "text" }
             ],
-            "url": {
-              "raw": "{{base_url}}/admin/fare_rules/{{fare_rule_id}}",
-              "host": ["{{base_url}}"],
-              "path": ["admin", "fare_rules", "{{fare_rule_id}}"]
-            }
+            "url": { "raw": "{{base_url}}/admin/fare_rules/{{fare_rule_id}}", "host": ["{{base_url}}"], "path": ["admin", "fare_rules", "{{fare_rule_id}}"] }
           }
         },
         {
-          "name": "Delete Train Stop",
+          "name": "Delete Train Stop 2",
           "request": {
             "method": "DELETE",
             "header": [
               { "key": "Accept", "value": "application/json", "type": "text" },
               { "key": "Authorization", "value": "Bearer {{admin_token}}", "type": "text" }
             ],
-            "url": {
-              "raw": "{{base_url}}/admin/train_stops/{{train_stop_id}}",
-              "host": ["{{base_url}}"],
-              "path": ["admin", "train_stops", "{{train_stop_id}}"]
-            }
-          }
-        },
-        {
-          "name": "Delete City",
-          "request": {
-            "method": "DELETE",
-            "header": [
-              { "key": "Accept", "value": "application/json", "type": "text" },
-              { "key": "Authorization", "value": "Bearer {{admin_token}}", "type": "text" }
-            ],
-            "url": {
-              "raw": "{{base_url}}/admin/cities/{{city_id}}",
-              "host": ["{{base_url}}"],
-              "path": ["admin", "cities", "{{city_id}}"]
-            }
+            "url": { "raw": "{{base_url}}/admin/train_stops/{{train_stop_two_id}}", "host": ["{{base_url}}"], "path": ["admin", "train_stops", "{{train_stop_two_id}}"] }
           }
         },
         {
@@ -1033,11 +1053,51 @@
               { "key": "Accept", "value": "application/json", "type": "text" },
               { "key": "Authorization", "value": "Bearer {{admin_token}}", "type": "text" }
             ],
-            "url": {
-              "raw": "{{base_url}}/admin/trains/{{train_id}}",
-              "host": ["{{base_url}}"],
-              "path": ["admin", "trains", "{{train_id}}"]
-            }
+            "url": { "raw": "{{base_url}}/admin/trains/{{train_id}}", "host": ["{{base_url}}"], "path": ["admin", "trains", "{{train_id}}"] }
+          }
+        },
+        {
+          "name": "Delete Station 2",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Accept", "value": "application/json", "type": "text" },
+              { "key": "Authorization", "value": "Bearer {{admin_token}}", "type": "text" }
+            ],
+            "url": { "raw": "{{base_url}}/admin/stations/{{station_two_id}}", "host": ["{{base_url}}"], "path": ["admin", "stations", "{{station_two_id}}"] }
+          }
+        },
+        {
+          "name": "Delete Station 1",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Accept", "value": "application/json", "type": "text" },
+              { "key": "Authorization", "value": "Bearer {{admin_token}}", "type": "text" }
+            ],
+            "url": { "raw": "{{base_url}}/admin/stations/{{station_id}}", "host": ["{{base_url}}"], "path": ["admin", "stations", "{{station_id}}"] }
+          }
+        },
+        {
+          "name": "Delete City 2",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Accept", "value": "application/json", "type": "text" },
+              { "key": "Authorization", "value": "Bearer {{admin_token}}", "type": "text" }
+            ],
+            "url": { "raw": "{{base_url}}/admin/cities/{{city_two_id}}", "host": ["{{base_url}}"], "path": ["admin", "cities", "{{city_two_id}}"] }
+          }
+        },
+        {
+          "name": "Delete City 1",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Accept", "value": "application/json", "type": "text" },
+              { "key": "Authorization", "value": "Bearer {{admin_token}}", "type": "text" }
+            ],
+            "url": { "raw": "{{base_url}}/admin/cities/{{city_id}}", "host": ["{{base_url}}"], "path": ["admin", "cities", "{{city_id}}"] }
           }
         }
       ]

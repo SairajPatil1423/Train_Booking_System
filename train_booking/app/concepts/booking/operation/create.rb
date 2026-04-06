@@ -41,7 +41,6 @@ module Booking::Operation
       end
 
       ctx[:requested_seat_ids] = requested_seat_ids
-
       true
     end
 
@@ -67,6 +66,7 @@ module Booking::Operation
         src_station_id: params[:src_station_id],
         dst_station_id: params[:dst_station_id]
       ).call
+
       src_stop = segment.src_stop
       dst_stop = segment.dst_stop
 

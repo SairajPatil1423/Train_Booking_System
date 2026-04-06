@@ -53,7 +53,8 @@ export default function AdminSchedulesPage() {
     event.preventDefault();
     setFormError("");
 
-    const formData = new FormData(event.currentTarget);
+    const form = event.currentTarget;
+    const formData = new FormData(form);
 
     try {
       if (editingSchedule) {
@@ -86,7 +87,7 @@ export default function AdminSchedulesPage() {
 
       setFormError("");
       setEditingSchedule(null);
-      event.currentTarget.reset();
+      form.reset();
     } catch (requestError) {
       const message = formatErrorMessage(requestError);
       setFormError(message);

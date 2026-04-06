@@ -1,3 +1,4 @@
+# CoachSeatLayoutSync syncs coach seats to the predefined layout config.
 class CoachSeatLayoutSync
   TEMP_SEAT_PREFIX = "TMP".freeze
 
@@ -10,7 +11,6 @@ class CoachSeatLayoutSync
       existing_seats = coach.seats.order(:seat_number, :id).to_a
       desired_layout = build_layout
 
-  
       existing_seats.each_with_index do |seat, index|
         seat.update_columns(seat_number: "#{TEMP_SEAT_PREFIX}#{index + 1}")
       end

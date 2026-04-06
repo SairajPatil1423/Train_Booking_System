@@ -18,7 +18,7 @@ class Schedule < ApplicationRecord
     relation = active_for_date(date)
 
     if date == Time.zone.today
-      relation = relation.where("departure_time > ?", Time.zone.now.strftime("%H:%M:%S"))
+      relation = relation.where("schedules.departure_time > ?", Time.zone.now.strftime("%H:%M:%S"))
     end
 
     relation

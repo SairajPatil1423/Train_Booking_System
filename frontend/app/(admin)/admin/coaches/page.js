@@ -57,7 +57,8 @@ export default function AdminCoachesPage() {
     event.preventDefault();
     setFormError("");
 
-    const formData = new FormData(event.currentTarget);
+    const form = event.currentTarget;
+    const formData = new FormData(form);
     const coachData = {
       train_id: formData.get("train_id"),
       coach_number: formData.get("coach_number"),
@@ -81,7 +82,7 @@ export default function AdminCoachesPage() {
 
       setFormError("");
       setEditingCoach(null);
-      event.currentTarget.reset();
+      form.reset();
     } catch (requestError) {
       const message = formatErrorMessage(requestError);
       setFormError(message);

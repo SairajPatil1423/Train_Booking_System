@@ -20,8 +20,10 @@ module Booking::Operation
     end
 
     def cancel_in_transaction(ctx, booking:, current_user:, params:, **)
+      refundable_allocations = booking.ticket_allocations.where.not(status: :cancelled)
+
       refund_result = Refund::Operation::Calculate.call(
-        amount: booking.ticket_allocations.where.not(status: :cancelled).sum(:fare),
+        amount: refundable_allocations.sum(:fare),
         schedule: booking.schedule
       )
 
@@ -31,8 +33,6 @@ module Booking::Operation
       end
 
       ActiveRecord::Base.transaction do
-        refundable_allocations = booking.ticket_allocations.where.not(status: :cancelled)
-
         refundable_allocations.find_each do |allocation|
           allocation.update!(status: :cancelled)
 
@@ -46,7 +46,7 @@ module Booking::Operation
           )
         end
 
-        booking.update!(status: :cancelled)
+        booking.update!(status: :cancelled, total_fare: 0)
         booking.payment&.update!(status: :refunded)
 
         ctx[:booking] = booking.reload

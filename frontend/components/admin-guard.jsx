@@ -12,9 +12,9 @@ export default function AdminGuard({ children }) {
   useEffect(() => {
     if (hydrated) {
       if (!token) {
-        router.replace("/login");
+        router.replace("/admin/login");
       } else if (user?.role !== "admin") {
-        router.replace("/"); // Redirect to user homepage if not admin
+        router.replace("/admin/login");
       }
     }
   }, [user, token, hydrated, router]);

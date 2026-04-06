@@ -13,6 +13,10 @@ class BookingPolicy < ApplicationPolicy
     user.present? && !user.admin?
   end
 
+  def admin_create?
+    user&.admin?
+  end
+
   def update?
     cancel?
   end
