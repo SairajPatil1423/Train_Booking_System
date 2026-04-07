@@ -19,6 +19,7 @@ export function buildScheduleViewModel(schedule, context = {}) {
 
   return {
     id: schedule?.id,
+    statusKey: schedule?.status || "",
     trainNumber: schedule?.train?.train_number || "Train",
     trainName: schedule?.train?.name || "Train schedule",
     trainType: schedule?.train?.train_type || "Scheduled",
@@ -32,6 +33,7 @@ export function buildScheduleViewModel(schedule, context = {}) {
       schedule?.expected_arrival_time,
     ),
     availableSeats: schedule?.availability?.available_seats ?? 0,
+    isBookable: schedule?.status === "scheduled" && (schedule?.availability?.available_seats ?? 0) > 0,
     rating: schedule?.train?.rating || null,
     grade: schedule?.train?.grade || null,
     coachAvailability,

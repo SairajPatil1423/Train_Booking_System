@@ -44,6 +44,12 @@ class SchedulesController < ApplicationController
 
   def show
     schedule = Schedule.includes(train: [:coaches, :fare_rules]).find(params[:id])
+
+    if schedule.cancelled?
+      render json: { error: "This schedule has been cancelled." }, status: :unprocessable_entity
+      return
+    end
+
     segment = selected_stops(schedule)
 
     unless segment.valid?

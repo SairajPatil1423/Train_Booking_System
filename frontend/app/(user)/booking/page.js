@@ -291,6 +291,7 @@ function BookingPageContent() {
   const fromLabel = routeStops[0]?.station?.name || initialFromLabel;
   const toLabel = routeStops[routeStops.length - 1]?.station?.name || initialToLabel;
   const selectedTravelDate = details?.schedule?.travel_date || initialTravelDate || today;
+  const isCancelledSchedule = details?.schedule?.status === "cancelled";
   const resultsHref = `/search/results?src_station_id=${srcStationId || ""}&dst_station_id=${dstStationId || ""}&travel_date=${
     encodeURIComponent(selectedTravelDate)
   }&from_label=${encodeURIComponent(fromLabel)}&to_label=${encodeURIComponent(toLabel)}`;
@@ -495,6 +496,21 @@ function BookingPageContent() {
             title="Booking Not Available"
             ctaLabel="Search trains"
             ctaHref="/search"
+          />
+        </div>
+      </PageShell>
+    );
+  }
+
+  if (isCancelledSchedule) {
+    return (
+      <PageShell>
+        <div className="w-full">
+          <EmptyState
+            title="This Train Is Cancelled"
+            description="This schedule is no longer available for booking. Please search for another train."
+            ctaLabel="Search trains"
+            ctaHref={resultsHref}
           />
         </div>
       </PageShell>
