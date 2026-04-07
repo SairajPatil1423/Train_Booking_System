@@ -1,27 +1,18 @@
 require "rails_helper"
 
 RSpec.describe "User operations", type: :request do
-  let!(:user) do
-    User.create!(
-      email: "user_ops@example.com",
-      password: "password123",
-      password_confirmation: "password123",
-      full_name: "User Ops",
-      username: "user_ops",
-      address: "User lane"
-    )
-  end
-
-  let!(:city) { City.create!(name: "User City", state: "KA", country: "India") }
-  let!(:src_station) { Station.create!(city: city, name: "Alpha", code: "ALP") }
-  let!(:mid_station) { Station.create!(city: city, name: "Bravo", code: "BRV") }
-  let!(:dst_station) { Station.create!(city: city, name: "Charlie", code: "CHL") }
-  let!(:train) { Train.create!(train_number: "12001", name: "User Express", train_type: "Express", rating: 4.3) }
-  let!(:coach) { Coach.create!(train: train, coach_number: "S1", coach_type: "sleeper") }
-  let!(:seat_one) { Seat.create!(coach: coach, seat_number: "1", seat_type: "LB", is_active: true) }
-  let!(:seat_two) { Seat.create!(coach: coach, seat_number: "2", seat_type: "MB", is_active: true) }
+  let!(:user) { create(:user, email: "user_ops@example.com", username: "user_ops") }
+  let!(:city) { create(:city, name: "User City", state: "KA", country: "India") }
+  let!(:src_station) { create(:station, city: city, name: "Alpha", code: "ALP") }
+  let!(:mid_station) { create(:station, city: city, name: "Bravo", code: "BRV") }
+  let!(:dst_station) { create(:station, city: city, name: "Charlie", code: "CHL") }
+  let!(:train) { create(:train, train_number: "12001", name: "User Express", train_type: "Express", rating: 4.3) }
+  let!(:coach) { create(:coach, train: train, coach_number: "S1", coach_type: "sleeper") }
+  let!(:seat_one) { create(:seat, coach: coach, seat_number: "1", seat_type: "LB", is_active: true) }
+  let!(:seat_two) { create(:seat, coach: coach, seat_number: "2", seat_type: "MB", is_active: true) }
   let!(:schedule) do
-    Schedule.create!(
+    create(
+      :schedule,
       train: train,
       travel_date: Date.new(2026, 5, 15),
       departure_time: "08:00",
@@ -37,7 +28,8 @@ RSpec.describe "User operations", type: :request do
       [mid_station, 2, "10:00", "10:05", 140],
       [dst_station, 3, "12:45", "13:00", 280]
     ].each do |station, stop_order, arrival_time, departure_time, distance|
-      TrainStop.create!(
+      create(
+        :train_stop,
         train: train,
         station: station,
         stop_order: stop_order,
@@ -47,7 +39,8 @@ RSpec.describe "User operations", type: :request do
       )
     end
 
-    FareRule.create!(
+    create(
+      :fare_rule,
       train: train,
       coach_type: "sleeper",
       base_fare_per_km: 1.5,
@@ -72,34 +65,87 @@ RSpec.describe "User operations", type: :request do
       expect(json_body.dig("data", 0, "train", "train_number")).to eq("12001")
       expect(json_body.dig("data", 0, "availability", "available_seats")).to eq(2)
     end
+
+    it "does not include cancelled schedules in search results" do
+      cancelled_schedule = create(
+        :schedule,
+        train: train,
+        travel_date: schedule.travel_date,
+        departure_time: "15:00",
+        expected_arrival_time: "20:00",
+        status: :cancelled
+      )
+
+      get "/schedules",
+          params: {
+            src_station_id: src_station.id,
+            dst_station_id: dst_station.id,
+            travel_date: schedule.travel_date.to_s
+          },
+          headers: { "ACCEPT" => "application/json" }
+
+      returned_ids = Array(json_body["data"]).map { |item| item["id"] }
+      expect(returned_ids).to include(schedule.id)
+      expect(returned_ids).not_to include(cancelled_schedule.id)
+    end
+  end
+
+  describe "GET /schedules/:id" do
+    it "rejects cancelled schedules for booking details" do
+      cancelled_schedule = create(
+        :schedule,
+        train: train,
+        travel_date: Date.new(2026, 5, 16),
+        departure_time: "09:00",
+        expected_arrival_time: "14:00",
+        status: :cancelled
+      )
+
+      get "/schedules/#{cancelled_schedule.id}",
+          params: {
+            src_station_id: src_station.id,
+            dst_station_id: dst_station.id
+          },
+          headers: authorization_header(login_and_fetch_token(user)),
+          as: :json
+
+      expect(response).to have_http_status(:unprocessable_entity)
+      expect(json_body["error"]).to eq("This schedule has been cancelled.")
+    end
   end
 
   describe "POST /bookings" do
+    let(:booking_payload) do
+      {
+        schedule_id: schedule.id,
+        src_station_id: src_station.id,
+        dst_station_id: dst_station.id,
+        seat_id: seat_one.id,
+        coach_type: "sleeper",
+        passengers: [
+          attributes_for(
+            :passenger,
+            first_name: "Test",
+            last_name: "Passenger",
+            age: 27,
+            gender: "female",
+            id_type: "Aadhaar",
+            id_number: "123412341234"
+          )
+        ],
+        payment: attributes_for(
+          :payment,
+          payment_method: "upi",
+          gateway_txn_id: "USER-BOOK-1"
+        ).slice(:payment_method, :gateway_txn_id)
+      }
+    end
+
     it "books a train for the signed-in user" do
       expect do
         post "/bookings",
              params: {
-               booking: {
-                 schedule_id: schedule.id,
-                 src_station_id: src_station.id,
-                 dst_station_id: dst_station.id,
-                 seat_id: seat_one.id,
-                 coach_type: "sleeper",
-                 passengers: [
-                   {
-                     first_name: "Test",
-                     last_name: "Passenger",
-                     age: 27,
-                     gender: "female",
-                     id_type: "Aadhaar",
-                     id_number: "123412341234"
-                   }
-                 ],
-                 payment: {
-                   payment_method: "upi",
-                   gateway_txn_id: "USER-BOOK-1"
-                 }
-               }
+               booking: booking_payload
              },
              headers: authorization_header(login_and_fetch_token(user)),
              as: :json
@@ -113,8 +159,16 @@ RSpec.describe "User operations", type: :request do
   end
 
   describe "PATCH /bookings/:id/cancel_ticket" do
+    let(:cancel_ticket_payload) do
+      {
+        ticket_allocation_id: first_allocation.id,
+        reason: "Plan changed"
+      }
+    end
+
     let!(:booking) do
-      Booking.create!(
+      create(
+        :booking,
         user: user,
         schedule: schedule,
         src_station: src_station,
@@ -125,7 +179,8 @@ RSpec.describe "User operations", type: :request do
       )
     end
     let!(:first_passenger) do
-      Passenger.create!(
+      create(
+        :passenger,
         booking: booking,
         first_name: "First",
         last_name: "Passenger",
@@ -136,7 +191,8 @@ RSpec.describe "User operations", type: :request do
       )
     end
     let!(:second_passenger) do
-      Passenger.create!(
+      create(
+        :passenger,
         booking: booking,
         first_name: "Second",
         last_name: "Passenger",
@@ -147,7 +203,8 @@ RSpec.describe "User operations", type: :request do
       )
     end
     let!(:first_allocation) do
-      TicketAllocation.create!(
+      create(
+        :ticket_allocation,
         booking: booking,
         passenger: first_passenger,
         seat: seat_one,
@@ -162,7 +219,8 @@ RSpec.describe "User operations", type: :request do
       )
     end
     let!(:second_allocation) do
-      TicketAllocation.create!(
+      create(
+        :ticket_allocation,
         booking: booking,
         passenger: second_passenger,
         seat: seat_two,
@@ -177,7 +235,8 @@ RSpec.describe "User operations", type: :request do
       )
     end
     let!(:payment) do
-      Payment.create!(
+      create(
+        :payment,
         booking: booking,
         amount: 420,
         payment_method: "upi",
@@ -189,10 +248,7 @@ RSpec.describe "User operations", type: :request do
     it "cancels one ticket from a booking" do
       patch "/bookings/#{booking.id}/cancel_ticket",
             params: {
-              booking: {
-                ticket_allocation_id: first_allocation.id,
-                reason: "Plan changed"
-              }
+              booking: cancel_ticket_payload
             },
             headers: authorization_header(login_and_fetch_token(user)),
             as: :json

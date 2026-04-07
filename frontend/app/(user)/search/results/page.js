@@ -230,10 +230,15 @@ function SearchResultsPageContent() {
 
                 <div className="flex min-w-[15rem] flex-col items-start gap-3 lg:items-end">
                   <div className="rounded-[1.35rem] border border-[var(--color-line)] bg-[var(--color-surface-soft)] px-4 py-3.5 text-sm text-[var(--color-muted-strong)]">
-                    {schedule.availableSeats > 0 ? `${schedule.availableSeats} available` : "Waitlist"}
+                    {schedule.statusKey === "cancelled"
+                      ? "Cancelled"
+                      : schedule.availableSeats > 0
+                        ? `${schedule.availableSeats} available`
+                        : "Waitlist"}
                   </div>
                   <Button
                     type="button"
+                    disabled={!schedule.isBookable}
                     onClick={() =>
                       router.push(
                         `/booking?schedule_id=${schedule.id}&src_station_id=${fromStationId}&dst_station_id=${toStationId}&travel_date=${encodeURIComponent(journeyDate)}&from_label=${encodeURIComponent(fromLabel)}&to_label=${encodeURIComponent(toLabel)}`,
@@ -242,7 +247,11 @@ function SearchResultsPageContent() {
                     size="xl"
                     className="min-h-[3.75rem] w-full lg:min-w-[14rem]"
                   >
-                    Select
+                    {schedule.statusKey === "cancelled"
+                      ? "Unavailable"
+                      : schedule.availableSeats > 0
+                        ? "Select"
+                        : "Waitlist"}
                   </Button>
                 </div>
               </div>

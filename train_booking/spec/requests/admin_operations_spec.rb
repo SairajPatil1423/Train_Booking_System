@@ -1,35 +1,15 @@
 require "rails_helper"
 
 RSpec.describe "Admin operations", type: :request do
-  let!(:admin) do
-    User.create!(
-      email: "admin_ops@example.com",
-      password: "password123",
-      password_confirmation: "password123",
-      full_name: "Admin Ops",
-      username: "admin_ops",
-      address: "Admin avenue",
-      role: :admin
-    )
-  end
-
-  let!(:customer) do
-    User.create!(
-      email: "customer_ops@example.com",
-      password: "password123",
-      password_confirmation: "password123",
-      full_name: "Customer Ops",
-      username: "customer_ops",
-      address: "Customer street"
-    )
-  end
-
-  let!(:city) { City.create!(name: "Admin City", state: "KA", country: "India") }
-  let!(:station_one) { Station.create!(city: city, name: "Start", code: "STA") }
-  let!(:station_two) { Station.create!(city: city, name: "End", code: "END") }
-  let!(:train) { Train.create!(train_number: "22991", name: "Admin Express", train_type: "Express", rating: 4.4) }
+  let!(:admin) { create(:user, :admin, email: "admin_ops@example.com", username: "admin_ops") }
+  let!(:customer) { create(:user, email: "customer_ops@example.com", username: "customer_ops") }
+  let!(:city) { create(:city, name: "Admin City", state: "KA", country: "India") }
+  let!(:station_one) { create(:station, city: city, name: "Start", code: "STA") }
+  let!(:station_two) { create(:station, city: city, name: "End", code: "END") }
+  let!(:train) { create(:train, train_number: "22991", name: "Admin Express", train_type: "Express", rating: 4.4) }
   let!(:schedule) do
-    Schedule.create!(
+    create(
+      :schedule,
       train: train,
       travel_date: Date.new(2026, 6, 1),
       departure_time: "09:10",
@@ -38,10 +18,11 @@ RSpec.describe "Admin operations", type: :request do
       delay_minutes: 0
     )
   end
-  let!(:coach) { Coach.create!(train: train, coach_number: "A1", coach_type: "2ac") }
-  let!(:seat) { Seat.create!(coach: coach, seat_number: "1A", seat_type: "W", is_active: true) }
+  let!(:coach) { create(:coach, :two_ac, train: train, coach_number: "A1") }
+  let!(:seat) { create(:seat, coach: coach, seat_number: "1A", seat_type: "W", is_active: true) }
   let!(:booking) do
-    Booking.create!(
+    create(
+      :booking,
       user: customer,
       schedule: schedule,
       src_station: station_one,
@@ -52,7 +33,8 @@ RSpec.describe "Admin operations", type: :request do
     )
   end
   let!(:payment) do
-    Payment.create!(
+    create(
+      :payment,
       booking: booking,
       amount: 240,
       payment_method: "upi",
@@ -61,7 +43,8 @@ RSpec.describe "Admin operations", type: :request do
     )
   end
   let!(:passenger) do
-    Passenger.create!(
+    create(
+      :passenger,
       booking: booking,
       first_name: "Booked",
       last_name: "Passenger",
@@ -72,7 +55,8 @@ RSpec.describe "Admin operations", type: :request do
     )
   end
   let!(:ticket_allocation) do
-    TicketAllocation.create!(
+    create(
+      :ticket_allocation,
       booking: booking,
       passenger: passenger,
       seat: seat,
@@ -88,7 +72,8 @@ RSpec.describe "Admin operations", type: :request do
   end
 
   before do
-    TrainStop.create!(
+    create(
+      :train_stop,
       train: train,
       station: station_one,
       stop_order: 1,
@@ -96,7 +81,8 @@ RSpec.describe "Admin operations", type: :request do
       departure_time: "09:10",
       distance_from_origin_km: 0
     )
-    TrainStop.create!(
+    create(
+      :train_stop,
       train: train,
       station: station_two,
       stop_order: 2,
@@ -119,18 +105,23 @@ RSpec.describe "Admin operations", type: :request do
   end
 
   describe "POST /admin/trains" do
+    let(:train_payload) do
+      attributes_for(
+        :train,
+        train_number: "22992",
+        name: "Created Train",
+        train_type: "Superfast",
+        rating: 4.8,
+        grade: "A",
+        is_active: true
+      )
+    end
+
     it "creates a train" do
       expect do
         post "/admin/trains",
              params: {
-               train: {
-                 train_number: "22992",
-                 name: "Created Train",
-                 train_type: "Superfast",
-                 rating: 4.8,
-                 grade: "A",
-                 is_active: true
-               }
+               train: train_payload
              },
              headers: authorization_header(login_and_fetch_token(admin)),
              as: :json
@@ -143,21 +134,26 @@ RSpec.describe "Admin operations", type: :request do
   end
 
   describe "POST /admin/train_stops" do
-    let!(:second_city) { City.create!(name: "Second City", state: "KA", country: "India") }
-    let!(:new_station) { Station.create!(city: second_city, name: "Midway", code: "MID") }
+    let!(:second_city) { create(:city, name: "Second City", state: "KA", country: "India") }
+    let!(:new_station) { create(:station, city: second_city, name: "Midway", code: "MID") }
+    let(:train_stop_payload) do
+      attributes_for(
+        :train_stop,
+        stop_order: 3,
+        arrival_time: "14:00",
+        departure_time: "14:10",
+        distance_from_origin_km: 200
+      ).merge(
+        train_id: train.id,
+        station_id: new_station.id
+      )
+    end
 
     it "creates a train stop" do
       expect do
         post "/admin/train_stops",
              params: {
-               train_stop: {
-                 train_id: train.id,
-                 station_id: new_station.id,
-                 stop_order: 3,
-                 arrival_time: "14:00",
-                 departure_time: "14:10",
-                 distance_from_origin_km: 200
-               }
+               train_stop: train_stop_payload
              },
              headers: authorization_header(login_and_fetch_token(admin)),
              as: :json
@@ -170,15 +166,19 @@ RSpec.describe "Admin operations", type: :request do
   end
 
   describe "POST /admin/coaches" do
+    let(:coach_payload) do
+      attributes_for(
+        :coach,
+        :one_ac,
+        coach_number: "B1"
+      ).slice(:coach_number, :coach_type).merge(train_id: train.id)
+    end
+
     it "creates a coach with generated seats" do
       expect do
         post "/admin/coaches",
              params: {
-               coach: {
-                 train_id: train.id,
-                 coach_number: "B1",
-                 coach_type: "1ac"
-               }
+               coach: coach_payload
              },
              headers: authorization_header(login_and_fetch_token(admin)),
              as: :json
@@ -192,18 +192,22 @@ RSpec.describe "Admin operations", type: :request do
   end
 
   describe "POST /admin/fare_rules" do
+    let(:fare_rule_payload) do
+      attributes_for(
+        :fare_rule,
+        coach_type: "2ac",
+        base_fare_per_km: 2.25,
+        dynamic_multiplier: 1.10,
+        valid_from: Date.new(2026, 1, 1),
+        valid_to: Date.new(2026, 12, 31)
+      ).merge(train_id: train.id)
+    end
+
     it "creates a new fare rule" do
       expect do
         post "/admin/fare_rules",
              params: {
-               fare_rule: {
-                 train_id: train.id,
-                 coach_type: "2ac",
-                 base_fare_per_km: 2.25,
-                 dynamic_multiplier: 1.10,
-                 valid_from: "2026-01-01",
-                 valid_to: "2026-12-31"
-               }
+               fare_rule: fare_rule_payload
              },
              headers: authorization_header(login_and_fetch_token(admin)),
              as: :json

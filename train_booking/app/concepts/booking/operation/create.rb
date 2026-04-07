@@ -1,8 +1,10 @@
 module Booking::Operation
   class Create < Trailblazer::Operation
+    require 'pry'
     class BookingError < StandardError; end
 
     step :validate_params
+
     step :find_schedule
     step :find_stops
     step :find_requested_seats
@@ -10,9 +12,11 @@ module Booking::Operation
     step :create_booking_in_transaction
 
     def validate_params(ctx, params:, **)
+      
+      binding.pry
       required_fields = %i[user_id schedule_id src_station_id dst_station_id]
       missing_fields = required_fields.select { |field| params[field].blank? }
-
+        # return false
       if missing_fields.any?
         ctx[:error] = "Missing required fields: #{missing_fields.join(', ')}"
         return false

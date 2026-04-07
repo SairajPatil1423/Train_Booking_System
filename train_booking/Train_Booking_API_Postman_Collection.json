@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "8a29d0e8-aac2-4c1a-9b93-2e809cc79901",
     "name": "Train Booking API",
-    "description": "Complete Postman collection for the Train Booking backend.\n\nSuggested run order:\n1. Health Check\n2. User Register or User Login\n3. Admin Login\n4. Admin bootstrap requests: cities, stations, train, train stops, coach, fare rule, schedule\n5. User search and booking requests\n6. Admin and user follow-up read/update/delete requests\n\nImportant notes:\n- Admin requests use {{admin_token}}\n- User requests use {{user_token}}\n- The collection saves important IDs into collection variables automatically\n- Ticket allocation cancellation is included via PATCH /bookings/:id/cancel_ticket",
+    "description": "Complete Postman collection for the Train Booking backend.\n\nSuggested run order:\n1. Health Check\n2. User Register or User Login\n3. Admin Login\n4. Admin bootstrap requests: cities, stations, train, train stops, coach, fare rule, schedule\n5. User search, seat allocation, booking, and cancellation requests\n6. Admin and user follow-up read/update/delete requests\n\nImportant notes:\n- Admin requests use {{admin_token}}\n- User requests use {{user_token}}\n- The collection saves important IDs into collection variables automatically\n- Use `Show Schedule Details And Current Allocations` before booking to inspect seat availability for a route segment\n- Use `Create Booking And Allocate Tickets` to generate booking, PNR, and ticket allocation records\n- Use PATCH `/bookings/:id/cancel_ticket` to cancel one allocated ticket\n- Use PATCH `/bookings/:id` to cancel the entire booking and refund all active allocations",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -30,7 +30,8 @@
     { "key": "fare_rule_id", "value": "" },
     { "key": "schedule_id", "value": "" },
     { "key": "booking_id", "value": "" },
-    { "key": "ticket_allocation_id", "value": "" }
+    { "key": "ticket_allocation_id", "value": "" },
+    { "key": "ticket_pnr", "value": "" }
   ],
   "item": [
     {
@@ -818,8 +819,9 @@
           }
         },
         {
-          "name": "Show Schedule Details",
+          "name": "Show Schedule Details And Current Allocations",
           "request": {
+            "description": "Returns schedule details for the selected source and destination segment. Check the `allocations` array here before booking to understand which seats are already occupied on this leg.",
             "method": "GET",
             "header": [
               { "key": "Accept", "value": "application/json", "type": "text" },
@@ -837,21 +839,29 @@
           }
         },
         {
-          "name": "Create Booking",
+          "name": "Create Booking And Allocate Tickets",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
+                  "pm.test('Status is 201', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
                   "var data = pm.response.json();",
                   "if (data.booking && data.booking.id) pm.collectionVariables.set('booking_id', data.booking.id);",
-                  "if (data.booking && data.booking.ticket_allocations && data.booking.ticket_allocations.length > 0) pm.collectionVariables.set('ticket_allocation_id', data.booking.ticket_allocations[0].id);"
+                  "if (data.booking && data.booking.ticket_allocations && data.booking.ticket_allocations.length > 0) pm.collectionVariables.set('ticket_allocation_id', data.booking.ticket_allocations[0].id);",
+                  "if (data.booking && data.booking.ticket_allocations && data.booking.ticket_allocations.length > 0 && data.booking.ticket_allocations[0].pnr) pm.collectionVariables.set('ticket_pnr', data.booking.ticket_allocations[0].pnr);",
+                  "pm.test('Ticket allocations are created', function () {",
+                  "  pm.expect(data.booking.ticket_allocations.length).to.be.above(0);",
+                  "});"
                 ]
               }
             }
           ],
           "request": {
+            "description": "Creates a booking and allocates one ticket per passenger. The number of `seat_ids` must match the number of passengers. The response stores `booking_id`, first `ticket_allocation_id`, and first `ticket_pnr` into collection variables.",
             "method": "POST",
             "header": [
               { "key": "Content-Type", "value": "application/json", "type": "text" },
@@ -901,8 +911,26 @@
           }
         },
         {
-          "name": "Cancel Single Ticket Allocation",
+          "name": "Cancel One Ticket Allocation",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "var data = pm.response.json();",
+                  "pm.test('Refund amount is returned', function () {",
+                  "  pm.expect(data.refund_amount).to.not.equal(undefined);",
+                  "});"
+                ]
+              }
+            }
+          ],
           "request": {
+            "description": "Cancels only one allocated ticket inside an existing booking. This marks the selected ticket allocation as cancelled, creates a cancellation record, and usually leaves the booking in `partially_cancelled` state when other tickets are still active.",
             "method": "PATCH",
             "header": [
               { "key": "Content-Type", "value": "application/json", "type": "text" },
@@ -919,7 +947,25 @@
         },
         {
           "name": "Cancel Full Booking",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "var data = pm.response.json();",
+                  "pm.test('Booking status is cancelled', function () {",
+                  "  pm.expect(data.booking.status).to.eql('cancelled');",
+                  "});"
+                ]
+              }
+            }
+          ],
           "request": {
+            "description": "Cancels every active ticket allocation under the booking, creates cancellation entries for each ticket, and returns the total refund amount for the full booking cancellation.",
             "method": "PATCH",
             "header": [
               { "key": "Content-Type", "value": "application/json", "type": "text" },
