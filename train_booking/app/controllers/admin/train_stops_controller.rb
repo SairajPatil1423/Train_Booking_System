@@ -1,85 +1,38 @@
 class Admin::TrainStopsController < Admin::BaseController
-  before_action :set_train_stop, only: %i[update destroy]
-
   def index
-    authorize TrainStop
-    stops_scope = TrainStop.includes(:train, :station).order(:train_id, :stop_order)
-    stops = paginate_scope(stops_scope)
-
-    render json: paginated_response(
-      data: stops.map { |stop| serialize_train_stop(stop) },
-      records: stops
-    ), status: :ok
+    result = Admin::TrainStop::Operation::Index.run(params: merged_params(paginated_params))
+    render_result(result)
   end
 
   def create
     authorize TrainStop
-    result = Admin::TrainStop::Operation::Create.call(
-      current_user: current_user,
-      params: train_stop_params
-    )
-
-    if result.success?
-      render json: { message: 'Train stop added successfully', train_stop: serialize_train_stop(result[:model]) }, status: :created
-    else
-      render json: { errors: result[:errors] }, status: :unprocessable_entity
-    end
+    result = Admin::TrainStop::Operation::Create.run(params: merged_params(train_stop_params))
+    render_result(result)
   end
 
   def update
-    authorize @train_stop
-    result = Admin::TrainStop::Operation::Update.call(
-      current_user: current_user,
-      id: params[:id],
-      params: train_stop_params
-    )
-
-    if result.success?
-      render json: { message: 'Train stop updated successfully', train_stop: serialize_train_stop(result[:model]) }, status: :ok
-    else
-      render json: { errors: result[:errors] }, status: :unprocessable_entity
-    end
+    result = Admin::TrainStop::Operation::Update.run(params: merged_params(train_stop_params).merge(id: params[:id]))
+    render_result(result)
   end
 
   def destroy
-    authorize @train_stop
-    result = Admin::TrainStop::Operation::Destroy.call(
-      current_user: current_user,
-      id: params[:id]
-    )
-
-    if result.success?
-      render json: { message: 'Train stop removed successfully' }, status: :ok
-    else
-      render json: { errors: result[:errors] }, status: :unprocessable_entity
-    end
+    result = Admin::TrainStop::Operation::Destroy.run(params: merged_params(id_params))
+    render_result(result)
   end
 
   private
 
-  def set_train_stop
-    @train_stop = TrainStop.find(params[:id])
-  end
-
   def train_stop_params
-    params.require(:train_stop).permit(
-      :train_id, :station_id, :stop_order,
-      :arrival_time, :departure_time, :arrival_at, :departure_at, :distance_from_origin_km
-    )
-  end
-
-  def serialize_train_stop(train_stop)
-    train_stop.as_json(include: {
-      train: { only: %i[id train_number name train_type] },
-      station: {
-        only: %i[id name code],
-        include: {
-          city: { only: %i[id name state country] }
-        }
-      }
-    }).merge(
-      arrival_at: train_stop.arrival_at,
-      departure_at: train_stop.departure_at
+    permitted_resource_params(
+      :train_stop,
+      :train_id,
+      :station_id,
+      :stop_order,
+      :arrival_at,
+      :arrival_time,
+      :departure_at,
+      :departure_time,
+      :distance_from_origin_km
     )
   end
 end

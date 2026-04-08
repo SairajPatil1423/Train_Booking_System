@@ -237,8 +237,9 @@ export default function AdminTrainsPage() {
     availableTrains[0] ||
     null;
   const selectedTrainId = selectedRouteTrain?.id || "";
-  const selectedTrainStops = trainStops
-    .filter((stop) => stop.train_id === selectedTrainId)
+  const safeTrainStops = Array.isArray(trainStops) ? trainStops.filter(Boolean) : [];
+  const selectedTrainStops = safeTrainStops
+    .filter((stop) => stop?.train_id === selectedTrainId)
     .sort((left, right) => Number(left.stop_order || 0) - Number(right.stop_order || 0));
 
   async function handleDeleteTrain() {
@@ -292,8 +293,8 @@ export default function AdminTrainsPage() {
             {trains.length > 0 ? (
               <div className="space-y-4">
                 {trains.map((train) => {
-                  const routeStops = trainStops
-                    .filter((stop) => stop.train_id === train.id)
+                  const routeStops = safeTrainStops
+                    .filter((stop) => stop?.train_id === train.id)
                     .sort((left, right) => Number(left.stop_order || 0) - Number(right.stop_order || 0));
 
                   return (

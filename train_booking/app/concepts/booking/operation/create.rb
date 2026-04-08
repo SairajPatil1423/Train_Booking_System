@@ -3,20 +3,27 @@ module Booking::Operation
     require 'pry'
     class BookingError < StandardError; end
 
-    step :validate_params
+    step :validate_authorization, Output(:failure) => Track(:failure)
+    step :validate_params, Output(:failure) => Track(:failure)
+    step :find_schedule, Output(:failure) => Track(:failure)
+    step :find_stops, Output(:failure) => Track(:failure)
+    step :find_requested_seats, Output(:failure) => Track(:failure)
+    step :calculate_fare, Output(:failure) => Track(:failure)
+    step :create_booking_in_transaction, Output(:failure) => Track(:failure)
+    step :serialize_result, Output(:failure) => Track(:failure)
+    fail :normalize_failure
 
-    step :find_schedule
-    step :find_stops
-    step :find_requested_seats
-    step :calculate_fare
-    step :create_booking_in_transaction
+    def validate_authorization(ctx, current_user:, **)
+      unless current_user.present?
+        ctx[:error] = "Not authorized"
+        return false
+      end
+      true
+    end
 
     def validate_params(ctx, params:, **)
-      
-      binding.pry
       required_fields = %i[user_id schedule_id src_station_id dst_station_id]
       missing_fields = required_fields.select { |field| params[field].blank? }
-        # return false
       if missing_fields.any?
         ctx[:error] = "Missing required fields: #{missing_fields.join(', ')}"
         return false
@@ -235,6 +242,33 @@ module Booking::Operation
         pnr = "PNR-#{SecureRandom.alphanumeric(10).upcase}"
         return pnr unless TicketAllocation.exists?(pnr: pnr)
       end
+    end
+
+    def serialize_result(ctx, booking:, fare_per_seat:, total_fare:, **)
+      ctx[:model] = {
+        message: "Booking confirmed successfully.",
+        booking: booking.as_json(include: {
+          user: { only: %i[id email phone role] },
+          schedule: {
+            include: { train: { only: %i[id train_number name train_type] } }
+          },
+          src_station: { only: %i[id name code] },
+          dst_station: { only: %i[id name code] },
+          passengers: {},
+          ticket_allocations: {
+            include: { seat: { only: %i[id seat_number seat_type coach_id] } }
+          },
+          payment: {},
+          cancellations: {}
+        }),
+        fare_per_seat: fare_per_seat,
+        total_fare: total_fare
+      }
+      true
+    end
+
+    def normalize_failure(ctx, **)
+      ctx[:errors] = Array(ctx[:errors] || ctx[:error] || "Operation failed")
     end
   end
 end

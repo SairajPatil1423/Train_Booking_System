@@ -86,25 +86,23 @@ export default function AdminLoginPage() {
   return (
     <AuthShell
       eyebrow="Admin access"
-      title="Sign in to manage trains, schedules, and bookings."
-      description="This area is reserved for authorised railway operations users."
+      title="Admin sign in"
+      description="Access trains, schedules, bookings, and fares."
       mode="admin"
       highlights={[
         {
-          title: "Control inventory centrally",
-          description:
-            "Update trains, schedules, coach templates, and fares from a single admin workflow.",
+          title: "Manage operations",
+          description: "Update trains, schedules, coaches, and fares.",
         },
         {
-          title: "Monitor booking health",
-          description:
-            "Track booking volume, statuses, and revenue context without leaving the control panel.",
+          title: "Review bookings",
+          description: "Check booking volume, status, and revenue.",
         },
       ]}
       stats={[
-        { label: "Role", value: "Operations only" },
-        { label: "Scope", value: "Admin dashboard" },
-        { label: "Access", value: "Protected route" },
+        { label: "Role", value: "Operations" },
+        { label: "Area", value: "Admin tools" },
+        { label: "Access", value: "Protected" },
       ]}
       footer={
         <>
@@ -124,7 +122,7 @@ export default function AdminLoginPage() {
             Admin login
           </h2>
           <p className="mt-2 text-sm leading-7 text-[var(--color-muted)]">
-            Use your administrator account to access the operations area.
+            Sign in with your administrator account.
           </p>
         </div>
 
@@ -134,7 +132,7 @@ export default function AdminLoginPage() {
             label="Admin email"
             {...register("email")}
             placeholder="admin1@trainbooking.com"
-            hint="Use the administrator email provisioned for operations access."
+            hint="Use your admin email."
             error={errors.email?.message}
           />
 
@@ -143,7 +141,7 @@ export default function AdminLoginPage() {
             label="Password"
             {...register("password")}
             placeholder="Enter your password"
-            hint="Only admin accounts can continue into the control panel."
+            hint="Admin accounts only."
             error={errors.password?.message}
           />
 

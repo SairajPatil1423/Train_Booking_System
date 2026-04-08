@@ -5,6 +5,7 @@ module Admin
         step :validate_authorization
         step :find_model
         step :update_model
+        step :serialize_result
 
         def validate_authorization(ctx, current_user:, **)
           current_user && current_user.admin?
@@ -27,6 +28,11 @@ module Admin
         rescue StandardError => e
           ctx[:errors] = [e.message]
           false
+        end
+
+        def serialize_result(ctx, model:, **)
+          ctx[:model] = { message: 'Schedule updated', schedule: model }
+          true
         end
       end
     end

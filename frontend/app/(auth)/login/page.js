@@ -62,24 +62,22 @@ export default function LoginPage() {
   return (
     <AuthShell
       eyebrow="Passenger login"
-      title="Sign in to search routes and continue your booking."
-      description="Access your journeys, booking history, and live train search with your account."
+      title="Sign in"
+      description="Access your bookings and continue your journey."
       highlights={[
         {
-          title: "Resume bookings quickly",
-          description:
-            "Jump back into route search, seat selection, and pending bookings without starting over.",
+          title: "Pick up where you left off",
+          description: "Continue an unfinished booking or start a new one.",
         },
         {
-          title: "Track every journey",
-          description:
-            "See your upcoming trips, cancellations, and booking history in one organized place.",
+          title: "View trip history",
+          description: "Check upcoming trips, cancellations, and past bookings.",
         },
       ]}
       stats={[
-        { label: "Speed", value: "Fast sign-in flow" },
-        { label: "Seats", value: "Exact seat continuity" },
-        { label: "History", value: "Bookings synced" },
+        { label: "Access", value: "Bookings and search" },
+        { label: "Trips", value: "Upcoming and past" },
+        { label: "Seats", value: "Saved selections" },
       ]}
       footer={
         <>
@@ -96,18 +94,12 @@ export default function LoginPage() {
             <span className="rounded-full bg-[var(--color-accent-soft)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--color-accent)]">
               Welcome back
             </span>
-            <Link
-              href="/admin/login"
-              className="rounded-full border border-[var(--color-line)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--color-muted)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
-            >
-              Admin login
-            </Link>
           </div>
           <h2 className="text-2xl font-semibold tracking-tight text-[var(--color-ink)]">
-            Login
+            Passenger login
           </h2>
           <p className="mt-2 text-sm leading-7 text-[var(--color-muted)]">
-            Enter your registered email address and password to continue.
+            Use your account email and password to sign in.
           </p>
         </div>
 
@@ -117,7 +109,7 @@ export default function LoginPage() {
             label="Email address"
             {...register("email")}
             placeholder="you@example.com"
-            hint="Use the email you registered with for your passenger account."
+            hint="Use the email linked to your account."
             error={errors.email?.message}
           />
 
@@ -126,7 +118,7 @@ export default function LoginPage() {
             label="Password"
             {...register("password")}
             placeholder="Enter your password"
-            hint="Your booking history and active journeys will load after sign-in."
+            hint="Your bookings will load after sign-in."
             error={errors.password?.message}
           />
 
@@ -135,15 +127,6 @@ export default function LoginPage() {
               {error}
             </div>
           ) : null}
-
-          <div className="rounded-[1.5rem] border border-[var(--color-line)] bg-[var(--color-surface-soft)] px-4 py-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--color-muted)]">
-              Session benefits
-            </p>
-            <p className="mt-2 text-sm leading-7 text-[var(--color-muted)]">
-              Signed-in passengers can manage reservations, review cancellations, and continue bookings with less friction.
-            </p>
-          </div>
 
           <Button type="submit" size="lg" disabled={status === "loading"} className="w-full">
             {status === "loading" ? "Signing in..." : "Sign in"}

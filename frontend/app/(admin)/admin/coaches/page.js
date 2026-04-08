@@ -52,6 +52,7 @@ export default function AdminCoachesPage() {
     () => Object.fromEntries(ADMIN_COACH_CONFIGS.map((item) => [item.key, item])),
     [],
   );
+  const safeCoaches = Array.isArray(coaches) ? coaches.filter(Boolean) : [];
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -134,9 +135,9 @@ export default function AdminCoachesPage() {
             ) : null}
             <AdminErrorBox message={Array.isArray(coachesError) ? coachesError.join(", ") : coachesError} />
 
-            {coaches.length > 0 ? (
+            {safeCoaches.length > 0 ? (
               <div className="space-y-4">
-                {coaches.map((coach) => {
+                {safeCoaches.map((coach) => {
                   const normalizedCoachType = normalizeCoachType(coach.coach_type);
                   const layout = coachLayouts[normalizedCoachType];
 
@@ -194,13 +195,13 @@ export default function AdminCoachesPage() {
               </div>
             ) : null}
 
-            {coaches.length === 0 && coachesStatus !== "loading" ? (
+            {safeCoaches.length === 0 && coachesStatus !== "loading" ? (
               <EmptyState
                 title="No coaches configured yet"
               />
             ) : null}
 
-            {coaches.length > 0 ? (
+            {safeCoaches.length > 0 ? (
               <div className="pt-6">
                 <PaginationToolbar
                   page={coachesMeta.page}
@@ -301,9 +302,9 @@ export default function AdminCoachesPage() {
       </div>
 
       <AdminConfirmDialog
-        open={Boolean(coachToDelete)}
-        title="Delete coach"
-        description={`Delete ${coachToDelete?.coach_number || "this coach"}? This action cannot be undone.`}
+      open={Boolean(coachToDelete)}
+      title="Delete coach"
+      description={`Delete ${coachToDelete?.coach_number || "this coach"}? This action cannot be undone.`}
         confirmLabel="Delete coach"
         busy={coachesStatus === "loading"}
         onClose={() => setCoachToDelete(null)}

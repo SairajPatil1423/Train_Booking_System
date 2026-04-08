@@ -48,7 +48,7 @@ export default function AppHeader() {
       console.error("Logout request failed", error);
     } finally {
       dispatch(clearCredentials());
-      router.push("/login");
+      router.replace("/login");
     }
   }
 

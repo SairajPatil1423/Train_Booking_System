@@ -8,7 +8,23 @@ class ApplicationController < ActionController::API
 
   private
 
+  def render_result(result)
+    if result.success?
+      status_code = request.post? ? :created : :ok
+      render json: result[:model], status: status_code
+    else
+      error_payload = result[:errors] ? { errors: result[:errors] } : { error: result[:error] }
+      render json: error_payload, status: :unprocessable_content
+    end
+  end
+
+  def render_operation_error(result)
+    render json: { errors: Array(result[:errors]) }, status: :unprocessable_content
+  end
+
   def not_found(exception)
+    puts "NOT FOUND EXCEPTION: #{exception.message}"
+    puts exception.backtrace.first(5).join("\n")
     render json: { error: exception.message }, status: :not_found
   end
 
