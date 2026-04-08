@@ -1,9 +1,12 @@
 module Booking::Operation
   class CancelTicket < Trailblazer::Operation
-    step :find_booking
-    step :find_ticket_allocation
-    step :validate_ticket_status
-    step :cancel_ticket_in_transaction
+    step :find_booking, Output(:failure) => Track(:failure)
+    step :validate_authorization, Output(:failure) => Track(:failure)
+    step :find_ticket_allocation, Output(:failure) => Track(:failure)
+    step :validate_ticket_status, Output(:failure) => Track(:failure)
+    step :cancel_ticket_in_transaction, Output(:failure) => Track(:failure)
+    step :serialize_result, Output(:failure) => Track(:failure)
+    fail :normalize_failure
 
     def find_booking(ctx, params:, **)
       ctx[:booking] = Booking.find_by(id: params[:booking_id])
@@ -13,6 +16,14 @@ module Booking::Operation
         return false
       end
 
+      true
+    end
+
+    def validate_authorization(ctx, booking:, current_user:, **)
+      unless current_user.present? && (booking.user_id == current_user.id || (current_user.respond_to?(:admin?) && current_user.admin?))
+        ctx[:error] = "Not authorized to cancel this ticket"
+        return false
+      end
       true
     end
 
@@ -89,6 +100,32 @@ module Booking::Operation
       else
         booking.payment.update!(status: :partially_refunded)
       end
+    end
+
+    def serialize_result(ctx, booking:, refund_amount:, **)
+      ctx[:model] = {
+        message: "Ticket cancelled successfully.",
+        booking: booking.as_json(include: {
+          user: { only: %i[id email phone role] },
+          schedule: {
+            include: { train: { only: %i[id train_number name train_type] } }
+          },
+          src_station: { only: %i[id name code] },
+          dst_station: { only: %i[id name code] },
+          passengers: {},
+          ticket_allocations: {
+            include: { seat: { only: %i[id seat_number seat_type coach_id] } }
+          },
+          payment: {},
+          cancellations: {}
+        }),
+        refund_amount: refund_amount
+      }
+      true
+    end
+
+    def normalize_failure(ctx, **)
+      ctx[:errors] = Array(ctx[:errors] || ctx[:error] || "Operation failed")
     end
   end
 end

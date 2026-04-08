@@ -21,37 +21,37 @@ const adminModules = [
     name: "Train management",
     href: "/admin/trains",
     icon: "🚆",
-    description: "Create and manage active trains, classes, and service details.",
+    description: "Manage trains and service details.",
   },
   {
     name: "Schedules",
     href: "/admin/schedules",
     icon: "📅",
-    description: "Control running dates, departures, and operational timing windows.",
+    description: "Set running dates and departures.",
   },
   {
     name: "Coaches and seats",
     href: "/admin/coaches",
     icon: "💺",
-    description: "Configure the seat inventory model used across your train roster.",
+    description: "Configure coach layouts and seats.",
   },
   {
     name: "Fare rules",
     href: "/admin/fares",
     icon: "💰",
-    description: "Tune pricing rules and keep route classes aligned with revenue goals.",
+    description: "Set pricing by coach class.",
   },
   {
     name: "All bookings",
     href: "/admin/bookings",
     icon: "🧾",
-    description: "Monitor passenger demand, refunds, and status changes from one board.",
+    description: "Review bookings, refunds, and status.",
   },
   {
     name: "Create admin",
     href: "/admin/users",
     icon: "🛡️",
-    description: "Invite and provision new operations administrators securely.",
+    description: "Add another admin account.",
   },
 ];
 
@@ -120,11 +120,11 @@ export default function AdminPage() {
       <div className="space-y-6">
         <PageHero
           eyebrow="Admin command center"
-          title="Run rail operations from a calmer, more intelligent dashboard."
-          description="Keep train inventory, schedules, bookings, coach layouts, and revenue in one premium workspace built for day-to-day operations."
+          title="Admin dashboard"
+          description="Manage trains, schedules, bookings, coaches, and fares from one place."
           meta={[
-            delayedDataSync ? "Sync in progress" : "Live data",
-            `${totalBookings} booking records`,
+            delayedDataSync ? "Syncing" : "Live",
+            `${totalBookings} bookings`,
             `${totalTrains} trains`,
           ]}
           actions={
@@ -151,7 +151,7 @@ export default function AdminPage() {
                 <Badge variant="neutral">{user?.role}</Badge>
               </div>
               <p className="mt-4 text-sm leading-7 text-[var(--color-muted)]">
-                Keep demand, revenue, and inventory aligned with a single operational view.
+                Signed in as an administrator.
               </p>
             </div>
           }
@@ -161,14 +161,14 @@ export default function AdminPage() {
           <AdminMetricCard
             label="Total trains"
             value={trainsStatus === "loading" ? "Loading..." : totalTrains}
-            hint="Paginated train inventory available to operations."
-            trend={totalTrains > 0 ? "Live" : "Setup"}
+            hint="Train records on the current page."
+            trend={totalTrains > 0 ? "Live" : "Empty"}
           />
           <AdminMetricCard
             label="All bookings"
             value={bookingsStatus === "loading" ? "Loading..." : totalBookings}
-            hint="Customer reservations reported by backend pagination metadata."
-            trend={totalBookings > 0 ? "Demand" : "Quiet"}
+            hint="Reservations reported by the API."
+            trend={totalBookings > 0 ? "Active" : "Quiet"}
           />
           <AdminMetricCard
             label="Net revenue"
@@ -179,15 +179,15 @@ export default function AdminPage() {
                   ? "Loading..."
                   : `₹${netRevenue.toLocaleString("en-IN")}`
             }
-            hint="Bookings minus recorded refunds."
-            trend={hasRevenueError ? "Check data" : "Finance"}
+            hint="Bookings minus refunds."
+            trend={hasRevenueError ? "Check" : "Finance"}
             trendTone={hasRevenueError ? "warning" : "positive"}
           />
           <AdminMetricCard
             label="Coach templates"
             value={ADMIN_COACH_CONFIGS.length}
-            hint="Fixed coach layouts ready for operations and seat generation."
-            trend="Inventory"
+            hint="Available coach layouts."
+            trend="Layouts"
           />
         </section>
 
@@ -199,7 +199,7 @@ export default function AdminPage() {
                   Admin modules
                 </p>
                 <h2 className="mt-2 text-2xl font-semibold tracking-tight text-[var(--color-ink)]">
-                  Fast access to core controls
+                  Core controls
                 </h2>
               </div>
               <Badge variant="neutral">{adminModules.length} areas</Badge>
@@ -241,7 +241,7 @@ export default function AdminPage() {
                   key={coach.key}
                   className="rounded-full border border-[var(--color-line)] bg-[var(--color-surface-soft)] px-4 py-2 text-sm font-semibold text-[var(--color-panel-dark)]"
                 >
-                  {coach.label}: {coach.totalSeats} seats
+                  {coach.label} {coach.totalSeats} seats
                 </div>
               ))}
             </div>

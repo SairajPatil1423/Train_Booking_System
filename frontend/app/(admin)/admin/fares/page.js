@@ -37,6 +37,7 @@ export default function AdminFaresPage() {
     totalPages: fareRulesMeta.totalPages,
     status: fareRulesStatus,
   });
+  const safeFareRules = Array.isArray(fareRules) ? fareRules.filter(Boolean) : [];
 
   useEffect(() => {
     dispatch(fetchAdminFareRulesThunk({ page: currentPage, perPage: currentPerPage }));
@@ -113,15 +114,15 @@ export default function AdminFaresPage() {
 
         <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
           <PageSection className="p-6 sm:p-8">
-            {fareRulesStatus === "loading" && fareRules.length === 0 ? <LoadingState label="Loading fare rules..." /> : null}
-            {fareRulesStatus === "loading" && fareRules.length > 0 ? (
+            {fareRulesStatus === "loading" && safeFareRules.length === 0 ? <LoadingState label="Loading fare rules..." /> : null}
+            {fareRulesStatus === "loading" && safeFareRules.length > 0 ? (
               <div className="pb-4 text-sm font-medium text-[var(--color-muted)]">Loading page {currentPage}...</div>
             ) : null}
             <AdminErrorBox message={Array.isArray(fareRulesError) ? fareRulesError.join(", ") : fareRulesError} />
 
-            {fareRules.length > 0 ? (
+            {safeFareRules.length > 0 ? (
               <div className="space-y-4">
-                {fareRules.map((rule) => (
+                {safeFareRules.map((rule) => (
                   <Card key={rule.id} className="rounded-[1.6rem] p-5">
                     <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                       <div>
@@ -165,18 +166,18 @@ export default function AdminFaresPage() {
               </div>
             ) : null}
 
-            {fareRules.length === 0 && fareRulesStatus !== "loading" ? (
+            {safeFareRules.length === 0 && fareRulesStatus !== "loading" ? (
               <EmptyState
                 title="No fare rules configured yet"
               />
             ) : null}
 
-            {fareRules.length > 0 ? (
+            {safeFareRules.length > 0 ? (
               <div className="pt-6">
                 <PaginationToolbar
                   page={fareRulesMeta.page}
                   perPage={fareRulesMeta.perPage}
-                  totalCount={fareRulesMeta.totalCount || fareRules.length}
+                  totalCount={fareRulesMeta.totalCount || safeFareRules.length}
                   totalPages={fareRulesMeta.totalPages}
                   onPageChange={setPage}
                   onPerPageChange={setPerPage}

@@ -592,7 +592,7 @@ export const createAdminCoachThunk = createAsyncThunk(
   async (payload, { rejectWithValue }) => {
     try {
       const data = await createAdminCoach(payload);
-      return data.coach;
+      return data.coach || data;
     } catch (error) {
       return rejectWithValue(normalizeAdminError(error, "Failed to create coach."));
     }
@@ -604,7 +604,7 @@ export const updateAdminCoachThunk = createAsyncThunk(
   async ({ id, coachData }, { rejectWithValue }) => {
     try {
       const data = await updateAdminCoach(id, coachData);
-      return data.coach;
+      return data.coach || data;
     } catch (error) {
       return rejectWithValue(normalizeAdminError(error, "Failed to update coach."));
     }
@@ -650,7 +650,7 @@ export const createAdminFareRuleThunk = createAsyncThunk(
   async (payload, { rejectWithValue }) => {
     try {
       const data = await createAdminFareRule(payload);
-      return data.fare_rule;
+      return data.fare_rule || data;
     } catch (error) {
       return rejectWithValue(normalizeAdminError(error, "Failed to create fare rule."));
     }
@@ -662,7 +662,7 @@ export const updateAdminFareRuleThunk = createAsyncThunk(
   async ({ id, fareRuleData }, { rejectWithValue }) => {
     try {
       const data = await updateAdminFareRule(id, fareRuleData);
-      return data.fare_rule;
+      return data.fare_rule || data;
     } catch (error) {
       return rejectWithValue(normalizeAdminError(error, "Failed to update fare rule."));
     }
@@ -869,7 +869,7 @@ const adminSlice = createSlice({
       })
       .addCase(fetchAdminTrainStopsThunk.fulfilled, (state, action) => {
         setFulfilled(state, "trainStops");
-        state.trainStops = action.payload;
+        state.trainStops = Array.isArray(action.payload) ? action.payload.filter(Boolean) : [];
       })
       .addCase(fetchAdminTrainStopsThunk.rejected, (state, action) => {
         setRejected(state, "trainStops", action);
@@ -879,7 +879,10 @@ const adminSlice = createSlice({
       })
       .addCase(createAdminTrainStopThunk.fulfilled, (state, action) => {
         setFulfilled(state, "trainStops");
-        state.trainStops.push(attachTrain(action.payload, state.trains));
+        const trainStop = attachTrain(action.payload, state.trains);
+        if (trainStop) {
+          state.trainStops.push(trainStop);
+        }
       })
       .addCase(createAdminTrainStopThunk.rejected, (state, action) => {
         setRejected(state, "trainStops", action);
@@ -889,7 +892,10 @@ const adminSlice = createSlice({
       })
       .addCase(updateAdminTrainStopThunk.fulfilled, (state, action) => {
         setFulfilled(state, "trainStops");
-        upsertById(state.trainStops, attachTrain(action.payload, state.trains));
+        const trainStop = attachTrain(action.payload, state.trains);
+        if (trainStop) {
+          upsertById(state.trainStops, trainStop);
+        }
       })
       .addCase(updateAdminTrainStopThunk.rejected, (state, action) => {
         setRejected(state, "trainStops", action);
@@ -899,7 +905,7 @@ const adminSlice = createSlice({
       })
       .addCase(deleteAdminTrainStopThunk.fulfilled, (state, action) => {
         setFulfilled(state, "trainStops");
-        state.trainStops = state.trainStops.filter((item) => item.id !== action.payload);
+        state.trainStops = state.trainStops.filter((item) => item?.id !== action.payload);
       })
       .addCase(deleteAdminTrainStopThunk.rejected, (state, action) => {
         setRejected(state, "trainStops", action);
@@ -934,7 +940,7 @@ const adminSlice = createSlice({
       })
       .addCase(fetchAdminCoachesThunk.fulfilled, (state, action) => {
         setFulfilled(state, "coaches");
-        state.coaches = action.payload.coaches;
+        state.coaches = Array.isArray(action.payload.coaches) ? action.payload.coaches.filter(Boolean) : [];
         state.coachesMeta = normalizeMeta(action.payload.meta, {
           page: action.payload.request.page,
           perPage: action.payload.request.perPage,
@@ -950,7 +956,10 @@ const adminSlice = createSlice({
       })
       .addCase(createAdminCoachThunk.fulfilled, (state, action) => {
         setFulfilled(state, "coaches");
-        upsertById(state.coaches, attachTrain(action.payload, state.trains));
+        const coach = attachTrain(action.payload, state.trains);
+        if (coach) {
+          upsertById(state.coaches, coach);
+        }
       })
       .addCase(createAdminCoachThunk.rejected, (state, action) => {
         setRejected(state, "coaches", action);
@@ -960,7 +969,10 @@ const adminSlice = createSlice({
       })
       .addCase(updateAdminCoachThunk.fulfilled, (state, action) => {
         setFulfilled(state, "coaches");
-        upsertById(state.coaches, attachTrain(action.payload, state.trains));
+        const coach = attachTrain(action.payload, state.trains);
+        if (coach) {
+          upsertById(state.coaches, coach);
+        }
       })
       .addCase(updateAdminCoachThunk.rejected, (state, action) => {
         setRejected(state, "coaches", action);
@@ -970,7 +982,7 @@ const adminSlice = createSlice({
       })
       .addCase(deleteAdminCoachThunk.fulfilled, (state, action) => {
         setFulfilled(state, "coaches");
-        state.coaches = state.coaches.filter((item) => item.id !== action.payload);
+        state.coaches = state.coaches.filter((item) => item?.id !== action.payload);
       })
       .addCase(deleteAdminCoachThunk.rejected, (state, action) => {
         setRejected(state, "coaches", action);
@@ -980,7 +992,7 @@ const adminSlice = createSlice({
       })
       .addCase(fetchAdminFareRulesThunk.fulfilled, (state, action) => {
         setFulfilled(state, "fareRules");
-        state.fareRules = action.payload.fareRules;
+        state.fareRules = Array.isArray(action.payload.fareRules) ? action.payload.fareRules.filter(Boolean) : [];
         state.fareRulesMeta = normalizeMeta(action.payload.meta, {
           page: action.payload.request.page,
           perPage: action.payload.request.perPage,
@@ -996,7 +1008,10 @@ const adminSlice = createSlice({
       })
       .addCase(createAdminFareRuleThunk.fulfilled, (state, action) => {
         setFulfilled(state, "fareRules");
-        upsertById(state.fareRules, attachTrain(action.payload, state.trains));
+        const fareRule = attachTrain(action.payload, state.trains);
+        if (fareRule) {
+          upsertById(state.fareRules, fareRule);
+        }
       })
       .addCase(createAdminFareRuleThunk.rejected, (state, action) => {
         setRejected(state, "fareRules", action);
@@ -1006,7 +1021,10 @@ const adminSlice = createSlice({
       })
       .addCase(updateAdminFareRuleThunk.fulfilled, (state, action) => {
         setFulfilled(state, "fareRules");
-        upsertById(state.fareRules, attachTrain(action.payload, state.trains));
+        const fareRule = attachTrain(action.payload, state.trains);
+        if (fareRule) {
+          upsertById(state.fareRules, fareRule);
+        }
       })
       .addCase(updateAdminFareRuleThunk.rejected, (state, action) => {
         setRejected(state, "fareRules", action);
@@ -1016,7 +1034,7 @@ const adminSlice = createSlice({
       })
       .addCase(deleteAdminFareRuleThunk.fulfilled, (state, action) => {
         setFulfilled(state, "fareRules");
-        state.fareRules = state.fareRules.filter((item) => item.id !== action.payload);
+        state.fareRules = state.fareRules.filter((item) => item?.id !== action.payload);
       })
       .addCase(deleteAdminFareRuleThunk.rejected, (state, action) => {
         setRejected(state, "fareRules", action);

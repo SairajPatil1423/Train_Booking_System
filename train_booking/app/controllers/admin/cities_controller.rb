@@ -1,64 +1,27 @@
 class Admin::CitiesController < Admin::BaseController
-  before_action :set_city, only: %i[update destroy]
-
   def index
-    authorize City
-    cities_scope = City.order(:country, :state, :name)
-    cities = paginate_scope(cities_scope)
-
-    render json: paginated_response(data: cities, records: cities), status: :ok
+    result = Admin::City::Operation::Index.run(params: merged_params(paginated_params))
+    render_result(result)
   end
 
   def create
-    authorize City
-    result = Admin::City::Operation::Create.call(
-      current_user: current_user,
-      params: city_params
-    )
-
-    if result.success?
-      render json: { message: "City created successfully", city: result[:model] }, status: :created
-    else
-      render json: { errors: result[:errors] }, status: :unprocessable_entity
-    end
+    result = Admin::City::Operation::Create.run(params: merged_params(city_params))
+    render_result(result)
   end
 
   def update
-    authorize @city
-    result = Admin::City::Operation::Update.call(
-      current_user: current_user,
-      id: params[:id],
-      params: city_params
-    )
-
-    if result.success?
-      render json: { message: "City updated successfully", city: result[:model] }, status: :ok
-    else
-      render json: { errors: result[:errors] }, status: :unprocessable_entity
-    end
+    result = Admin::City::Operation::Update.run(params: merged_params(city_params).merge(id: params[:id]))
+    render_result(result)
   end
 
   def destroy
-    authorize @city
-    result = Admin::City::Operation::Destroy.call(
-      current_user: current_user,
-      id: params[:id]
-    )
-
-    if result.success?
-      render json: { message: "City deleted successfully" }, status: :ok
-    else
-      render json: { errors: result[:errors] }, status: :unprocessable_entity
-    end
+    result = Admin::City::Operation::Destroy.run(params: merged_params(id_params))
+    render_result(result)
   end
 
   private
 
-  def set_city
-    @city = City.find(params[:id])
-  end
-
   def city_params
-    params.require(:city).permit(:name, :state, :country)
+    permitted_resource_params(:city, :name, :state, :country)
   end
 end

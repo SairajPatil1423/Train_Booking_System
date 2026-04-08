@@ -2,19 +2,22 @@ module Admin
   module Train
     module Operation
       class Update < Trailblazer::Operation
-        step :validate_authorization
-        step :find_model
-        step :validate_uniqueness
-        step :update_model
+        step :validate_authorization, Output(:failure) => Track(:failure)
+        step :find_model, Output(:failure) => Track(:failure)
+        step :validate_uniqueness, Output(:failure) => Track(:failure)
+        step :update_model, Output(:failure) => Track(:failure)
+        step :serialize_result, Output(:failure) => Track(:failure)
+        fail :normalize_failure
 
         def validate_authorization(ctx, current_user:, **)
-          current_user && current_user.admin?
+          return false unless current_user && current_user.admin?
+          true
         end
 
         def find_model(ctx, id:, **)
           ctx[:model] = ::Train.find_by(id: id)
           if ctx[:model].nil?
-            ctx[:errors] = ['Train not found']
+            ctx[:error] = 'Train not found'
             return false
           end
           true
@@ -23,7 +26,7 @@ module Admin
         def validate_uniqueness(ctx, params:, model:, **)
           if params[:train_number].present? && params[:train_number] != model.train_number
             if ::Train.exists?(train_number: params[:train_number])
-              ctx[:errors] = ["Train number #{params[:train_number]} already exists"]
+              ctx[:error] = "Train number #{params[:train_number]} already exists"
               return false
             end
           end
@@ -42,8 +45,17 @@ module Admin
           model.update!(update_attrs)
           true
         rescue StandardError => e
-          ctx[:errors] = [e.message]
+          ctx[:error] = e.message
           false
+        end
+
+        def serialize_result(ctx, model:, **)
+          ctx[:model] = { message: 'Train updated successfully', train: model }
+          true
+        end
+
+        def normalize_failure(ctx, **)
+          ctx[:errors] = Array(ctx[:errors] || ctx[:error] || "Operation failed")
         end
       end
     end

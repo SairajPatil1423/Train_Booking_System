@@ -117,8 +117,8 @@ export function AdminRevenueCard({
         {error
           ? error
           : loading
-            ? "Refreshing totals from booking and refund records..."
-            : "Gross collections, refunds, and retained revenue update from the bookings loaded on this page."}
+            ? "Refreshing totals..."
+            : "Gross, refunds, and net revenue from the current page."}
       </p>
 
       <div className="mt-6 grid gap-3 sm:grid-cols-3">
@@ -156,7 +156,7 @@ export function AdminBookingSnapshot({ bookings = [] }) {
             Recent bookings
           </p>
           <h2 className="mt-2 text-xl font-semibold tracking-tight text-[var(--color-ink)]">
-            Operational pulse
+            Latest activity
           </h2>
         </div>
         <Link
@@ -194,7 +194,7 @@ export function AdminBookingSnapshot({ bookings = [] }) {
           ))
         ) : (
           <div className="rounded-[1.4rem] border border-dashed border-[var(--color-line)] px-4 py-8 text-sm text-[var(--color-muted)]">
-            No bookings yet. Confirmed reservations will appear here for the operations team.
+            No bookings yet.
           </div>
         )}
       </div>
@@ -206,7 +206,7 @@ export function AdminHealthPanel({ syncing, role, email }) {
   return (
     <Card tone="panel" className="rounded-[2rem] p-6">
       <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-[var(--color-muted)]">
-        Control room
+        Session
       </p>
 
       <div className="mt-5 rounded-[1.5rem] bg-[var(--color-accent-soft)] p-4">

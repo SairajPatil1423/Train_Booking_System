@@ -162,7 +162,7 @@ export default function Home() {
       </section>
 
       <section className="mt-6 grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
-        <PageSection className="rounded-[2rem] p-6 sm:p-8">
+        {/* <PageSection className="rounded-[2rem] p-6 sm:p-8">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <h2 className="text-2xl font-semibold tracking-tight text-[var(--color-ink)]">
               Search
@@ -184,7 +184,7 @@ export default function Home() {
               </p>
             </div>
           </div>
-        </PageSection>
+        </PageSection> */}
 
         <PageSection className="rounded-[2rem] p-6 sm:p-8">
           <div className="flex flex-wrap items-center justify-between gap-4">

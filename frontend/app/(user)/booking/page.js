@@ -16,6 +16,7 @@ import PageShell from "@/components/page-shell";
 import SeatMap from "@/components/seat-map";
 import SectionHeader from "@/components/section-header";
 import { formatCoachType } from "@/utils/coach-formatters";
+import { normalizeCoachType } from "@/utils/coach-formatters";
 import Badge from "@/components/ui/badge";
 import Button from "@/components/ui/button";
 import { fetchScheduleDetails } from "@/features/trains/trainService";
@@ -246,7 +247,87 @@ function BookingPageContent() {
   }, [details?.stops, dstStationId, srcStationId]);
 
   const fareOptions = details?.fare_options || {};
-  const selectedFare = fareOptions[selectedCoachType]?.fare_per_seat || 0;
+  const coachTypeAvailability = details?.availability?.coach_type_availability || {};
+  const coachTypeOptions = useMemo(() => {
+    const optionsByType = new Map();
+
+    (details?.coaches || []).forEach((coach) => {
+      const coachType = normalizeCoachType(coach.coach_type);
+      if (!coachType) {
+        return;
+      }
+
+      const existing = optionsByType.get(coachType) || {
+        coachType,
+        coachCount: 0,
+        totalSeats: 0,
+        availableSeats: null,
+        farePerSeat: null,
+      };
+
+      existing.coachCount += 1;
+      existing.totalSeats += Array.isArray(coach.seats) ? coach.seats.length : 0;
+      optionsByType.set(coachType, existing);
+    });
+
+    Object.entries(coachTypeAvailability).forEach(([coachType, value]) => {
+      const normalizedCoachType = normalizeCoachType(coachType);
+      if (!normalizedCoachType) {
+        return;
+      }
+
+      const existing = optionsByType.get(normalizedCoachType) || {
+        coachType: normalizedCoachType,
+        coachCount: 0,
+        totalSeats: 0,
+        availableSeats: null,
+        farePerSeat: null,
+      };
+
+      existing.availableSeats = value.available_seats;
+      existing.totalSeats = value.total_active_seats;
+      optionsByType.set(normalizedCoachType, existing);
+    });
+
+    Object.entries(fareOptions).forEach(([coachType, value]) => {
+      const normalizedCoachType = normalizeCoachType(coachType);
+      if (!normalizedCoachType) {
+        return;
+      }
+
+      const existing = optionsByType.get(normalizedCoachType) || {
+        coachType: normalizedCoachType,
+        coachCount: 0,
+        totalSeats: 0,
+        availableSeats: null,
+        farePerSeat: null,
+      };
+
+      existing.farePerSeat = value?.fare_per_seat ?? null;
+      optionsByType.set(normalizedCoachType, existing);
+    });
+
+    return Array.from(optionsByType.values()).sort((left, right) =>
+      formatCoachType(left.coachType).localeCompare(formatCoachType(right.coachType)),
+    );
+  }, [coachTypeAvailability, details?.coaches, fareOptions]);
+
+  useEffect(() => {
+    if (!coachTypeOptions.length) {
+      return;
+    }
+
+    const nextSelectedCoachType = coachTypeOptions.some((option) => option.coachType === selectedCoachType)
+      ? selectedCoachType
+      : coachTypeOptions[0].coachType;
+
+    if (nextSelectedCoachType !== selectedCoachType) {
+      setSelectedCoachType(nextSelectedCoachType);
+      dispatch(clearSeatSelection());
+    }
+  }, [coachTypeOptions, dispatch, selectedCoachType]);
+
+  const selectedFare = fareOptions[selectedCoachType]?.fare_per_seat ?? null;
   const unavailableSeatIds = useMemo(() => {
     const requestedSegment = details?.seat_map?.requested_segment;
     const allocations = details?.seat_map?.allocations || [];
@@ -630,9 +711,11 @@ function BookingPageContent() {
                           className="field-input"
                         >
                           <option value="">Select coach class</option>
-                          {Object.entries(fareOptions).map(([coachType, value]) => (
-                            <option key={coachType} value={coachType}>
-                              {formatCoachType(coachType)} • {formatCurrency(value.fare_per_seat)} per passenger
+                          {coachTypeOptions.map((option) => (
+                            <option key={option.coachType} value={option.coachType}>
+                              {formatCoachType(option.coachType)}
+                              {option.totalSeats ? ` • ${option.totalSeats} seats` : ""}
+                              {option.farePerSeat != null ? ` • ${formatCurrency(option.farePerSeat)} per passenger` : " • Fare unavailable"}
                             </option>
                           ))}
                         </select>
@@ -891,7 +974,7 @@ function BookingPageContent() {
                         </div>
                         <div className="flex items-center justify-between">
                           <span>Fare per passenger</span>
-                          <span>{formatCurrency(selectedFare)}</span>
+                          <span>{selectedFare == null ? "Fare unavailable" : formatCurrency(selectedFare)}</span>
                         </div>
                         <div className="flex items-center justify-between">
                           <span>Selected seats</span>
@@ -899,7 +982,9 @@ function BookingPageContent() {
                         </div>
                         <div className="flex items-center justify-between border-t border-[var(--color-line)] pt-3 font-bold text-[var(--color-ink)]">
                           <span className="text-lg">Total amount</span>
-                          <span className="text-2xl">{formatCurrency(selectedFare * passengerCount)}</span>
+                          <span className="text-2xl">
+                            {selectedFare == null ? "Fare unavailable" : formatCurrency(selectedFare * passengerCount)}
+                          </span>
                         </div>
                       </div>
 

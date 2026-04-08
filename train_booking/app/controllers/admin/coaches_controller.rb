@@ -1,77 +1,28 @@
 class Admin::CoachesController < Admin::BaseController
-  before_action :set_coach, only: %i[update destroy]
-
   def index
-    authorize Coach
-    coaches_scope = Coach.includes(:train, :seats).order(:train_id, :coach_number)
-    coaches = paginate_scope(coaches_scope)
-
-    render json: paginated_response(
-      data: coaches.map { |coach| serialize_coach(coach) },
-      records: coaches
-    ), status: :ok
+    result = Admin::Coach::Operation::Index.run(params: merged_params(paginated_params))
+    render_result(result)
   end
 
   def create
     authorize Coach
-    result = Admin::Coach::Operation::Create.call(
-      current_user: current_user,
-      params: coach_params
-    )
-    if result.success?
-      render json: {
-        message: 'Coach created with seats',
-        coach: serialize_coach(result[:model])
-      }, status: :created
-    else
-      render json: { errors: result[:errors] }, status: :unprocessable_entity
-    end
+    result = Admin::Coach::Operation::Create.run(params: merged_params(coach_params))
+    render_result(result)
   end
 
   def update
-    authorize @coach
-    result = Admin::Coach::Operation::Update.call(
-      current_user: current_user,
-      id: params[:id],
-      params: coach_params
-    )
-    if result.success?
-      render json: { message: 'Coach updated', coach: serialize_coach(result[:model]) }, status: :ok
-    else
-      render json: { errors: result[:errors] }, status: :unprocessable_entity
-    end
+    result = Admin::Coach::Operation::Update.run(params: merged_params(coach_params).merge(id: params[:id]))
+    render_result(result)
   end
 
   def destroy
-    authorize @coach
-    result = Admin::Coach::Operation::Destroy.call(
-      current_user: current_user,
-      id: params[:id]
-    )
-    if result.success?
-      render json: { message: 'Coach deleted' }, status: :ok
-    else
-      render json: { errors: result[:errors] }, status: :unprocessable_entity
-    end
+    result = Admin::Coach::Operation::Destroy.run(params: merged_params(id_params))
+    render_result(result)
   end
 
   private
 
-  def set_coach
-    @coach = Coach.find(params[:id])
-  end
-
   def coach_params
-    params.require(:coach).permit(:train_id, :coach_number, :coach_type)
-  end
-
-  def serialize_coach(coach)
-    coach.as_json(
-      only: %i[id train_id coach_number total_seats],
-      include: {
-        train: { only: %i[id train_number name] },
-        seats: { only: %i[id seat_number seat_type is_active] }
-      }
-    ).merge(coach_type: coach.api_coach_type)
+    permitted_resource_params(:coach, :train_id, :coach_number, :coach_type)
   end
 end

@@ -8,6 +8,7 @@ module Admin
         step :validate_no_duplicate_schedule
         step :validate_times
         step :persist
+        step :serialize_result
 
         def validate_authorization(ctx, current_user:, **)
           current_user && current_user.admin?
@@ -67,6 +68,11 @@ module Admin
         rescue StandardError => e
           ctx[:errors] = [e.message]
           false
+        end
+
+        def serialize_result(ctx, model:, **)
+          ctx[:model] = { message: 'Schedule created', schedule: model }
+          true
         end
       end
     end

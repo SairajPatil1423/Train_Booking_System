@@ -22,7 +22,14 @@ export default function SearchPage() {
   const stations = useSelector((state) => state.stations.items);
   const stationStatus = useSelector((state) => state.stations.status);
   const stationError = useSelector((state) => state.stations.error);
-  const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const today = useMemo(() => {
+    const now = new Date();
+    const localYear = now.getFullYear();
+    const localMonth = String(now.getMonth() + 1).padStart(2, "0");
+    const localDay = String(now.getDate()).padStart(2, "0");
+
+    return `${localYear}-${localMonth}-${localDay}`;
+  }, []);
 
   const [fromQuery, setFromQuery] = useState("");
   const [toQuery, setToQuery] = useState("");
@@ -34,7 +41,7 @@ export default function SearchPage() {
   }, [dispatch, stationStatus]);
 
   useEffect(() => {
-    if (!filters.journeyDate) {
+    if (!filters.journeyDate || filters.journeyDate < today) {
       dispatch(setSearchFilters({ journeyDate: today }));
     }
   }, [dispatch, filters.journeyDate, today]);
@@ -229,6 +236,7 @@ export default function SearchPage() {
                   </label>
                   <input
                     type="date"
+                    min={today}
                     value={filters.journeyDate}
                     onChange={(event) => updateFilter("journeyDate", event.target.value)}
                     className="field-input min-h-[4.5rem] rounded-[1.4rem] px-5 text-base sm:text-lg"
