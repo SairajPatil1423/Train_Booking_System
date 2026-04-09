@@ -7,7 +7,13 @@ import PageSection from "@/components/layout/page-section";
 import Button from "@/components/ui/button";
 import Input from "@/components/ui/input";
 import { AdminErrorBox } from "@/components/admin/admin-ui";
+import { adminUserSchema } from "@/features/admin/schemas";
 import { createAdminUserThunk } from "@/features/admin/adminSlice";
+import {
+  sanitizeNameInput,
+  sanitizePhoneInput,
+  sanitizeUsernameInput,
+} from "@/features/validation/constants";
 import { toastError, toastSuccess } from "@/utils/toast";
 
 const initialForm = {
@@ -36,8 +42,17 @@ export default function AdminUsersPage() {
     setFormError("");
     setSubmitting(true);
 
+    const parsedAdminUser = adminUserSchema.safeParse(formData);
+    if (!parsedAdminUser.success) {
+      const message = parsedAdminUser.error.issues[0]?.message || "Enter valid administrator details.";
+      setFormError(message);
+      setSubmitting(false);
+      toastError(message, "Admin creation failed");
+      return;
+    }
+
     try {
-      await dispatch(createAdminUserThunk(formData)).unwrap();
+      await dispatch(createAdminUserThunk(parsedAdminUser.data)).unwrap();
       setFormError("");
       toastSuccess("Administrator created successfully.");
       setFormData(initialForm);
@@ -66,13 +81,13 @@ export default function AdminUsersPage() {
               <Input
                 label="Full name"
                 value={formData.full_name}
-                onChange={(event) => updateField("full_name", event.target.value)}
+                onChange={(event) => updateField("full_name", sanitizeNameInput(event.target.value))}
                 required
               />
               <Input
                 label="Username"
                 value={formData.username}
-                onChange={(event) => updateField("username", event.target.value)}
+                onChange={(event) => updateField("username", sanitizeUsernameInput(event.target.value))}
                 required
               />
               <Input
@@ -85,16 +100,17 @@ export default function AdminUsersPage() {
               <Input
                 label="Phone"
                 value={formData.phone}
-                onChange={(event) => updateField("phone", event.target.value)}
+                onChange={(event) => updateField("phone", sanitizePhoneInput(event.target.value))}
+                required
               />
             </div>
 
-            <Input
-              label="Address"
-              value={formData.address}
-              onChange={(event) => updateField("address", event.target.value)}
-              required
-            />
+              <Input
+                label="Address"
+                value={formData.address}
+                onChange={(event) => updateField("address", event.target.value.trimStart())}
+                required
+              />
 
             <div className="grid gap-4 sm:grid-cols-2">
               <Input

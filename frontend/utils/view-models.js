@@ -3,11 +3,18 @@ import {
   formatCurrency,
   formatDateTime,
   formatScheduleDateTime,
+  formatScheduleDateTimeWithOffset,
   formatScheduleDuration,
+  formatScheduleDurationWithOffsets,
 } from "@/utils/formatters";
 import { formatCoachType, normalizeCoachType } from "@/utils/coach-formatters";
 
 export function buildScheduleViewModel(schedule, context = {}) {
+  const segmentTiming = schedule?.segment_timing || {};
+  const departureTime = segmentTiming?.departure_time || schedule?.departure_time;
+  const arrivalTime = segmentTiming?.arrival_time || schedule?.expected_arrival_time;
+  const departureDayOffset = segmentTiming?.departure_day_offset || 0;
+  const arrivalDayOffset = segmentTiming?.arrival_day_offset || 0;
   const coachAvailability = Object.entries(
     schedule?.availability?.coach_type_availability || {},
   ).map(([coachType, value]) => ({
@@ -25,13 +32,26 @@ export function buildScheduleViewModel(schedule, context = {}) {
     trainType: schedule?.train?.train_type || "Scheduled",
     statusLabel: formatBookingStatus(schedule?.status),
     routeLabel: `${context.fromLabel || "Source"} to ${context.toLabel || "Destination"}`,
-    departureLabel: formatScheduleDateTime(schedule?.travel_date, schedule?.departure_time),
-    arrivalLabel: formatScheduleDateTime(schedule?.travel_date, schedule?.expected_arrival_time),
-    durationLabel: formatScheduleDuration(
-      schedule?.travel_date,
-      schedule?.departure_time,
-      schedule?.expected_arrival_time,
-    ),
+    departureLabel: departureDayOffset
+      ? formatScheduleDateTimeWithOffset(schedule?.travel_date, departureTime, departureDayOffset)
+      : formatScheduleDateTime(schedule?.travel_date, departureTime),
+    arrivalLabel: arrivalDayOffset
+      ? formatScheduleDateTimeWithOffset(schedule?.travel_date, arrivalTime, arrivalDayOffset)
+      : formatScheduleDateTime(schedule?.travel_date, arrivalTime),
+    durationLabel:
+      segmentTiming?.departure_time || segmentTiming?.arrival_time
+        ? formatScheduleDurationWithOffsets(
+            schedule?.travel_date,
+            departureTime,
+            arrivalTime,
+            departureDayOffset,
+            arrivalDayOffset,
+          )
+        : formatScheduleDuration(
+            schedule?.travel_date,
+            schedule?.departure_time,
+            schedule?.expected_arrival_time,
+          ),
     availableSeats: schedule?.availability?.available_seats ?? 0,
     isBookable: schedule?.status === "scheduled" && (schedule?.availability?.available_seats ?? 0) > 0,
     rating: schedule?.train?.rating || null,

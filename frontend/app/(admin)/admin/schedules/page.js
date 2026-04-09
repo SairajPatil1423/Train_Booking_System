@@ -18,6 +18,10 @@ import {
   fetchAdminSchedulesThunk,
   updateAdminScheduleThunk,
 } from "@/features/admin/adminSlice";
+import {
+  createScheduleSchema,
+  updateScheduleSchema,
+} from "@/features/admin/schemas";
 import AdminConfirmDialog from "@/components/admin/admin-confirm-dialog";
 import { AdminErrorBox, AdminInfoBlock, AdminInfoPill } from "@/components/admin/admin-ui";
 import { usePaginatedRouteState } from "@/hooks/use-paginated-route-state";
@@ -59,29 +63,45 @@ export default function AdminSchedulesPage() {
     try {
       if (editingSchedule) {
         const scheduleData = {
-          departure_time: formData.get("departure_time"),
-          expected_arrival_time: formData.get("expected_arrival_time"),
-          status: formData.get("status"),
-          delay_minutes: formData.get("delay_minutes"),
+          departure_time: String(formData.get("departure_time") || "").trim(),
+          expected_arrival_time: String(formData.get("expected_arrival_time") || "").trim(),
+          status: String(formData.get("status") || "").trim(),
+          delay_minutes: String(formData.get("delay_minutes") || "").trim(),
         };
 
-        if (isSameSchedulePayload(editingSchedule, scheduleData)) {
+        const parsedSchedule = updateScheduleSchema.safeParse(scheduleData);
+        if (!parsedSchedule.success) {
+          const message = parsedSchedule.error.issues[0]?.message || "Enter valid schedule details.";
+          setFormError(message);
+          toastError(message, "Schedule action failed");
+          return;
+        }
+
+        if (isSameSchedulePayload(editingSchedule, parsedSchedule.data)) {
           setFormError("No changes to save.");
           toastInfo("No changes to save.", "Nothing updated");
           return;
         }
 
-        await dispatch(updateAdminScheduleThunk({ id: editingSchedule.id, scheduleData })).unwrap();
+        await dispatch(updateAdminScheduleThunk({ id: editingSchedule.id, scheduleData: parsedSchedule.data })).unwrap();
         toastSuccess("Schedule updated successfully.");
       } else {
         const scheduleData = {
-          train_id: formData.get("train_id"),
-          travel_date: formData.get("travel_date"),
-          departure_time: formData.get("departure_time"),
-          expected_arrival_time: formData.get("expected_arrival_time"),
+          train_id: String(formData.get("train_id") || "").trim(),
+          travel_date: String(formData.get("travel_date") || "").trim(),
+          departure_time: String(formData.get("departure_time") || "").trim(),
+          expected_arrival_time: String(formData.get("expected_arrival_time") || "").trim(),
         };
 
-        await dispatch(createAdminScheduleThunk(scheduleData)).unwrap();
+        const parsedSchedule = createScheduleSchema.safeParse(scheduleData);
+        if (!parsedSchedule.success) {
+          const message = parsedSchedule.error.issues[0]?.message || "Enter valid schedule details.";
+          setFormError(message);
+          toastError(message, "Schedule action failed");
+          return;
+        }
+
+        await dispatch(createAdminScheduleThunk(parsedSchedule.data)).unwrap();
         toastSuccess("Schedule created successfully.");
       }
 

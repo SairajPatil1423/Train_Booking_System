@@ -1,4 +1,6 @@
 class Payment < ApplicationRecord
+  STATUSES = %w[pending paid partially_refunded refunded failed].freeze
+
   belongs_to :booking
 
   enum :status, {
@@ -9,5 +11,17 @@ class Payment < ApplicationRecord
     failed: "failed"
   }, default: :pending
 
-  validates :amount, numericality: { greater_than_or_equal_to: 0 }
+  with_options presence: true do
+    validates :booking
+    validates :amount
+    validates :currency
+    validates :payment_method
+    validates :status
+  end
+
+  validates :amount, numericality: { greater_than: 0 }
+  validates :currency, length: { maximum: 10 }
+  validates :payment_method, length: { maximum: 50 }
+  validates :gateway_txn_id, length: { maximum: 100 }, allow_blank: true
+  validates :status, inclusion: { in: STATUSES }
 end

@@ -37,7 +37,15 @@ class Coach < ApplicationRecord
 
   before_validation :assign_total_seats_from_layout
 
-  validates :coach_number, :coach_type, presence: true
+  with_options presence: true do
+    validates :train
+    validates :coach_number
+    validates :coach_type
+    validates :total_seats
+  end
+
+  validates :coach_number, uniqueness: { scope: :train_id }, length: { maximum: 10 }
+  validates :coach_type, length: { maximum: 20 }
   validates :total_seats, numericality: { greater_than: 0 }
   validate :coach_type_supported
 

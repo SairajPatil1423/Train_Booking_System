@@ -10,15 +10,18 @@ COMMON_SEARCH_ROUTES = [
   ["SC", "MAS"],
   ["LTT", "NDLS"],
   ["NDLS", "LTT"],
-  ["BCT", "SC"],
-  ["SC", "BCT"],
   ["BCT", "BRC"],
   ["BRC", "NDLS"],
   ["MAS", "BZA"],
   ["BPL", "NDLS"],
   ["NGP", "SC"],
-  ["JP", "ADI"],
-  ["BZA", "MAS"]
+  ["BZA", "MAS"],
+  ["PUNE", "SBC"],
+  ["SBC", "PUNE"],
+  ["BCT", "JP"],
+  ["JP", "BCT"],
+  ["KOTA", "NDLS"],
+  ["ET", "LTT"]
 ].freeze
 
 ADMIN_PROFILES = [
@@ -133,6 +136,12 @@ city_station_data = [
     ]
   },
   {
+    city: { name: "Kota", state: "Rajasthan", country: "India" },
+    stations: [
+      { name: "Kota Junction", code: "KOTA", latitude: 25.2138, longitude: 75.8648 }
+    ]
+  },
+  {
     city: { name: "Delhi", state: "Delhi", country: "India" },
     stations: [
       { name: "New Delhi", code: "NDLS", latitude: 28.6430, longitude: 77.2194 },
@@ -152,6 +161,12 @@ city_station_data = [
     ]
   },
   {
+    city: { name: "Itarsi", state: "Madhya Pradesh", country: "India" },
+    stations: [
+      { name: "Itarsi Junction", code: "ET", latitude: 22.6110, longitude: 77.7622 }
+    ]
+  },
+  {
     city: { name: "Nagpur", state: "Maharashtra", country: "India" },
     stations: [
       { name: "Nagpur Junction", code: "NGP", latitude: 21.1458, longitude: 79.0882 }
@@ -164,9 +179,21 @@ city_station_data = [
     ]
   },
   {
+    city: { name: "Warangal", state: "Telangana", country: "India" },
+    stations: [
+      { name: "Warangal", code: "WL", latitude: 17.9784, longitude: 79.5941 }
+    ]
+  },
+  {
     city: { name: "Vijayawada", state: "Andhra Pradesh", country: "India" },
     stations: [
       { name: "Vijayawada Junction", code: "BZA", latitude: 16.5062, longitude: 80.6480 }
+    ]
+  },
+  {
+    city: { name: "Gudur", state: "Andhra Pradesh", country: "India" },
+    stations: [
+      { name: "Gudur Junction", code: "GDR", latitude: 14.1463, longitude: 79.8504 }
     ]
   },
   {
@@ -179,6 +206,18 @@ city_station_data = [
     city: { name: "Pune", state: "Maharashtra", country: "India" },
     stations: [
       { name: "Pune Junction", code: "PUNE", latitude: 18.5286, longitude: 73.8743 }
+    ]
+  },
+  {
+    city: { name: "Solapur", state: "Maharashtra", country: "India" },
+    stations: [
+      { name: "Solapur", code: "SUR", latitude: 17.6599, longitude: 75.9064 }
+    ]
+  },
+  {
+    city: { name: "Nashik", state: "Maharashtra", country: "India" },
+    stations: [
+      { name: "Nashik Road", code: "NK", latitude: 19.9513, longitude: 73.8347 }
     ]
   },
   {
@@ -204,226 +243,212 @@ puts "Creating trains, routes, coaches, seats, fare rules, and schedules..."
 train_blueprints = [
   {
     number: "12951",
-    name: "Western Capital Express",
+    name: "Mumbai Ahmedabad Intercity",
     train_type: "superfast",
-    rating: 4.6,
+    rating: 4.5,
     grade: "Premium",
     route: [
       build_stop(code: "BCT", departure_time: "06:00", distance_km: 0),
-      build_stop(code: "ST", arrival_time: "08:15", departure_time: "08:20", distance_km: 265),
-      build_stop(code: "BRC", arrival_time: "09:45", departure_time: "09:50", distance_km: 392),
-      build_stop(code: "ADI", arrival_time: "11:30", distance_km: 492)
+      build_stop(code: "ST", arrival_time: "08:45", departure_time: "08:50", distance_km: 263),
+      build_stop(code: "BRC", arrival_time: "10:15", departure_time: "10:20", distance_km: 392),
+      build_stop(code: "ADI", arrival_time: "12:10", distance_km: 492)
     ]
   },
   {
     number: "12952",
-    name: "Western Capital Return",
+    name: "Ahmedabad Mumbai Intercity",
     train_type: "superfast",
     rating: 4.5,
     grade: "Premium",
     route: [
-      build_stop(code: "ADI", departure_time: "06:10", distance_km: 0),
-      build_stop(code: "BRC", arrival_time: "07:45", departure_time: "07:50", distance_km: 100),
-      build_stop(code: "ST", arrival_time: "09:20", departure_time: "09:25", distance_km: 227),
-      build_stop(code: "BCT", arrival_time: "11:45", distance_km: 492)
+      build_stop(code: "ADI", departure_time: "06:20", distance_km: 0),
+      build_stop(code: "BRC", arrival_time: "08:10", departure_time: "08:15", distance_km: 100),
+      build_stop(code: "ST", arrival_time: "09:40", departure_time: "09:45", distance_km: 229),
+      build_stop(code: "BCT", arrival_time: "12:25", distance_km: 492)
     ]
   },
   {
-    number: "12953",
-    name: "Rajputana Arrow",
+    number: "12931",
+    name: "Ahmedabad Delhi Day Express",
     train_type: "express",
     rating: 4.4,
     grade: "Premier",
     route: [
-      build_stop(code: "ADI", departure_time: "05:45", distance_km: 0),
-      build_stop(code: "JP", arrival_time: "11:40", departure_time: "11:50", distance_km: 660),
-      build_stop(code: "NDLS", arrival_time: "17:30", distance_km: 935)
+      build_stop(code: "ADI", departure_time: "05:50", distance_km: 0),
+      build_stop(code: "BRC", arrival_time: "07:40", departure_time: "07:45", distance_km: 100),
+      build_stop(code: "KOTA", arrival_time: "14:30", departure_time: "14:35", distance_km: 641),
+      build_stop(code: "NDLS", arrival_time: "19:55", distance_km: 1156)
     ]
   },
   {
-    number: "12954",
-    name: "Rajputana Arrow Return",
+    number: "12932",
+    name: "Delhi Ahmedabad Day Express",
     train_type: "express",
-    rating: 4.3,
+    rating: 4.4,
     grade: "Premier",
     route: [
-      build_stop(code: "NDLS", departure_time: "05:30", distance_km: 0),
-      build_stop(code: "JP", arrival_time: "11:10", departure_time: "11:20", distance_km: 275),
-      build_stop(code: "ADI", arrival_time: "17:10", distance_km: 935)
+      build_stop(code: "NDLS", departure_time: "06:05", distance_km: 0),
+      build_stop(code: "KOTA", arrival_time: "10:20", departure_time: "10:25", distance_km: 458),
+      build_stop(code: "BRC", arrival_time: "18:10", departure_time: "18:15", distance_km: 1056),
+      build_stop(code: "ADI", arrival_time: "20:00", distance_km: 1156)
     ]
   },
   {
     number: "12621",
-    name: "Dakshin Link",
+    name: "Chennai Hyderabad Intercity",
     train_type: "superfast",
     rating: 4.2,
     grade: "Business",
     route: [
-      build_stop(code: "MAS", departure_time: "06:20", distance_km: 0),
-      build_stop(code: "BZA", arrival_time: "11:00", departure_time: "11:10", distance_km: 431),
-      build_stop(code: "SC", arrival_time: "16:45", distance_km: 716)
+      build_stop(code: "MAS", departure_time: "06:10", distance_km: 0),
+      build_stop(code: "GDR", arrival_time: "08:10", departure_time: "08:15", distance_km: 137),
+      build_stop(code: "BZA", arrival_time: "12:25", departure_time: "12:35", distance_km: 431),
+      build_stop(code: "SC", arrival_time: "17:40", distance_km: 716)
     ]
   },
   {
     number: "12622",
-    name: "Dakshin Link Return",
+    name: "Hyderabad Chennai Intercity",
     train_type: "superfast",
-    rating: 4.1,
+    rating: 4.2,
     grade: "Business",
     route: [
-      build_stop(code: "SC", departure_time: "06:10", distance_km: 0),
-      build_stop(code: "BZA", arrival_time: "11:25", departure_time: "11:35", distance_km: 285),
-      build_stop(code: "MAS", arrival_time: "16:15", distance_km: 716)
+      build_stop(code: "SC", departure_time: "06:00", distance_km: 0),
+      build_stop(code: "BZA", arrival_time: "11:10", departure_time: "11:20", distance_km: 281),
+      build_stop(code: "GDR", arrival_time: "15:25", departure_time: "15:30", distance_km: 579),
+      build_stop(code: "MAS", arrival_time: "17:35", distance_km: 716)
     ]
   },
   {
     number: "12701",
-    name: "Central Crown",
+    name: "LTT Delhi Express",
     train_type: "express",
-    rating: 4.0,
+    rating: 4.1,
     grade: "Classic",
     route: [
-      build_stop(code: "LTT", departure_time: "07:00", distance_km: 0),
-      build_stop(code: "BPL", arrival_time: "14:15", departure_time: "14:25", distance_km: 779),
-      build_stop(code: "NDLS", arrival_time: "23:10", distance_km: 1544)
+      build_stop(code: "LTT", departure_time: "05:30", distance_km: 0),
+      build_stop(code: "NK", arrival_time: "09:00", departure_time: "09:05", distance_km: 171),
+      build_stop(code: "ET", arrival_time: "13:20", departure_time: "13:25", distance_km: 705),
+      build_stop(code: "BPL", arrival_time: "14:40", departure_time: "14:50", distance_km: 793),
+      build_stop(code: "NDLS", arrival_time: "22:45", distance_km: 1544)
     ]
   },
   {
     number: "12702",
-    name: "Central Crown Return",
+    name: "Delhi LTT Express",
     train_type: "express",
-    rating: 4.0,
+    rating: 4.1,
     grade: "Classic",
     route: [
-      build_stop(code: "NDLS", departure_time: "07:15", distance_km: 0),
-      build_stop(code: "BPL", arrival_time: "15:50", departure_time: "16:00", distance_km: 765),
-      build_stop(code: "LTT", arrival_time: "23:45", distance_km: 1544)
+      build_stop(code: "NDLS", departure_time: "05:45", distance_km: 0),
+      build_stop(code: "BPL", arrival_time: "13:55", departure_time: "14:05", distance_km: 751),
+      build_stop(code: "ET", arrival_time: "15:20", departure_time: "15:25", distance_km: 839),
+      build_stop(code: "NK", arrival_time: "19:35", departure_time: "19:40", distance_km: 1373),
+      build_stop(code: "LTT", arrival_time: "22:55", distance_km: 1544)
     ]
   },
   {
-    number: "12811",
-    name: "Deccan Meridian",
-    train_type: "passenger",
-    rating: 3.9,
-    grade: "Saver",
+    number: "12723",
+    name: "Nagpur Hyderabad Express",
+    train_type: "express",
+    rating: 4.0,
+    grade: "Business",
     route: [
-      build_stop(code: "BCT", departure_time: "05:50", distance_km: 0),
-      build_stop(code: "NGP", arrival_time: "16:10", departure_time: "16:20", distance_km: 837),
-      build_stop(code: "SC", arrival_time: "23:55", distance_km: 1385)
+      build_stop(code: "NGP", departure_time: "06:20", distance_km: 0),
+      build_stop(code: "WL", arrival_time: "11:45", departure_time: "11:50", distance_km: 420),
+      build_stop(code: "SC", arrival_time: "15:05", distance_km: 548)
     ]
   },
   {
-    number: "12812",
-    name: "Deccan Meridian Return",
-    train_type: "passenger",
-    rating: 3.9,
-    grade: "Saver",
+    number: "12724",
+    name: "Hyderabad Nagpur Express",
+    train_type: "express",
+    rating: 4.0,
+    grade: "Business",
     route: [
-      build_stop(code: "SC", departure_time: "05:40", distance_km: 0),
-      build_stop(code: "NGP", arrival_time: "13:00", departure_time: "13:10", distance_km: 548),
-      build_stop(code: "BCT", arrival_time: "23:15", distance_km: 1385)
+      build_stop(code: "SC", departure_time: "06:15", distance_km: 0),
+      build_stop(code: "WL", arrival_time: "09:30", departure_time: "09:35", distance_km: 128),
+      build_stop(code: "NGP", arrival_time: "15:00", distance_km: 548)
     ]
   },
   {
     number: "12111",
-    name: "Western Deccan Link",
+    name: "Mumbai Bengaluru Day Express",
     train_type: "express",
     rating: 4.1,
     grade: "Business",
     route: [
-      build_stop(code: "BCT", departure_time: "06:30", distance_km: 0),
-      build_stop(code: "PUNE", arrival_time: "10:10", departure_time: "10:20", distance_km: 192),
-      build_stop(code: "SBC", arrival_time: "20:15", distance_km: 982)
+      build_stop(code: "BCT", departure_time: "05:45", distance_km: 0),
+      build_stop(code: "PUNE", arrival_time: "09:20", departure_time: "09:30", distance_km: 192),
+      build_stop(code: "SUR", arrival_time: "13:50", departure_time: "13:55", distance_km: 455),
+      build_stop(code: "SBC", arrival_time: "20:05", distance_km: 982)
     ]
   },
   {
     number: "12112",
-    name: "Western Deccan Return",
+    name: "Bengaluru Mumbai Day Express",
     train_type: "express",
     rating: 4.1,
     grade: "Business",
     route: [
-      build_stop(code: "SBC", departure_time: "06:10", distance_km: 0),
-      build_stop(code: "PUNE", arrival_time: "15:50", departure_time: "16:00", distance_km: 790),
-      build_stop(code: "BCT", arrival_time: "20:05", distance_km: 982)
-    ]
-  },
-  {
-    number: "12651",
-    name: "Southern Capital Connector",
-    train_type: "superfast",
-    rating: 4.3,
-    grade: "Premium",
-    route: [
-      build_stop(code: "MAS", departure_time: "05:55", distance_km: 0),
-      build_stop(code: "BZA", arrival_time: "10:40", departure_time: "10:50", distance_km: 431),
-      build_stop(code: "SC", arrival_time: "15:50", departure_time: "16:00", distance_km: 716),
-      build_stop(code: "NDLS", arrival_time: "08:10", arrival_day: 1, distance_km: 2175)
-    ]
-  },
-  {
-    number: "12652",
-    name: "Southern Capital Return",
-    train_type: "superfast",
-    rating: 4.2,
-    grade: "Premium",
-    route: [
-      build_stop(code: "NDLS", departure_time: "06:00", distance_km: 0),
-      build_stop(code: "SC", arrival_time: "22:25", departure_time: "22:35", distance_km: 1459),
-      build_stop(code: "BZA", arrival_time: "03:10", departure_time: "03:20", arrival_day: 1, departure_day: 1, distance_km: 1744),
-      build_stop(code: "MAS", arrival_time: "08:05", arrival_day: 1, distance_km: 2175)
+      build_stop(code: "SBC", departure_time: "05:50", distance_km: 0),
+      build_stop(code: "SUR", arrival_time: "11:55", departure_time: "12:00", distance_km: 527),
+      build_stop(code: "PUNE", arrival_time: "16:15", departure_time: "16:25", distance_km: 790),
+      build_stop(code: "BCT", arrival_time: "19:55", distance_km: 982)
     ]
   },
   {
     number: "12961",
-    name: "Capital Corridor",
-    train_type: "express",
-    rating: 4.2,
-    grade: "Premier",
+    name: "Mumbai Jaipur Capital",
+    train_type: "superfast",
+    rating: 4.3,
+    grade: "Premium",
     route: [
-      build_stop(code: "BCT", departure_time: "07:15", distance_km: 0),
-      build_stop(code: "BRC", arrival_time: "09:40", departure_time: "09:50", distance_km: 392),
-      build_stop(code: "JP", arrival_time: "18:10", departure_time: "18:20", distance_km: 1052),
-      build_stop(code: "NDLS", arrival_time: "23:40", distance_km: 1327)
+      build_stop(code: "BCT", departure_time: "06:25", distance_km: 0),
+      build_stop(code: "BRC", arrival_time: "10:20", departure_time: "10:25", distance_km: 392),
+      build_stop(code: "KOTA", arrival_time: "16:20", departure_time: "16:25", distance_km: 933),
+      build_stop(code: "JP", arrival_time: "19:40", distance_km: 1182)
     ]
   },
   {
     number: "12962",
-    name: "Capital Corridor Return",
-    train_type: "express",
-    rating: 4.2,
-    grade: "Premier",
+    name: "Jaipur Mumbai Capital",
+    train_type: "superfast",
+    rating: 4.3,
+    grade: "Premium",
     route: [
-      build_stop(code: "NDLS", departure_time: "06:50", distance_km: 0),
-      build_stop(code: "JP", arrival_time: "12:10", departure_time: "12:20", distance_km: 275),
-      build_stop(code: "BRC", arrival_time: "20:30", departure_time: "20:40", distance_km: 935),
-      build_stop(code: "BCT", arrival_time: "23:05", distance_km: 1327)
+      build_stop(code: "JP", departure_time: "06:05", distance_km: 0),
+      build_stop(code: "KOTA", arrival_time: "09:20", departure_time: "09:25", distance_km: 249),
+      build_stop(code: "BRC", arrival_time: "15:20", departure_time: "15:25", distance_km: 790),
+      build_stop(code: "BCT", arrival_time: "19:10", distance_km: 1182)
     ]
   },
   {
     number: "12271",
-    name: "Dakshin Rajya Express",
+    name: "Chennai Delhi Connector",
     train_type: "superfast",
-    rating: 4.5,
-    grade: "Premium",
+    rating: 4.4,
+    grade: "Premier",
     route: [
-      build_stop(code: "BCT", departure_time: "17:30", distance_km: 0),
-      build_stop(code: "PUNE", arrival_time: "21:20", departure_time: "21:30", distance_km: 192),
-      build_stop(code: "SC", arrival_time: "07:15", departure_time: "07:25", arrival_day: 1, departure_day: 1, distance_km: 705),
-      build_stop(code: "MAS", arrival_time: "17:40", arrival_day: 1, distance_km: 1340)
+      build_stop(code: "MAS", departure_time: "04:45", distance_km: 0),
+      build_stop(code: "BZA", arrival_time: "09:20", departure_time: "09:30", distance_km: 431),
+      build_stop(code: "SC", arrival_time: "14:20", departure_time: "14:30", distance_km: 716),
+      build_stop(code: "BPL", arrival_time: "20:35", departure_time: "20:45", distance_km: 1505),
+      build_stop(code: "NZM", arrival_time: "23:55", distance_km: 1750)
     ]
   },
   {
     number: "12272",
-    name: "Dakshin Rajya Return",
+    name: "Delhi Chennai Connector",
     train_type: "superfast",
     rating: 4.4,
-    grade: "Premium",
+    grade: "Premier",
     route: [
-      build_stop(code: "MAS", departure_time: "18:10", distance_km: 0),
-      build_stop(code: "SC", arrival_time: "04:00", departure_time: "04:10", arrival_day: 1, departure_day: 1, distance_km: 635),
-      build_stop(code: "PUNE", arrival_time: "14:05", departure_time: "14:15", arrival_day: 1, departure_day: 1, distance_km: 1148),
-      build_stop(code: "BCT", arrival_time: "18:05", arrival_day: 1, distance_km: 1340)
+      build_stop(code: "NZM", departure_time: "05:30", distance_km: 0),
+      build_stop(code: "BPL", arrival_time: "08:40", departure_time: "08:50", distance_km: 245),
+      build_stop(code: "SC", arrival_time: "15:05", departure_time: "15:15", distance_km: 1034),
+      build_stop(code: "BZA", arrival_time: "20:05", departure_time: "20:15", distance_km: 1319),
+      build_stop(code: "MAS", arrival_time: "23:50", distance_km: 1750)
     ]
   }
 ]
@@ -444,7 +469,7 @@ train_blueprints.each_with_index do |blueprint, index|
     is_active: true
   )
 
-  blueprint[:route].each_with_index do |stop_blueprint, stop_index|
+  saved_stops = blueprint[:route].each_with_index.map do |stop_blueprint, stop_index|
     train_stop = TrainStop.new(
       train: train,
       station: stations_by_code.fetch(stop_blueprint[:code]),
@@ -455,6 +480,7 @@ train_blueprints.each_with_index do |blueprint, index|
     )
     train_stop.sync_time_columns_from_datetimes
     train_stop.save!
+    train_stop
   end
 
   coach_templates.each_with_index do |coach_template, coach_index|
@@ -480,8 +506,8 @@ train_blueprints.each_with_index do |blueprint, index|
     )
   end
 
-  departure_time = blueprint[:route].first[:departure_time]
-  arrival_time = blueprint[:route].last[:arrival_time]
+  origin_stop = saved_stops.find(&:departure_time)
+  destination_stop = saved_stops.reverse.find(&:arrival_time)
 
   SCHEDULE_DAYS.times do |day_offset|
     travel_date = Date.current + day_offset
@@ -489,8 +515,8 @@ train_blueprints.each_with_index do |blueprint, index|
     Schedule.create!(
       train: train,
       travel_date: travel_date,
-      departure_time: departure_time,
-      expected_arrival_time: arrival_time,
+      departure_time: origin_stop.departure_time,
+      expected_arrival_time: destination_stop.arrival_time,
       status: "scheduled",
       delay_minutes: [0, 5, 10, 0, 0][day_offset % 5]
     )
