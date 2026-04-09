@@ -1,10 +1,19 @@
 class FareRule < ApplicationRecord
   belongs_to :train
 
-  validates :coach_type, :valid_from, :valid_to, presence: true
+  with_options presence: true do
+    validates :train
+    validates :coach_type
+    validates :valid_from
+    validates :valid_to
+    validates :base_fare_per_km
+    validates :dynamic_multiplier
+  end
+
+  validates :coach_type, length: { maximum: 20 }
   validates :coach_type, inclusion: { in: Coach::COACH_LAYOUTS.keys }
   validates :base_fare_per_km, numericality: { greater_than: 0 }
-  validates :dynamic_multiplier, numericality: { greater_than: 0 }
+  validates :dynamic_multiplier, numericality: { greater_than_or_equal_to: 1 }
   validate :valid_date_range
 
   private

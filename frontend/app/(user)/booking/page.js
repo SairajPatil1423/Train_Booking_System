@@ -6,7 +6,6 @@ import { useSearchParams } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useFieldArray, useForm, useWatch } from "react-hook-form";
 import { useDispatch, useSelector } from "react-redux";
-import { z } from "zod";
 import BookingSummary from "@/components/booking-summary";
 import EmptyState from "@/components/empty-state";
 import PageHero from "@/components/layout/page-hero";
@@ -23,8 +22,8 @@ import { fetchScheduleDetails } from "@/features/trains/trainService";
 import {
   formatCurrency,
   formatDate,
-  formatScheduleDateTime,
-  formatScheduleDuration,
+  formatScheduleDateTimeWithOffset,
+  formatScheduleDurationWithOffsets,
 } from "@/utils/formatters";
 import {
   clearSeatSelection,
@@ -34,6 +33,19 @@ import {
   checkoutThunk,
   selectSelectedSeatsArray,
 } from "@/features/booking/bookingSlice";
+import {
+  bookingConfirmationSchema,
+  passengersFormSchema,
+} from "@/features/booking/schemas";
+import {
+  PASSENGER_GENDERS,
+  PASSENGER_ID_TYPES,
+  PAYMENT_METHODS,
+  sanitizeAgeInput,
+  sanitizeNameInput,
+  sanitizePassengerIdNumber,
+  sanitizePhoneInput,
+} from "@/features/validation/constants";
 import { toastError, toastSuccess } from "@/utils/toast";
 
 const stepLabels = ["Review", "Passengers", "Seats", "Confirmation"];
@@ -41,7 +53,7 @@ const paymentOptions = [
   { id: "upi", label: "Unified Payments Interface (UPI)", value: "upi" },
   { id: "card", label: "Debit / Credit Card", value: "card" },
   { id: "netbanking", label: "Net Banking", value: "netbanking" },
-];
+].filter((option) => PAYMENT_METHODS.includes(option.value));
 
 const passengerTemplate = () => ({
   first_name: "",
@@ -50,50 +62,6 @@ const passengerTemplate = () => ({
   gender: "male",
   id_type: "Aadhaar",
   id_number: "",
-});
-
-const passengerNameSchema = z
-  .string()
-  .min(1, "Required")
-  .regex(/^[A-Za-z]+$/, "Only alphabets allowed");
-
-const passengerSchema = z
-  .object({
-    first_name: passengerNameSchema,
-    last_name: passengerNameSchema,
-    age: z
-      .string()
-      .min(1, "Required")
-      .refine((value) => /^\d+$/.test(value), "Only numbers allowed")
-      .refine((value) => Number(value) > 0, "Age must be greater than 0"),
-    gender: z.string().min(1, "Required"),
-    id_type: z.string().min(1, "Required"),
-    id_number: z.string().min(1, "Required"),
-  })
-  .superRefine((value, context) => {
-    if (value.id_type === "Aadhaar" && !/^\d{12}$/.test(value.id_number)) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["id_number"],
-        message: "Aadhaar must be 12 digits",
-      });
-    }
-  });
-
-const passengersFormSchema = z.object({
-  passengers: z.array(passengerSchema),
-});
-
-const confirmationSchema = z.object({
-  contactEmail: z.email("Enter a valid email"),
-  contactPhone: z
-    .string()
-    .min(10, "Phone must be at least 10 digits")
-    .max(15, "Phone must be at most 15 digits")
-    .regex(/^\d+$/, "Only numbers allowed"),
-  agreeToTerms: z.literal(true, {
-    errorMap: () => ({ message: "Confirm the details to continue" }),
-  }),
 });
 
 function BookingPageContent() {
@@ -158,7 +126,7 @@ function BookingPageContent() {
     reset: resetConfirmation,
     setValue: setConfirmationValue,
   } = useForm({
-    resolver: zodResolver(confirmationSchema),
+    resolver: zodResolver(bookingConfirmationSchema),
     mode: "onChange",
     reValidateMode: "onChange",
     defaultValues: {
@@ -246,8 +214,11 @@ function BookingPageContent() {
     return stops.slice(srcIndex, dstIndex + 1);
   }, [details?.stops, dstStationId, srcStationId]);
 
-  const fareOptions = details?.fare_options || {};
-  const coachTypeAvailability = details?.availability?.coach_type_availability || {};
+  const fareOptions = useMemo(() => details?.fare_options || {}, [details?.fare_options]);
+  const coachTypeAvailability = useMemo(
+    () => details?.availability?.coach_type_availability || {},
+    [details?.availability?.coach_type_availability],
+  );
   const coachTypeOptions = useMemo(() => {
     const optionsByType = new Map();
 
@@ -312,22 +283,27 @@ function BookingPageContent() {
     );
   }, [coachTypeAvailability, details?.coaches, fareOptions]);
 
-  useEffect(() => {
+  const resolvedSelectedCoachType = useMemo(() => {
     if (!coachTypeOptions.length) {
+      return "";
+    }
+
+    return coachTypeOptions.some((option) => option.coachType === selectedCoachType)
+      ? selectedCoachType
+      : coachTypeOptions[0].coachType;
+  }, [coachTypeOptions, selectedCoachType]);
+
+  useEffect(() => {
+    if (!coachTypeOptions.length || !selectedCoachType) {
       return;
     }
 
-    const nextSelectedCoachType = coachTypeOptions.some((option) => option.coachType === selectedCoachType)
-      ? selectedCoachType
-      : coachTypeOptions[0].coachType;
-
-    if (nextSelectedCoachType !== selectedCoachType) {
-      setSelectedCoachType(nextSelectedCoachType);
+    if (!coachTypeOptions.some((option) => option.coachType === selectedCoachType)) {
       dispatch(clearSeatSelection());
     }
   }, [coachTypeOptions, dispatch, selectedCoachType]);
 
-  const selectedFare = fareOptions[selectedCoachType]?.fare_per_seat ?? null;
+  const selectedFare = fareOptions[resolvedSelectedCoachType]?.fare_per_seat ?? null;
   const unavailableSeatIds = useMemo(() => {
     const requestedSegment = details?.seat_map?.requested_segment;
     const allocations = details?.seat_map?.allocations || [];
@@ -372,6 +348,11 @@ function BookingPageContent() {
   const fromLabel = routeStops[0]?.station?.name || initialFromLabel;
   const toLabel = routeStops[routeStops.length - 1]?.station?.name || initialToLabel;
   const selectedTravelDate = details?.schedule?.travel_date || initialTravelDate || today;
+  const segmentTiming = details?.schedule?.segment_timing || details?.seat_map?.requested_segment || {};
+  const segmentDepartureTime = segmentTiming?.departure_time || details?.schedule?.departure_time;
+  const segmentArrivalTime = segmentTiming?.arrival_time || details?.schedule?.expected_arrival_time;
+  const segmentDepartureDayOffset = segmentTiming?.departure_day_offset || 0;
+  const segmentArrivalDayOffset = segmentTiming?.arrival_day_offset || 0;
   const isCancelledSchedule = details?.schedule?.status === "cancelled";
   const resultsHref = `/search/results?src_station_id=${srcStationId || ""}&dst_station_id=${dstStationId || ""}&travel_date=${
     encodeURIComponent(selectedTravelDate)
@@ -454,7 +435,7 @@ function BookingPageContent() {
 
   function canContinue() {
     if (currentStep === 0) {
-      return Boolean(selectedCoachType && passengerCount > 0);
+      return Boolean(resolvedSelectedCoachType && passengerCount > 0);
     }
 
     if (currentStep === 1) {
@@ -462,14 +443,14 @@ function BookingPageContent() {
     }
 
     if (currentStep === 2) {
-      return Boolean(selectedCoachType) && selectedSeatIds.length === passengerCount;
+      return Boolean(resolvedSelectedCoachType) && selectedSeatIds.length === passengerCount;
     }
 
     return true;
   }
 
   const stepActionHint = useMemo(() => {
-    if (currentStep === 0 && !selectedCoachType) {
+    if (currentStep === 0 && !resolvedSelectedCoachType) {
       return "Select class";
     }
 
@@ -482,14 +463,14 @@ function BookingPageContent() {
     }
 
     return "";
-  }, [currentStep, isPassengerFormValid, passengerCount, selectedCoachType, selectedSeatIds.length]);
+  }, [currentStep, isPassengerFormValid, passengerCount, resolvedSelectedCoachType, selectedSeatIds.length]);
 
   async function handleBookingSubmit() {
     const payload = {
       schedule_id: scheduleId,
       src_station_id: srcStationId,
       dst_station_id: dstStationId,
-      coach_type: selectedCoachType,
+      coach_type: resolvedSelectedCoachType,
       seat_ids: selectedSeatIds,
       ...(selectedSeatIds.length === 1 ? { seat_id: selectedSeatIds[0] } : {}),
       passengers: getValues("passengers"),
@@ -613,7 +594,7 @@ function BookingPageContent() {
             meta={[
               `${fromLabel} to ${toLabel}`,
               `Passengers: ${passengerCount}`,
-              selectedCoachType ? `Class: ${formatCoachType(selectedCoachType)}` : "Class: not selected",
+              resolvedSelectedCoachType ? `Class: ${formatCoachType(resolvedSelectedCoachType)}` : "Class: not selected",
             ]}
           />
 
@@ -670,14 +651,30 @@ function BookingPageContent() {
                       </p>
 
                       <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                        <DetailInfo label="Departure" value={formatScheduleDateTime(selectedTravelDate, details.schedule?.departure_time)} />
-                        <DetailInfo label="Arrival" value={formatScheduleDateTime(selectedTravelDate, details.schedule?.expected_arrival_time)} />
+                        <DetailInfo
+                          label="Departure"
+                          value={formatScheduleDateTimeWithOffset(
+                            selectedTravelDate,
+                            segmentDepartureTime,
+                            segmentDepartureDayOffset,
+                          )}
+                        />
+                        <DetailInfo
+                          label="Arrival"
+                          value={formatScheduleDateTimeWithOffset(
+                            selectedTravelDate,
+                            segmentArrivalTime,
+                            segmentArrivalDayOffset,
+                          )}
+                        />
                         <DetailInfo
                           label="Duration"
-                          value={formatScheduleDuration(
+                          value={formatScheduleDurationWithOffsets(
                             selectedTravelDate,
-                            details.schedule?.departure_time,
-                            details.schedule?.expected_arrival_time,
+                            segmentDepartureTime,
+                            segmentArrivalTime,
+                            segmentDepartureDayOffset,
+                            segmentArrivalDayOffset,
                           )}
                         />
                       </div>
@@ -703,7 +700,7 @@ function BookingPageContent() {
                           Coach class
                         </label>
                         <select
-                          value={selectedCoachType}
+                          value={resolvedSelectedCoachType}
                           onChange={(event) => {
                             setSelectedCoachType(event.target.value);
                             dispatch(clearSeatSelection());
@@ -762,8 +759,7 @@ function BookingPageContent() {
                             error={passengerErrors.passengers?.[index]?.first_name?.message}
                             {...register(`passengers.${index}.first_name`)}
                             onChange={(event) => {
-                              const nextValue = event.target.value.replace(/[^A-Za-z]/g, "");
-                              setValue(`passengers.${index}.first_name`, nextValue, {
+                              setValue(`passengers.${index}.first_name`, sanitizeNameInput(event.target.value), {
                                 shouldDirty: true,
                                 shouldTouch: true,
                                 shouldValidate: true,
@@ -775,8 +771,7 @@ function BookingPageContent() {
                             error={passengerErrors.passengers?.[index]?.last_name?.message}
                             {...register(`passengers.${index}.last_name`)}
                             onChange={(event) => {
-                              const nextValue = event.target.value.replace(/[^A-Za-z]/g, "");
-                              setValue(`passengers.${index}.last_name`, nextValue, {
+                              setValue(`passengers.${index}.last_name`, sanitizeNameInput(event.target.value), {
                                 shouldDirty: true,
                                 shouldTouch: true,
                                 shouldValidate: true,
@@ -789,8 +784,7 @@ function BookingPageContent() {
                             error={passengerErrors.passengers?.[index]?.age?.message}
                             {...register(`passengers.${index}.age`)}
                             onChange={(event) => {
-                              const nextValue = event.target.value.replace(/\D/g, "");
-                              setValue(`passengers.${index}.age`, nextValue, {
+                              setValue(`passengers.${index}.age`, sanitizeAgeInput(event.target.value), {
                                 shouldDirty: true,
                                 shouldTouch: true,
                                 shouldValidate: true,
@@ -801,13 +795,33 @@ function BookingPageContent() {
                             label="Gender"
                             error={passengerErrors.passengers?.[index]?.gender?.message}
                             {...register(`passengers.${index}.gender`)}
-                            options={["male", "female", "other"]}
+                            options={PASSENGER_GENDERS}
                           />
                           <SelectField
                             label="ID type"
                             error={passengerErrors.passengers?.[index]?.id_type?.message}
-                            {...register(`passengers.${index}.id_type`)}
-                            options={["Aadhaar", "PAN", "Passport", "Driving Licence"]}
+                            {...register(`passengers.${index}.id_type`, {
+                              onChange: (event) => {
+                                const nextType = event.target.value;
+                                const currentIdNumber = getValues(`passengers.${index}.id_number`);
+
+                                setValue(`passengers.${index}.id_type`, nextType, {
+                                  shouldDirty: true,
+                                  shouldTouch: true,
+                                  shouldValidate: true,
+                                });
+                                setValue(
+                                  `passengers.${index}.id_number`,
+                                  sanitizePassengerIdNumber(currentIdNumber, nextType),
+                                  {
+                                    shouldDirty: true,
+                                    shouldTouch: true,
+                                    shouldValidate: true,
+                                  },
+                                );
+                              },
+                            })}
+                            options={PASSENGER_ID_TYPES}
                           />
                           <Field
                             label="ID number"
@@ -815,17 +829,15 @@ function BookingPageContent() {
                             {...register(`passengers.${index}.id_number`)}
                             onChange={(event) => {
                               const idType = getValues(`passengers.${index}.id_type`);
-                              const rawValue = event.target.value;
-                              const nextValue =
-                                idType === "Aadhaar"
-                                  ? rawValue.replace(/\D/g, "").slice(0, 12)
-                                  : rawValue;
-
-                              setValue(`passengers.${index}.id_number`, nextValue, {
-                                shouldDirty: true,
-                                shouldTouch: true,
-                                shouldValidate: true,
-                              });
+                              setValue(
+                                `passengers.${index}.id_number`,
+                                sanitizePassengerIdNumber(event.target.value, idType),
+                                {
+                                  shouldDirty: true,
+                                  shouldTouch: true,
+                                  shouldValidate: true,
+                                },
+                              );
                             }}
                           />
                         </div>
@@ -846,7 +858,7 @@ function BookingPageContent() {
                       coaches={details.coaches || []}
                       unavailableSeatIds={unavailableSeatIds}
                       selectedSeatIds={selectedSeatIds}
-                      selectedCoachType={selectedCoachType}
+                      selectedCoachType={resolvedSelectedCoachType}
                       selectionLimit={passengerCount}
                       onToggleSeat={toggleSeat}
                     />
@@ -922,7 +934,7 @@ function BookingPageContent() {
                             onChange={(event) =>
                               setConfirmationValue(
                                 "contactPhone",
-                                event.target.value.replace(/\D/g, "").slice(0, 15),
+                                sanitizePhoneInput(event.target.value),
                                 {
                                   shouldDirty: true,
                                   shouldTouch: true,
@@ -970,7 +982,7 @@ function BookingPageContent() {
                         </div>
                         <div className="flex items-center justify-between">
                           <span>Coach class</span>
-                          <span>{selectedCoachType ? formatCoachType(selectedCoachType) : "Not selected"}</span>
+                          <span>{resolvedSelectedCoachType ? formatCoachType(resolvedSelectedCoachType) : "Not selected"}</span>
                         </div>
                         <div className="flex items-center justify-between">
                           <span>Fare per passenger</span>
@@ -1135,7 +1147,7 @@ function BookingPageContent() {
             schedule={details?.schedule}
             fromLabel={fromLabel}
             toLabel={toLabel}
-            selectedCoachType={selectedCoachType}
+            selectedCoachType={resolvedSelectedCoachType}
             passengerCount={passengerCount}
             selectedSeatLabels={selectedSeatLabels}
             allocatedSeatLabels={allocatedSeatLabels}
@@ -1200,12 +1212,15 @@ function DetailInfo({ label, value }) {
 }
 
 function Field({ label, error, type = "text", className = "", ...props }) {
+  const inputId = props.id || props.name;
+
   return (
     <div>
-      <label className="field-label">
+      <label htmlFor={inputId} className="field-label">
         {label}
       </label>
       <input
+        id={inputId}
         type={type}
         {...props}
         className={`field-input ${error ? "border-[var(--color-danger)]" : ""} ${className}`.trim()}
@@ -1216,12 +1231,15 @@ function Field({ label, error, type = "text", className = "", ...props }) {
 }
 
 function SelectField({ label, error, options, className = "", ...props }) {
+  const inputId = props.id || props.name;
+
   return (
     <div>
-      <label className="field-label">
+      <label htmlFor={inputId} className="field-label">
         {label}
       </label>
       <select
+        id={inputId}
         {...props}
         className={`field-input ${error ? "border-[var(--color-danger)]" : ""} ${className}`.trim()}
       >

@@ -23,6 +23,7 @@ npm run dev
 ```
 
 The frontend runs on `http://localhost:3001`.
+By default it proxies browser API requests through `/api` to `http://127.0.0.1:3000`, which avoids local CORS issues during checkout and auth flows.
 
 ### Backend
 
@@ -34,6 +35,7 @@ bin/rails server
 ```
 
 Run the Rails API with your local environment and database configuration.
+If you need a different backend URL for the frontend proxy, set `API_PROXY_TARGET`.
 
 ## Common Commands
 

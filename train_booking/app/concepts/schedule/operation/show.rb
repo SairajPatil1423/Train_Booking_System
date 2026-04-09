@@ -41,7 +41,7 @@ module Schedule::Operation
 
     def serialize!(ctx, schedule:, segment:, params:, **)
       ctx[:model] = {
-        schedule: serialize_schedule_core(schedule),
+        schedule: serialize_schedule_core(schedule, segment),
         stops: serialize_stops(schedule),
         availability: selected_availability(schedule, params),
         fare_options: fare_options_for_segment(schedule, segment.src_stop, segment.dst_stop),
@@ -92,7 +92,11 @@ module Schedule::Operation
         src_station_id: src_stop.station_id,
         dst_station_id: dst_stop.station_id,
         src_stop_order: src_stop.stop_order,
-        dst_stop_order: dst_stop.stop_order
+        dst_stop_order: dst_stop.stop_order,
+        departure_time: src_stop.departure_time || src_stop.arrival_time,
+        departure_day_offset: day_offset_for(src_stop.departure_at || src_stop.arrival_at),
+        arrival_time: dst_stop.arrival_time || dst_stop.departure_time,
+        arrival_day_offset: day_offset_for(dst_stop.arrival_at || dst_stop.departure_at)
       }
     end
 
@@ -110,16 +114,36 @@ module Schedule::Operation
       end
     end
 
-    def serialize_schedule_core(schedule)
+    def serialize_schedule_core(schedule, segment)
       {
         id: schedule.id,
         travel_date: schedule.travel_date,
         departure_time: schedule.departure_time,
         expected_arrival_time: schedule.expected_arrival_time,
+        segment_timing: serialize_segment_timing(segment),
         status: schedule.status,
         delay_minutes: schedule.delay_minutes,
         train: schedule.train.as_json(only: %i[id train_number name train_type rating grade])
       }
+    end
+
+    def serialize_segment_timing(segment)
+      return {} unless segment.valid?
+
+      {
+        departure_time: segment.src_stop.departure_time || segment.src_stop.arrival_time,
+        departure_day_offset: day_offset_for(segment.src_stop.departure_at || segment.src_stop.arrival_at),
+        arrival_time: segment.dst_stop.arrival_time || segment.dst_stop.departure_time,
+        arrival_day_offset: day_offset_for(segment.dst_stop.arrival_at || segment.dst_stop.departure_at),
+        src_stop_order: segment.src_stop.stop_order,
+        dst_stop_order: segment.dst_stop.stop_order
+      }
+    end
+
+    def day_offset_for(datetime_value)
+      return 0 if datetime_value.blank?
+
+      (datetime_value.to_date - Date.new(2000, 1, 1)).to_i
     end
 
     def serialize_stops(schedule)

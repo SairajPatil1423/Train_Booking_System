@@ -1,4 +1,6 @@
 class Schedule < ApplicationRecord
+  STATUSES = %w[scheduled departed completed cancelled].freeze
+
   belongs_to :train
 
   has_many :bookings, dependent: :restrict_with_exception
@@ -11,7 +13,17 @@ class Schedule < ApplicationRecord
     cancelled: "cancelled"
   }, default: :scheduled
 
-  validates :travel_date, :departure_time, :expected_arrival_time, presence: true
+  with_options presence: true do
+    validates :train
+    validates :travel_date
+    validates :departure_time
+    validates :expected_arrival_time
+    validates :status
+  end
+
+  validates :status, inclusion: { in: STATUSES }
+  validates :delay_minutes, numericality: { only_integer: true, greater_than_or_equal_to: 0 }
+  validate :expected_arrival_after_departure
 
   scope :active_for_date, ->(date) { where(travel_date: date).where.not(status: "cancelled") }
   scope :searchable_for_date, lambda { |date|
@@ -47,5 +59,14 @@ class Schedule < ApplicationRecord
         delay_minutes: 0
       )
     end
+  end
+
+  private
+
+  def expected_arrival_after_departure
+    return if departure_time.blank? || expected_arrival_time.blank?
+    return if expected_arrival_time > departure_time
+
+    errors.add(:expected_arrival_time, "must be after departure time")
   end
 end

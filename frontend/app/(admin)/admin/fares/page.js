@@ -19,6 +19,7 @@ import {
   fetchAdminFareRulesThunk,
   updateAdminFareRuleThunk,
 } from "@/features/admin/adminSlice";
+import { fareRuleSchema } from "@/features/admin/schemas";
 import AdminConfirmDialog from "@/components/admin/admin-confirm-dialog";
 import { AdminErrorBox, AdminInfoBlock, AdminInfoPill } from "@/components/admin/admin-ui";
 import { usePaginatedRouteState } from "@/hooks/use-paginated-route-state";
@@ -51,26 +52,34 @@ export default function AdminFaresPage() {
     const form = event.currentTarget;
     const formData = new FormData(form);
     const fareRuleData = {
-      train_id: formData.get("train_id"),
-      coach_type: formData.get("coach_type"),
-      base_fare_per_km: formData.get("base_fare_per_km"),
-      dynamic_multiplier: formData.get("dynamic_multiplier"),
-      valid_from: formData.get("valid_from"),
-      valid_to: formData.get("valid_to"),
+      train_id: String(formData.get("train_id") || "").trim(),
+      coach_type: String(formData.get("coach_type") || "").trim(),
+      base_fare_per_km: String(formData.get("base_fare_per_km") || "").trim(),
+      dynamic_multiplier: String(formData.get("dynamic_multiplier") || "").trim(),
+      valid_from: String(formData.get("valid_from") || "").trim(),
+      valid_to: String(formData.get("valid_to") || "").trim(),
     };
+
+    const parsedFareRule = fareRuleSchema.safeParse(fareRuleData);
+    if (!parsedFareRule.success) {
+      const message = parsedFareRule.error.issues[0]?.message || "Enter valid fare rule details.";
+      setFormError(message);
+      toastError(message, "Fare rule action failed");
+      return;
+    }
 
     try {
       if (editingRule) {
-        if (isSameFareRulePayload(editingRule, fareRuleData)) {
+        if (isSameFareRulePayload(editingRule, parsedFareRule.data)) {
           setFormError("No changes to save.");
           toastInfo("No changes to save.", "Nothing updated");
           return;
         }
 
-        await dispatch(updateAdminFareRuleThunk({ id: editingRule.id, fareRuleData })).unwrap();
+        await dispatch(updateAdminFareRuleThunk({ id: editingRule.id, fareRuleData: parsedFareRule.data })).unwrap();
         toastSuccess("Fare rule updated successfully.");
       } else {
-        await dispatch(createAdminFareRuleThunk(fareRuleData)).unwrap();
+        await dispatch(createAdminFareRuleThunk(parsedFareRule.data)).unwrap();
         toastSuccess("Fare rule created successfully.");
       }
 

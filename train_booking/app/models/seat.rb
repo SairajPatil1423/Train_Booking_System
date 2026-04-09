@@ -8,7 +8,14 @@ class Seat < ApplicationRecord
     joins(:coach).where(seats: { is_active: true }, coaches: { train_id: train_id })
   }
 
-  validates :seat_number, :seat_type, presence: true
+  with_options presence: true do
+    validates :coach
+    validates :seat_number
+    validates :seat_type
+  end
+
+  validates :seat_number, uniqueness: { scope: :coach_id }, length: { maximum: 10 }
+  validates :seat_type, length: { maximum: 20 }
   validates :seat_type, inclusion: { in: SEAT_TYPES }
 
   def self.available_for_segment(schedule:, src_stop_order:, dst_stop_order:, coach_type: nil)

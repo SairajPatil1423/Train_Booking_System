@@ -15,6 +15,11 @@ import {
 } from "@/features/auth/authSlice";
 import { registerUser } from "@/features/auth/authService";
 import { registerSchema } from "@/features/auth/schemas";
+import {
+  sanitizeNameInput,
+  sanitizePhoneInput,
+  sanitizeUsernameInput,
+} from "@/features/validation/constants";
 import { toastError, toastSuccess } from "@/utils/toast";
 
 export default function RegisterPage() {
@@ -25,6 +30,7 @@ export default function RegisterPage() {
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors },
   } = useForm({
     resolver: zodResolver(registerSchema),
@@ -121,6 +127,13 @@ export default function RegisterPage() {
             type="text"
             label="Full name"
             {...register("fullName")}
+            onChange={(event) =>
+              setValue("fullName", sanitizeNameInput(event.target.value), {
+                shouldDirty: true,
+                shouldTouch: true,
+                shouldValidate: true,
+              })
+            }
             placeholder="e.g. Priya Sharma"
             hint="Use the name you want associated with your bookings."
             error={errors.fullName?.message}
@@ -130,6 +143,13 @@ export default function RegisterPage() {
             type="text"
             label="Username"
             {...register("username")}
+            onChange={(event) =>
+              setValue("username", sanitizeUsernameInput(event.target.value), {
+                shouldDirty: true,
+                shouldTouch: true,
+                shouldValidate: true,
+              })
+            }
             placeholder="e.g. railyatra_user"
             hint="Pick a memorable username for your passenger profile."
             error={errors.username?.message}
@@ -139,6 +159,13 @@ export default function RegisterPage() {
             type="tel"
             label="Phone number"
             {...register("phone")}
+            onChange={(event) =>
+              setValue("phone", sanitizePhoneInput(event.target.value), {
+                shouldDirty: true,
+                shouldTouch: true,
+                shouldValidate: true,
+              })
+            }
             placeholder="9876543210"
             hint="Used for contact and booking-related communication."
             error={errors.phone?.message}

@@ -29,6 +29,12 @@ import Badge from "@/components/ui/badge";
 import PaginationToolbar from "@/components/ui/pagination-toolbar";
 import { usePaginatedRouteState } from "@/hooks/use-paginated-route-state";
 import { AdminErrorBox, AdminInfoBlock, AdminInfoPill } from "@/components/admin/admin-ui";
+import {
+  citySchema,
+  stationSchema,
+  trainSchema,
+  trainStopSchema,
+} from "@/features/admin/schemas";
 import { formatErrorMessage } from "@/utils/errors";
 import { toastError, toastInfo, toastSuccess } from "@/utils/toast";
 
@@ -81,26 +87,34 @@ export default function AdminTrainsPage() {
     const form = event.currentTarget;
     const formData = new FormData(form);
     const trainData = {
-      train_number: formData.get("train_number"),
-      name: formData.get("name"),
-      train_type: formData.get("train_type"),
-      rating: formData.get("rating"),
-      grade: formData.get("grade"),
+      train_number: String(formData.get("train_number") || "").trim(),
+      name: String(formData.get("name") || "").trim(),
+      train_type: String(formData.get("train_type") || "").trim(),
+      rating: String(formData.get("rating") || "").trim(),
+      grade: String(formData.get("grade") || "").trim(),
       is_active: formData.get("is_active") === "on",
     };
 
+    const parsedTrain = trainSchema.safeParse(trainData);
+    if (!parsedTrain.success) {
+      const message = parsedTrain.error.issues[0]?.message || "Enter valid train details.";
+      setFormError(message);
+      toastError(message, "Train action failed");
+      return;
+    }
+
     try {
       if (editingTrain) {
-        if (isSameTrainPayload(editingTrain, trainData)) {
+        if (isSameTrainPayload(editingTrain, parsedTrain.data)) {
           setFormError("No changes to save.");
           toastInfo("No changes to save.", "Nothing updated");
           return;
         }
 
-        await dispatch(updateAdminTrainThunk({ id: editingTrain.id, trainData })).unwrap();
+        await dispatch(updateAdminTrainThunk({ id: editingTrain.id, trainData: parsedTrain.data })).unwrap();
         toastSuccess("Train updated successfully.");
       } else {
-        const createdTrain = await dispatch(createAdminTrainThunk(trainData)).unwrap();
+        const createdTrain = await dispatch(createAdminTrainThunk(parsedTrain.data)).unwrap();
         setSelectedRouteTrainId(createdTrain.id);
         toastSuccess("Train created successfully.");
         routeEditorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -123,26 +137,34 @@ export default function AdminTrainsPage() {
     const form = event.currentTarget;
     const formData = new FormData(form);
     const trainStopData = {
-      train_id: formData.get("train_id"),
-      station_id: formData.get("station_id"),
-      stop_order: formData.get("stop_order"),
-      arrival_at: formData.get("arrival_at") || null,
-      departure_at: formData.get("departure_at") || null,
-      distance_from_origin_km: formData.get("distance_from_origin_km"),
+      train_id: String(formData.get("train_id") || "").trim(),
+      station_id: String(formData.get("station_id") || "").trim(),
+      stop_order: String(formData.get("stop_order") || "").trim(),
+      arrival_at: String(formData.get("arrival_at") || "").trim(),
+      departure_at: String(formData.get("departure_at") || "").trim(),
+      distance_from_origin_km: String(formData.get("distance_from_origin_km") || "").trim(),
     };
+
+    const parsedStop = trainStopSchema.safeParse(trainStopData);
+    if (!parsedStop.success) {
+      const message = parsedStop.error.issues[0]?.message || "Enter valid route stop details.";
+      setRouteFormError(message);
+      toastError(message, "Route stop action failed");
+      return;
+    }
 
     try {
       if (editingStop) {
-        if (isSameTrainStopPayload(editingStop, trainStopData)) {
+        if (isSameTrainStopPayload(editingStop, parsedStop.data)) {
           setRouteFormError("No changes to save.");
           toastInfo("No changes to save.", "Nothing updated");
           return;
         }
 
-        await dispatch(updateAdminTrainStopThunk({ id: editingStop.id, trainStopData })).unwrap();
+        await dispatch(updateAdminTrainStopThunk({ id: editingStop.id, trainStopData: parsedStop.data })).unwrap();
         toastSuccess("Route stop updated successfully.");
       } else {
-        await dispatch(createAdminTrainStopThunk(trainStopData)).unwrap();
+        await dispatch(createAdminTrainStopThunk(parsedStop.data)).unwrap();
         toastSuccess("Route stop added successfully.");
       }
 
@@ -163,13 +185,21 @@ export default function AdminTrainsPage() {
     const form = event.currentTarget;
     const formData = new FormData(form);
     const cityData = {
-      name: formData.get("name"),
-      state: formData.get("state"),
-      country: formData.get("country"),
+      name: String(formData.get("name") || "").trim(),
+      state: String(formData.get("state") || "").trim(),
+      country: String(formData.get("country") || "").trim(),
     };
 
+    const parsedCity = citySchema.safeParse(cityData);
+    if (!parsedCity.success) {
+      const message = parsedCity.error.issues[0]?.message || "Enter valid city details.";
+      setCityFormError(message);
+      toastError(message, "City creation failed");
+      return null;
+    }
+
     try {
-      const createdCity = await dispatch(createAdminCityThunk(cityData)).unwrap();
+      const createdCity = await dispatch(createAdminCityThunk(parsedCity.data)).unwrap();
       setCityFormError("");
       toastSuccess("City created successfully.");
       form.reset();
@@ -189,15 +219,23 @@ export default function AdminTrainsPage() {
     const form = event.currentTarget;
     const formData = new FormData(form);
     const stationData = {
-      city_id: formData.get("city_id"),
-      name: formData.get("name"),
-      code: formData.get("code"),
-      latitude: formData.get("latitude"),
-      longitude: formData.get("longitude"),
+      city_id: String(formData.get("city_id") || "").trim(),
+      name: String(formData.get("name") || "").trim(),
+      code: String(formData.get("code") || "").trim().toUpperCase(),
+      latitude: String(formData.get("latitude") || "").trim(),
+      longitude: String(formData.get("longitude") || "").trim(),
     };
 
+    const parsedStation = stationSchema.safeParse(stationData);
+    if (!parsedStation.success) {
+      const message = parsedStation.error.issues[0]?.message || "Enter valid station details.";
+      setStationFormError(message);
+      toastError(message, "Station creation failed");
+      return null;
+    }
+
     try {
-      const createdStation = await dispatch(createAdminStationThunk(stationData)).unwrap();
+      const createdStation = await dispatch(createAdminStationThunk(parsedStation.data)).unwrap();
       setStationFormError("");
       toastSuccess("Station created successfully.");
       form.reset();
@@ -451,6 +489,10 @@ export default function AdminTrainsPage() {
                 label="Train number"
                 defaultValue={editingTrain?.train_number || ""}
                 placeholder="e.g. 12431"
+                maxLength={20}
+                onChange={(event) => {
+                  event.target.value = String(event.target.value || "").replace(/[^\w-]/g, "").slice(0, 20);
+                }}
                 required
               />
 
@@ -459,6 +501,10 @@ export default function AdminTrainsPage() {
                 label="Train name"
                 defaultValue={editingTrain?.name || ""}
                 placeholder="e.g. Rajdhani Express"
+                maxLength={100}
+                onChange={(event) => {
+                  event.target.value = String(event.target.value || "").trimStart();
+                }}
                 required
               />
 
@@ -492,6 +538,10 @@ export default function AdminTrainsPage() {
                   name="grade"
                   label="Grade"
                   defaultValue={editingTrain?.grade || "Standard"}
+                  maxLength={50}
+                  onChange={(event) => {
+                    event.target.value = String(event.target.value || "").trimStart();
+                  }}
                   required
                 />
               </div>
@@ -632,9 +682,37 @@ export default function AdminTrainsPage() {
                   Create missing cities directly from the route workflow.
                 </p>
                 <form className="mt-4 space-y-3" onSubmit={handleCityCreate}>
-                  <Input name="name" label="City name" placeholder="e.g. Vijayawada" required />
-                  <Input name="state" label="State" placeholder="e.g. Andhra Pradesh" />
-                  <Input name="country" label="Country" placeholder="e.g. India" defaultValue="India" required />
+                  <Input
+                    name="name"
+                    label="City name"
+                    placeholder="e.g. Vijayawada"
+                    maxLength={100}
+                    onChange={(event) => {
+                      event.target.value = String(event.target.value || "").trimStart();
+                    }}
+                    required
+                  />
+                  <Input
+                    name="state"
+                    label="State"
+                    placeholder="e.g. Andhra Pradesh"
+                    maxLength={100}
+                    onChange={(event) => {
+                      event.target.value = String(event.target.value || "").trimStart();
+                    }}
+                    required
+                  />
+                  <Input
+                    name="country"
+                    label="Country"
+                    placeholder="e.g. India"
+                    defaultValue="India"
+                    maxLength={100}
+                    onChange={(event) => {
+                      event.target.value = String(event.target.value || "").trimStart();
+                    }}
+                    required
+                  />
                   <AdminErrorBox message={cityFormError} />
                   <Button type="submit" variant="secondary" className="w-full" disabled={citiesStatus === "loading"}>
                     Add city
@@ -660,11 +738,29 @@ export default function AdminTrainsPage() {
                       ))}
                     </select>
                   </div>
-                  <Input name="name" label="Station name" placeholder="e.g. Vijayawada Junction" required />
-                  <Input name="code" label="Station code" placeholder="e.g. BZA" required />
+                  <Input
+                    name="name"
+                    label="Station name"
+                    placeholder="e.g. Vijayawada Junction"
+                    maxLength={100}
+                    onChange={(event) => {
+                      event.target.value = String(event.target.value || "").trimStart();
+                    }}
+                    required
+                  />
+                  <Input
+                    name="code"
+                    label="Station code"
+                    placeholder="e.g. BZA"
+                    maxLength={20}
+                    onChange={(event) => {
+                      event.target.value = String(event.target.value || "").replace(/[^A-Za-z0-9]/g, "").toUpperCase().slice(0, 20);
+                    }}
+                    required
+                  />
                   <div className="grid gap-3 sm:grid-cols-2">
-                    <Input name="latitude" label="Latitude" placeholder="Optional" />
-                    <Input name="longitude" label="Longitude" placeholder="Optional" />
+                    <Input name="latitude" label="Latitude" placeholder="Optional" type="number" step="0.000001" min="-90" max="90" />
+                    <Input name="longitude" label="Longitude" placeholder="Optional" type="number" step="0.000001" min="-180" max="180" />
                   </div>
                   <AdminErrorBox message={stationFormError} />
                   <Button type="submit" variant="secondary" className="w-full" disabled={stationsStatus === "loading"}>

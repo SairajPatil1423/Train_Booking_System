@@ -19,6 +19,8 @@ import {
   fetchAdminCoachesThunk,
   updateAdminCoachThunk,
 } from "@/features/admin/adminSlice";
+import { coachSchema } from "@/features/admin/schemas";
+import { sanitizeUsernameInput } from "@/features/validation/constants";
 import {
   AdminErrorBox,
   AdminInfoBlock,
@@ -61,23 +63,31 @@ export default function AdminCoachesPage() {
     const form = event.currentTarget;
     const formData = new FormData(form);
     const coachData = {
-      train_id: formData.get("train_id"),
-      coach_number: formData.get("coach_number"),
-      coach_type: formData.get("coach_type"),
+      train_id: String(formData.get("train_id") || "").trim(),
+      coach_number: String(formData.get("coach_number") || "").trim().toUpperCase(),
+      coach_type: String(formData.get("coach_type") || "").trim(),
     };
+
+    const parsedCoach = coachSchema.safeParse(coachData);
+    if (!parsedCoach.success) {
+      const message = parsedCoach.error.issues[0]?.message || "Enter valid coach details.";
+      setFormError(message);
+      toastError(message, "Coach action failed");
+      return;
+    }
 
     try {
       if (editingCoach) {
-        if (isSameCoachPayload(editingCoach, coachData)) {
+        if (isSameCoachPayload(editingCoach, parsedCoach.data)) {
           setFormError("No changes to save.");
           toastInfo("No changes to save.", "Nothing updated");
           return;
         }
 
-        await dispatch(updateAdminCoachThunk({ id: editingCoach.id, coachData })).unwrap();
+        await dispatch(updateAdminCoachThunk({ id: editingCoach.id, coachData: parsedCoach.data })).unwrap();
         toastSuccess("Coach updated successfully.");
       } else {
-        await dispatch(createAdminCoachThunk(coachData)).unwrap();
+        await dispatch(createAdminCoachThunk(parsedCoach.data)).unwrap();
         toastSuccess("Coach created successfully.");
       }
 
@@ -257,6 +267,10 @@ export default function AdminCoachesPage() {
                 label="Coach number"
                 defaultValue={editingCoach?.coach_number || ""}
                 placeholder="e.g. S1 or H1"
+                maxLength={10}
+                onChange={(event) => {
+                  event.target.value = sanitizeUsernameInput(event.target.value).toUpperCase().slice(0, 10);
+                }}
                 required
               />
 
