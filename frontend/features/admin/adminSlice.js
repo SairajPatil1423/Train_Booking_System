@@ -491,7 +491,13 @@ export const fetchAdminTrainStopsThunk = createAsyncThunk(
     }
   },
   {
-    condition: (_, { getState }) => shouldFetchAdminResource(getState(), "trainStops"),
+    condition: (payload, { getState }) => {
+      if (payload?.force) {
+        return true;
+      }
+
+      return shouldFetchAdminResource(getState(), "trainStops");
+    },
   }
 );
 

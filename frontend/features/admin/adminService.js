@@ -56,7 +56,7 @@ export async function deleteAdminTrain(id) {
 
 export async function fetchAdminTrainStops() {
   const response = await api.get("/admin/train_stops", {
-    params: buildPaginationQuery({ page: 1, perPage: 50 }),
+    params: buildPaginationQuery({ page: 1, perPage: 100 }),
   });
   return response.data;
 }

@@ -4,6 +4,7 @@ module Admin::Coach::Operation
     step :fetch_scope
     step :paginate!
     step :serialize!
+    fail :collect_errors
 
     def authorize!(ctx, current_user:, **)
       current_user&.admin?
@@ -36,6 +37,10 @@ module Admin::Coach::Operation
           total_count: ctx[:total_count]
         }
       }
+    end
+
+    def collect_errors(ctx, model: nil, **)
+      ctx[:errors] ||= model&.errors&.full_messages.presence || ['Operation failed']
     end
 
     private

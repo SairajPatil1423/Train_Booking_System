@@ -6,6 +6,7 @@ module Schedule::Operation
     step :build_scope
     step :paginate!
     step :serialize!
+    fail :collect_errors
 
     def validate_params(ctx, params:, **)
       required = %i[src_station_id dst_station_id travel_date]
@@ -82,6 +83,10 @@ module Schedule::Operation
           total_count: records.total_count
         }
       }
+    end
+
+    def collect_errors(ctx, model: nil, **)
+      ctx[:errors] ||= model&.errors&.full_messages.presence || ['Operation failed']
     end
 
     private

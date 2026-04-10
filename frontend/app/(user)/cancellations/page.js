@@ -16,7 +16,7 @@ import PaginationToolbar from "@/components/ui/pagination-toolbar";
 import { fetchUserCancellationsThunk } from "@/features/booking/bookingSlice";
 import { usePaginatedRouteState } from "@/hooks/use-paginated-route-state";
 import { formatErrorMessage } from "@/utils/errors";
-import { formatCurrency, formatDate, formatDateTime, formatScheduleDateTime } from "@/utils/formatters";
+import { formatCurrency, formatDate, formatDateTime, formatScheduleDateTimeWithOffset } from "@/utils/formatters";
 
 export default function CancellationsPage() {
   const dispatch = useDispatch();
@@ -103,6 +103,7 @@ export default function CancellationsPage() {
 
           <div className="space-y-4">
             {bookings.map((booking) => {
+              const segmentTiming = booking.segment_timing || {};
               const totalRefund = (booking.cancellations || []).reduce(
                 (sum, cancellation) => sum + Number(cancellation.refund_amount || 0),
                 0,
@@ -138,9 +139,10 @@ export default function CancellationsPage() {
                           {booking.src_station?.name || "Source"} to {booking.dst_station?.name || "Destination"}
                         </p>
                         <p className="mt-1 text-sm text-[var(--color-muted)]">
-                          {formatScheduleDateTime(
+                          {formatScheduleDateTimeWithOffset(
                             booking.schedule?.travel_date,
-                            booking.schedule?.departure_time,
+                            segmentTiming.departure_time || booking.schedule?.departure_time,
+                            segmentTiming.departure_day_offset || 0,
                           )}
                         </p>
                       </div>

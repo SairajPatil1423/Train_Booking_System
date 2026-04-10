@@ -1,5 +1,45 @@
+function padNumber(value) {
+  return String(value).padStart(2, "0");
+}
+
+function toLocalDateParts(dateValue) {
+  if (!dateValue) {
+    return null;
+  }
+
+  if (typeof dateValue === "string") {
+    const rawDate = dateValue.slice(0, 10);
+    const match = rawDate.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+
+    if (match) {
+      return {
+        year: Number(match[1]),
+        month: Number(match[2]),
+        day: Number(match[3]),
+      };
+    }
+  }
+
+  const parsed = new Date(dateValue);
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  return {
+    year: parsed.getFullYear(),
+    month: parsed.getMonth() + 1,
+    day: parsed.getDate(),
+  };
+}
+
+function buildLocalDate(year, month, day) {
+  return new Date(year, month - 1, day, 0, 0, 0, 0);
+}
+
 export function formatDate(value) {
-  if (!value) {
+  const parts = toLocalDateParts(value);
+
+  if (!parts) {
     return "Not available";
   }
 
@@ -7,7 +47,7 @@ export function formatDate(value) {
     day: "2-digit",
     month: "short",
     year: "numeric",
-  }).format(new Date(value));
+  }).format(buildLocalDate(parts.year, parts.month, parts.day));
 }
 
 function buildDateTimeValue(dateValue, timeValue, dayOffset = 0) {
@@ -15,16 +55,15 @@ function buildDateTimeValue(dateValue, timeValue, dayOffset = 0) {
     return null;
   }
 
-  const baseDate = typeof dateValue === "string"
-    ? new Date(`${dateValue.slice(0, 10)}T00:00:00`)
-    : new Date(dateValue);
+  const parts = toLocalDateParts(dateValue);
 
-  if (Number.isNaN(baseDate.getTime())) {
+  if (!parts) {
     return null;
   }
 
+  const baseDate = buildLocalDate(parts.year, parts.month, parts.day);
   const shiftedDate = new Date(baseDate.getTime() + Number(dayOffset || 0) * 24 * 60 * 60 * 1000);
-  const datePart = shiftedDate.toISOString().slice(0, 10);
+  const datePart = `${shiftedDate.getFullYear()}-${padNumber(shiftedDate.getMonth() + 1)}-${padNumber(shiftedDate.getDate())}`;
 
   const timePart = typeof timeValue === "string"
     ? timeValue.slice(11, 19) || timeValue.slice(0, 8)

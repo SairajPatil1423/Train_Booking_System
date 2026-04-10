@@ -5,21 +5,21 @@ module Schedule::Operation
     step :resolve_segment
     step :validate_segment
     step :serialize!
-    fail :normalize_failure
+    fail :collect_errors
 
     def find_schedule(ctx, params:, **)
       ctx[:schedule] = ::Schedule.includes(train: %i[coaches fare_rules]).find_by(id: params[:id])
 
       return true if ctx[:schedule]
 
-      ctx[:error] = 'Schedule not found.'
+      ctx[:errors] = ['Schedule not found.']
       false
     end
 
     def validate_active_schedule(ctx, schedule:, **)
       return true unless schedule.cancelled?
 
-      ctx[:error] = 'This schedule has been cancelled.'
+      ctx[:errors] = ['This schedule has been cancelled.']
       false
     end
 
@@ -35,7 +35,7 @@ module Schedule::Operation
     def validate_segment(ctx, segment:, **)
       return true if segment.valid?
 
-      ctx[:error] = 'Invalid journey segment for this schedule.'
+      ctx[:errors] = ['Invalid journey segment for this schedule.']
       false
     end
 
@@ -55,8 +55,8 @@ module Schedule::Operation
       true
     end
 
-    def normalize_failure(ctx, **)
-      ctx[:errors] = Array(ctx[:errors] || ctx[:error] || 'Operation failed')
+    def collect_errors(ctx, model: nil, **)
+      ctx[:errors] ||= model&.errors&.full_messages.presence || ['Operation failed']
     end
 
     private

@@ -162,9 +162,11 @@ export default function AdminTrainsPage() {
         }
 
         await dispatch(updateAdminTrainStopThunk({ id: editingStop.id, trainStopData: parsedStop.data })).unwrap();
+        await dispatch(fetchAdminTrainStopsThunk({ force: true })).unwrap();
         toastSuccess("Route stop updated successfully.");
       } else {
         await dispatch(createAdminTrainStopThunk(parsedStop.data)).unwrap();
+        await dispatch(fetchAdminTrainStopsThunk({ force: true })).unwrap();
         toastSuccess("Route stop added successfully.");
       }
 
@@ -257,6 +259,7 @@ export default function AdminTrainsPage() {
 
     try {
       await dispatch(deleteAdminTrainStopThunk(deleteTarget.id)).unwrap();
+      await dispatch(fetchAdminTrainStopsThunk({ force: true })).unwrap();
       setRouteFormError("");
       setDeleteTarget(null);
       toastSuccess("Route stop removed successfully.");

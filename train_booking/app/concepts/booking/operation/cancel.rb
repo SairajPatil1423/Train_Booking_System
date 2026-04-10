@@ -1,21 +1,21 @@
 module Booking::Operation
   class Cancel < Trailblazer::Operation
-    step :find_booking, Output(:failure) => Track(:failure)
-    step :validate_authorization, Output(:failure) => Track(:failure)
-    step :cancel_in_transaction, Output(:failure) => Track(:failure)
-    step :serialize_result, Output(:failure) => Track(:failure)
-    fail :normalize_failure
+    step :find_booking
+    step :validate_authorization
+    step :cancel_in_transaction
+    step :serialize_result
+    fail :collect_errors
 
     def find_booking(ctx, params:, **)
       ctx[:booking] = Booking.find_by(id: params[:booking_id])
 
       if ctx[:booking].blank?
-        ctx[:error] = "Booking not found"
+        ctx[:errors] = ["Booking not found"]
         return false
       end
 
       if ctx[:booking].cancelled?
-        ctx[:error] = "Booking is already cancelled"
+        ctx[:errors] = ["Booking is already cancelled"]
         return false
       end
 
@@ -24,7 +24,7 @@ module Booking::Operation
 
     def validate_authorization(ctx, booking:, current_user:, **)
       unless current_user.present? && (booking.user_id == current_user.id || (current_user.respond_to?(:admin?) && current_user.admin?))
-        ctx[:error] = "Not authorized to cancel this booking"
+        ctx[:errors] = ["Not authorized to cancel this booking"]
         return false
       end
       true
@@ -39,7 +39,7 @@ module Booking::Operation
       )
 
       unless refund_result.success?
-        ctx[:error] = refund_result[:error]
+        ctx[:errors] = refund_result[:errors]
         return false
       end
 
@@ -66,34 +66,21 @@ module Booking::Operation
 
       true
     rescue ActiveRecord::RecordInvalid => e
-      ctx[:error] = e.message
+      ctx[:errors] = [e.message]
       false
     end
 
     def serialize_result(ctx, booking:, refund_amount:, **)
       ctx[:model] = {
         message: "Booking cancelled successfully.",
-        booking: booking.as_json(include: {
-          user: { only: %i[id email phone role] },
-          schedule: {
-            include: { train: { only: %i[id train_number name train_type] } }
-          },
-          src_station: { only: %i[id name code] },
-          dst_station: { only: %i[id name code] },
-          passengers: {},
-          ticket_allocations: {
-            include: { seat: { only: %i[id seat_number seat_type coach_id] } }
-          },
-          payment: {},
-          cancellations: {}
-        }),
+        booking: BookingSerializer.serialize(booking),
         refund_amount: refund_amount
       }
       true
     end
 
-    def normalize_failure(ctx, **)
-      ctx[:errors] = Array(ctx[:errors] || ctx[:error] || "Operation failed")
+    def collect_errors(ctx, model: nil, **)
+      ctx[:errors] ||= model&.errors&.full_messages.presence || ['Operation failed']
     end
   end
 end

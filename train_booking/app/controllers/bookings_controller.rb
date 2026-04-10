@@ -1,7 +1,6 @@
 # BookingsController handles user booking APIs.
 class BookingsController < ApplicationController
   before_action :authenticate_user!
-  before_action :set_booking, only: %i[show]
 
   def index
     result = Booking::Operation::Index.run(params: index_params.merge(current_user: current_user))

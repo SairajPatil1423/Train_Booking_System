@@ -3,15 +3,16 @@ module Refund
     class Calculate < Trailblazer::Operation
       step :validate_inputs
       step :calculate_refund
+      fail :collect_errors
 
       def validate_inputs(ctx, amount:, schedule:, **)
         if amount.to_d.negative?
-          ctx[:error] = "Refund amount cannot be negative"
+          ctx[:errors] = ["Refund amount cannot be negative"]
           return false
         end
 
         if schedule.blank?
-          ctx[:error] = "Schedule is required for refund calculation"
+          ctx[:errors] = ["Schedule is required for refund calculation"]
           return false
         end
 
@@ -30,6 +31,10 @@ module Refund
         ctx[:refund_ratio] = refund_ratio
         ctx[:refund_amount] = (amount.to_d * refund_ratio).round(2)
         true
+      end
+
+      def collect_errors(ctx, model: nil, **)
+        ctx[:errors] ||= model&.errors&.full_messages.presence || ['Operation failed']
       end
 
       private

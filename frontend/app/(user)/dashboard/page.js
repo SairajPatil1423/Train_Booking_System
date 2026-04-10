@@ -13,7 +13,7 @@ import Skeleton from "@/components/ui/skeleton";
 import { fetchUserBookingsThunk } from "@/features/booking/bookingSlice";
 import { getUserDisplayName } from "@/utils/user-formatters";
 import { buildBookingViewModel } from "@/utils/view-models";
-import { formatDate, formatScheduleDateTime } from "@/utils/formatters";
+import { formatDate, formatScheduleDateTimeWithOffset } from "@/utils/formatters";
 
 const quickLinks = [
   {
@@ -226,7 +226,11 @@ export default function Home() {
                         {raw.src_station?.name || "Source"} to {raw.dst_station?.name || "Destination"}
                       </p>
                       <p className="mt-3 text-sm font-medium text-[var(--color-muted-strong)]">
-                        {formatScheduleDateTime(raw.schedule?.travel_date, raw.schedule?.departure_time)}
+                        {formatScheduleDateTimeWithOffset(
+                          raw.schedule?.travel_date,
+                          raw.segment_timing?.departure_time || raw.schedule?.departure_time,
+                          raw.segment_timing?.departure_day_offset || 0,
+                        )}
                       </p>
                     </div>
                     <div className="rounded-[1.2rem] bg-[var(--color-surface-soft)] px-4 py-3 text-right">
