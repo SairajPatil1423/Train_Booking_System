@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import {
   createAdminCityThunk,
   createAdminStationThunk,
@@ -16,6 +18,8 @@ import {
   fetchAdminTrainsThunk,
   updateAdminTrainStopThunk,
   updateAdminTrainThunk,
+  searchAdminTrainsThunk,
+  clearTrainsSearch,
 } from "@/features/admin/adminSlice";
 import AdminConfirmDialog from "@/components/admin/admin-confirm-dialog";
 import PageHero from "@/components/layout/page-hero";
@@ -27,6 +31,7 @@ import Input from "@/components/ui/input";
 import LoadingState from "@/components/loading-state";
 import Badge from "@/components/ui/badge";
 import PaginationToolbar from "@/components/ui/pagination-toolbar";
+import SearchPagination from "@/components/ui/search-pagination";
 import { usePaginatedRouteState } from "@/hooks/use-paginated-route-state";
 import { AdminErrorBox, AdminInfoBlock, AdminInfoPill } from "@/components/admin/admin-ui";
 import {
@@ -34,6 +39,7 @@ import {
   stationSchema,
   trainSchema,
   trainStopSchema,
+  trainSearchSchema,
 } from "@/features/admin/schemas";
 import { formatErrorMessage } from "@/utils/errors";
 import { toastError, toastInfo, toastSuccess } from "@/utils/toast";
@@ -46,7 +52,7 @@ const TRAIN_TYPE_OPTIONS = [
 
 export default function AdminTrainsPage() {
   const dispatch = useDispatch();
-  const { trains, trainCatalog, trainsMeta, cities, stations, trainStops, resources } = useSelector((state) => state.admin);
+  const { trains, trainCatalog, trainsMeta, trainsSearch, cities, stations, trainStops, resources } = useSelector((state) => state.admin);
   const { isAuthenticated, user } = useSelector((state) => state.auth);
   const trainsStatus = resources.trains.status;
   const trainsError = resources.trains.error;
@@ -64,7 +70,20 @@ export default function AdminTrainsPage() {
   const [cityFormError, setCityFormError] = useState("");
   const [stationFormError, setStationFormError] = useState("");
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [searchPage, setSearchPage] = useState(1);
   const routeEditorRef = useRef(null);
+
+  const isSearchMode = trainsSearch.status === "succeeded" || trainsSearch.status === "loading";
+  const displayTrains = isSearchMode ? trainsSearch.results : trains;
+  const displayMeta = isSearchMode ? trainsSearch.meta : trainsMeta;
+
+  const {
+    register: registerSearch,
+    handleSubmit: handleSearchSubmit,
+    reset: resetSearch,
+    formState: { errors: searchErrors },
+  } = useForm({ resolver: zodResolver(trainSearchSchema), defaultValues: { train_name: "", train_number: "" } });
+
   const { currentPage, currentPerPage, setPage, setPerPage } = usePaginatedRouteState({
     totalPages: trainsMeta.totalPages,
     status: trainsStatus,
@@ -79,6 +98,22 @@ export default function AdminTrainsPage() {
       dispatch(fetchAdminCitiesThunk());
     }
   }, [currentPage, currentPerPage, dispatch, isAuthenticated, user]);
+
+  function onSearch(data) {
+    const params = Object.fromEntries(Object.entries(data).filter(([, v]) => v && v.length > 0));
+    setSearchPage(1);
+    dispatch(searchAdminTrainsThunk({ ...params, page: 1, perPage: 10 }));
+  }
+
+  function onSearchPageChange(nextPage) {
+    setSearchPage(nextPage);
+    dispatch(searchAdminTrainsThunk({ ...trainsSearch.searchParams, page: nextPage, perPage: 10 }));
+  }
+
+  function handleClearSearch() {
+    resetSearch();
+    dispatch(clearTrainsSearch());
+  }
 
   async function handleSave(event) {
     event.preventDefault();
@@ -320,20 +355,63 @@ export default function AdminTrainsPage() {
         <PageHero
           eyebrow="Train management"
           title="Trains"
-          meta={[`${trainsMeta.totalCount || trains.length} trains`, `Page ${trainsMeta.page}`]}
+          meta={[
+            isSearchMode
+              ? `${displayMeta.totalCount ?? displayTrains.length} results`
+              : `${trainsMeta.totalCount || trains.length} trains`,
+          ]}
         />
+
+        {/* ── Search panel ── */}
+        <PageSection className="p-6 sm:p-8">
+          <div className="mb-5 border-b border-[var(--color-line)] pb-5">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[var(--color-accent)]">Search trains</p>
+            <h2 className="mt-2 text-xl font-semibold tracking-tight text-[var(--color-ink)]">Find by name or number</h2>
+          </div>
+          <form id="train-search-form" onSubmit={handleSearchSubmit(onSearch)} className="flex flex-col gap-4 sm:flex-row sm:items-end">
+            <Input id="train-search-name" label="Train name" placeholder="e.g. Rajdhani Express" {...registerSearch("train_name")} />
+            <Input id="train-search-number" label="Train number" placeholder="e.g. 12431" {...registerSearch("train_number")} />
+            <div className="flex gap-3">
+              <Button id="train-search-submit" type="submit" disabled={trainsSearch.status === "loading"} className="shrink-0">
+                {trainsSearch.status === "loading" ? "Searching…" : "Search"}
+              </Button>
+              {isSearchMode ? (
+                <Button id="train-search-clear" type="button" variant="secondary" onClick={handleClearSearch} className="shrink-0">Clear</Button>
+              ) : null}
+            </div>
+          </form>
+          {searchErrors[""] ? <AdminErrorBox message={searchErrors[""]?.message} className="mt-4" /> : null}
+          {trainsSearch.error ? <AdminErrorBox message={Array.isArray(trainsSearch.error) ? trainsSearch.error.join(", ") : trainsSearch.error} className="mt-4" /> : null}
+        </PageSection>
+
+        {/* ── Pagination strip — always between search form and results — */}
+        {displayTrains.length > 0 ? (
+          <div className="rounded-[1.4rem] border border-[var(--color-line)] bg-[var(--color-panel-strong)] px-6 py-4 shadow-[0_2px_8px_rgba(15,23,42,0.04)]">
+            <SearchPagination
+              page={displayMeta.page ?? 1}
+              totalPages={displayMeta.totalPages ?? 1}
+              totalCount={displayMeta.totalCount ?? displayTrains.length}
+              onPrev={() => isSearchMode
+                ? onSearchPageChange((displayMeta.page ?? 1) - 1)
+                : setPage((displayMeta.page ?? 1) - 1)}
+              onNext={() => isSearchMode
+                ? onSearchPageChange((displayMeta.page ?? 1) + 1)
+                : setPage((displayMeta.page ?? 1) + 1)}
+              disabled={isSearchMode ? trainsSearch.status === "loading" : trainsStatus === "loading"}
+              loading={isSearchMode ? trainsSearch.status === "loading" : trainsStatus === "loading"}
+            />
+          </div>
+        ) : null}
 
         <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
           <PageSection className="p-6 sm:p-8">
-            {trainsStatus === "loading" && trains.length === 0 ? <LoadingState label="Loading trains..." /> : null}
-            {trainsStatus === "loading" && trains.length > 0 ? (
-              <div className="pb-4 text-sm font-medium text-[var(--color-muted)]">Loading page {currentPage}...</div>
-            ) : null}
-            <AdminErrorBox message={Array.isArray(trainsError) ? trainsError.join(", ") : trainsError} />
+            {!isSearchMode && trainsStatus === "loading" && trains.length === 0 ? <LoadingState label="Loading trains..." /> : null}
+            {isSearchMode && trainsSearch.status === "loading" ? <LoadingState label="Searching trains…" /> : null}
+            {!isSearchMode ? <AdminErrorBox message={Array.isArray(trainsError) ? trainsError.join(", ") : trainsError} /> : null}
 
-            {trains.length > 0 ? (
+            {displayTrains.length > 0 && trainsSearch.status !== "loading" ? (
               <div className="space-y-4">
-                {trains.map((train) => {
+                {displayTrains.map((train) => {
                   const routeStops = safeTrainStops
                     .filter((stop) => stop?.train_id === train.id)
                     .sort((left, right) => Number(left.stop_order || 0) - Number(right.stop_order || 0));
@@ -392,7 +470,7 @@ export default function AdminTrainsPage() {
                         </p>
                       )}
 
-                      {!routeStops.length ? (
+                      {!isSearchMode && !routeStops.length ? (
                         <div className="mt-4">
                           <Button
                             type="button"
@@ -411,70 +489,29 @@ export default function AdminTrainsPage() {
                       ) : null}
                     </div>
 
-                    <div className="mt-5 flex flex-wrap gap-3">
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => {
-                          setEditingTrain(train);
-                          setFormError("");
-                        }}
-                        >
+                    {!isSearchMode ? (
+                      <div className="mt-5 flex flex-wrap gap-3">
+                        <Button type="button" variant="secondary" size="sm" onClick={() => { setEditingTrain(train); setFormError(""); }}>
                           Edit train
                         </Button>
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          size="sm"
-                          onClick={() => {
-                            setSelectedRouteTrainId(train.id);
-                            setEditingStop(null);
-                            setRouteFormError("");
-                            routeEditorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-                          }}
-                        >
+                        <Button type="button" variant="secondary" size="sm" onClick={() => { setSelectedRouteTrainId(train.id); setEditingStop(null); setRouteFormError(""); routeEditorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }); }}>
                           Manage route
                         </Button>
-                      <Button
-                        type="button"
-                        variant="danger"
-                        size="sm"
-                        onClick={() =>
-                          setDeleteTarget({
-                            type: "train",
-                            id: train.id,
-                            label: train.name || train.train_number,
-                          })
-                        }
-                      >
-                        Delete train
-                      </Button>
-                    </div>
+                        <Button type="button" variant="danger" size="sm" onClick={() => setDeleteTarget({ type: "train", id: train.id, label: train.name || train.train_number })}>
+                          Delete train
+                        </Button>
+                      </div>
+                    ) : null}
                   </Card>
                 )})}
               </div>
             ) : null}
 
-            {trains.length === 0 && trainsStatus !== "loading" ? (
-              <EmptyState
-                title="No trains found"
-              />
+            {isSearchMode && trainsSearch.status === "succeeded" && displayTrains.length === 0 ? (
+              <EmptyState title="No trains found" description="Try a different name or number." />
             ) : null}
-
-            {trains.length > 0 ? (
-              <div className="pt-6">
-                <PaginationToolbar
-                  page={trainsMeta.page}
-                  perPage={trainsMeta.perPage}
-                  totalCount={trainsMeta.totalCount || trains.length}
-                  totalPages={trainsMeta.totalPages}
-                  onPageChange={setPage}
-                  onPerPageChange={setPerPage}
-                  disabled={trainsStatus === "loading"}
-                  loading={trainsStatus === "loading"}
-                />
-              </div>
+            {!isSearchMode && trains.length === 0 && trainsStatus !== "loading" ? (
+              <EmptyState title="No trains found" />
             ) : null}
           </PageSection>
 

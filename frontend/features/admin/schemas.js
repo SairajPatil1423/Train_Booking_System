@@ -190,3 +190,56 @@ export const adminUserSchema = z
     message: "Passwords do not match",
     path: ["password_confirmation"],
   });
+
+// ─── Search schemas ───────────────────────────────────────────────────────────
+
+export const bookingSearchSchema = z.object({
+  user_email: z
+    .string()
+    .trim()
+    .min(1, "User email is required to search bookings"),
+});
+
+export const trainSearchSchema = z
+  .object({
+    train_name: z.string().trim().optional().or(z.literal("")),
+    train_number: z.string().trim().optional().or(z.literal("")),
+  })
+  .refine(
+    (data) => (data.train_name && data.train_name.length > 0) || (data.train_number && data.train_number.length > 0),
+    { message: "Enter at least a train name or train number to search" }
+  );
+
+export const scheduleSearchSchema = z
+  .object({
+    train_name: z.string().trim().optional().or(z.literal("")),
+    travel_date: z.string().trim().optional().or(z.literal("")),
+  })
+  .refine(
+    (data) => (data.train_name && data.train_name.length > 0) || (data.travel_date && data.travel_date.length > 0),
+    { message: "Enter at least a train name or travel date to search" }
+  );
+
+export const coachSearchSchema = z
+  .object({
+    train_name: z.string().trim().optional().or(z.literal("")),
+    train_number: z.string().trim().optional().or(z.literal("")),
+    coach_type: z.string().trim().optional().or(z.literal("")),
+  })
+  .refine(
+    (data) =>
+      (data.train_name && data.train_name.length > 0) ||
+      (data.train_number && data.train_number.length > 0) ||
+      (data.coach_type && data.coach_type.length > 0),
+    { message: "Enter at least one search field (train name, number, or coach type)" }
+  );
+
+export const fareRuleSearchSchema = z
+  .object({
+    train_name: z.string().trim().optional().or(z.literal("")),
+    train_number: z.string().trim().optional().or(z.literal("")),
+  })
+  .refine(
+    (data) => (data.train_name && data.train_name.length > 0) || (data.train_number && data.train_number.length > 0),
+    { message: "Enter at least a train name or train number to search" }
+  );

@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import PageHero from "@/components/layout/page-hero";
 import PageSection from "@/components/layout/page-section";
 import Button from "@/components/ui/button";
@@ -12,14 +14,17 @@ import { formatCoachType } from "@/utils/coach-formatters";
 import { ADMIN_COACH_CONFIGS } from "@/utils/admin-coach-config";
 import LoadingState from "@/components/loading-state";
 import PaginationToolbar from "@/components/ui/pagination-toolbar";
+import SearchPagination from "@/components/ui/search-pagination";
 import {
   createAdminFareRuleThunk,
   deleteAdminFareRuleThunk,
   fetchAdminTrainCatalogThunk,
   fetchAdminFareRulesThunk,
   updateAdminFareRuleThunk,
+  searchAdminFareRulesThunk,
+  clearFareRulesSearch,
 } from "@/features/admin/adminSlice";
-import { fareRuleSchema } from "@/features/admin/schemas";
+import { fareRuleSchema, fareRuleSearchSchema } from "@/features/admin/schemas";
 import AdminConfirmDialog from "@/components/admin/admin-confirm-dialog";
 import { AdminErrorBox, AdminInfoBlock, AdminInfoPill } from "@/components/admin/admin-ui";
 import { usePaginatedRouteState } from "@/hooks/use-paginated-route-state";
@@ -28,22 +33,52 @@ import { toastError, toastInfo, toastSuccess } from "@/utils/toast";
 
 export default function AdminFaresPage() {
   const dispatch = useDispatch();
-  const { fareRules, fareRulesMeta, trainCatalog, trainCatalogStatus, trainCatalogError, resources } = useSelector((state) => state.admin);
+  const { fareRules, fareRulesMeta, fareRulesSearch, trainCatalog, trainCatalogStatus, trainCatalogError, resources } = useSelector((state) => state.admin);
   const fareRulesStatus = resources.fareRules.status;
   const fareRulesError = resources.fareRules.error;
   const [editingRule, setEditingRule] = useState(null);
   const [formError, setFormError] = useState("");
   const [ruleToDelete, setRuleToDelete] = useState(null);
+  const [searchPage, setSearchPage] = useState(1);
+
+  const isSearchMode = fareRulesSearch.status === "succeeded" || fareRulesSearch.status === "loading";
+  const safeFareRules = isSearchMode
+    ? (Array.isArray(fareRulesSearch.results) ? fareRulesSearch.results.filter(Boolean) : [])
+    : (Array.isArray(fareRules) ? fareRules.filter(Boolean) : []);
+  const displayMeta = isSearchMode ? fareRulesSearch.meta : fareRulesMeta;
+
+  const {
+    register: registerSearch,
+    handleSubmit: handleSearchSubmit,
+    reset: resetSearch,
+    formState: { errors: searchErrors },
+  } = useForm({ resolver: zodResolver(fareRuleSearchSchema), defaultValues: { train_name: "", train_number: "" } });
+
   const { currentPage, currentPerPage, setPage, setPerPage } = usePaginatedRouteState({
     totalPages: fareRulesMeta.totalPages,
     status: fareRulesStatus,
   });
-  const safeFareRules = Array.isArray(fareRules) ? fareRules.filter(Boolean) : [];
 
   useEffect(() => {
     dispatch(fetchAdminFareRulesThunk({ page: currentPage, perPage: currentPerPage }));
     dispatch(fetchAdminTrainCatalogThunk());
   }, [currentPage, currentPerPage, dispatch]);
+
+  function onSearch(data) {
+    const params = Object.fromEntries(Object.entries(data).filter(([, v]) => v && v.length > 0));
+    setSearchPage(1);
+    dispatch(searchAdminFareRulesThunk({ ...params, page: 1, perPage: 10 }));
+  }
+
+  function onSearchPageChange(nextPage) {
+    setSearchPage(nextPage);
+    dispatch(searchAdminFareRulesThunk({ ...fareRulesSearch.searchParams, page: nextPage, perPage: 10 }));
+  }
+
+  function handleClearSearch() {
+    resetSearch();
+    dispatch(clearFareRulesSearch());
+  }
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -118,18 +153,61 @@ export default function AdminFaresPage() {
         <PageHero
           eyebrow="Fare rules"
           title="Fare Rules"
-          meta={[`${fareRulesMeta.totalCount || fareRules.length} rules`, `Page ${fareRulesMeta.page}`]}
+          meta={[
+            isSearchMode
+              ? `${displayMeta.totalCount ?? safeFareRules.length} results`
+              : `${fareRulesMeta.totalCount || fareRules.length} rules`,
+          ]}
         />
+
+        {/* ── Search panel ── */}
+        <PageSection className="p-6 sm:p-8">
+          <div className="mb-5 border-b border-[var(--color-line)] pb-5">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[var(--color-accent)]">Search fare rules</p>
+            <h2 className="mt-2 text-xl font-semibold tracking-tight text-[var(--color-ink)]">Find by train name or number</h2>
+          </div>
+          <form id="fare-search-form" onSubmit={handleSearchSubmit(onSearch)} className="flex flex-col gap-4 sm:flex-row sm:items-end">
+            <Input id="fare-search-train-name" label="Train name" placeholder="e.g. Rajdhani" {...registerSearch("train_name")} />
+            <Input id="fare-search-train-number" label="Train number" placeholder="e.g. 12431" {...registerSearch("train_number")} />
+            <div className="flex gap-3">
+              <Button id="fare-search-submit" type="submit" disabled={fareRulesSearch.status === "loading"} className="shrink-0">
+                {fareRulesSearch.status === "loading" ? "Searching…" : "Search"}
+              </Button>
+              {isSearchMode ? (
+                <Button id="fare-search-clear" type="button" variant="secondary" onClick={handleClearSearch} className="shrink-0">Clear</Button>
+              ) : null}
+            </div>
+          </form>
+          {searchErrors[""] ? <AdminErrorBox message={searchErrors[""]?.message} className="mt-4" /> : null}
+          {fareRulesSearch.error ? <AdminErrorBox message={Array.isArray(fareRulesSearch.error) ? fareRulesSearch.error.join(", ") : fareRulesSearch.error} className="mt-4" /> : null}
+        </PageSection>
+
+        {/* ── Pagination strip — always between search form and results — */}
+        {safeFareRules.length > 0 ? (
+          <div className="rounded-[1.4rem] border border-[var(--color-line)] bg-[var(--color-panel-strong)] px-6 py-4 shadow-[0_2px_8px_rgba(15,23,42,0.04)]">
+            <SearchPagination
+              page={displayMeta.page ?? 1}
+              totalPages={displayMeta.totalPages ?? 1}
+              totalCount={displayMeta.totalCount ?? safeFareRules.length}
+              onPrev={() => isSearchMode
+                ? onSearchPageChange((displayMeta.page ?? 1) - 1)
+                : setPage((displayMeta.page ?? 1) - 1)}
+              onNext={() => isSearchMode
+                ? onSearchPageChange((displayMeta.page ?? 1) + 1)
+                : setPage((displayMeta.page ?? 1) + 1)}
+              disabled={isSearchMode ? fareRulesSearch.status === "loading" : fareRulesStatus === "loading"}
+              loading={isSearchMode ? fareRulesSearch.status === "loading" : fareRulesStatus === "loading"}
+            />
+          </div>
+        ) : null}
 
         <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
           <PageSection className="p-6 sm:p-8">
-            {fareRulesStatus === "loading" && safeFareRules.length === 0 ? <LoadingState label="Loading fare rules..." /> : null}
-            {fareRulesStatus === "loading" && safeFareRules.length > 0 ? (
-              <div className="pb-4 text-sm font-medium text-[var(--color-muted)]">Loading page {currentPage}...</div>
-            ) : null}
-            <AdminErrorBox message={Array.isArray(fareRulesError) ? fareRulesError.join(", ") : fareRulesError} />
+            {!isSearchMode && fareRulesStatus === "loading" && safeFareRules.length === 0 ? <LoadingState label="Loading fare rules..." /> : null}
+            {isSearchMode && fareRulesSearch.status === "loading" ? <LoadingState label="Searching fare rules…" /> : null}
+            {!isSearchMode ? <AdminErrorBox message={Array.isArray(fareRulesError) ? fareRulesError.join(", ") : fareRulesError} /> : null}
 
-            {safeFareRules.length > 0 ? (
+            {safeFareRules.length > 0 && fareRulesSearch.status !== "loading" ? (
               <div className="space-y-4">
                 {safeFareRules.map((rule) => (
                   <Card key={rule.id} className="rounded-[1.6rem] p-5">
@@ -154,46 +232,22 @@ export default function AdminFaresPage() {
                       <AdminInfoBlock label="Coach type" value={formatCoachType(rule.coach_type)} accent />
                     </div>
 
-                    <div className="mt-5 flex flex-wrap gap-3">
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => {
-                          setEditingRule(rule);
-                          setFormError("");
-                        }}
-                      >
-                        Edit fare rule
-                      </Button>
-                      <Button type="button" variant="danger" size="sm" onClick={() => setRuleToDelete(rule)}>
-                        Delete rule
-                      </Button>
-                    </div>
+                    {!isSearchMode ? (
+                      <div className="mt-5 flex flex-wrap gap-3">
+                        <Button type="button" variant="secondary" size="sm" onClick={() => { setEditingRule(rule); setFormError(""); }}>Edit fare rule</Button>
+                        <Button type="button" variant="danger" size="sm" onClick={() => setRuleToDelete(rule)}>Delete rule</Button>
+                      </div>
+                    ) : null}
                   </Card>
                 ))}
               </div>
             ) : null}
 
-            {safeFareRules.length === 0 && fareRulesStatus !== "loading" ? (
-              <EmptyState
-                title="No fare rules configured yet"
-              />
+            {isSearchMode && fareRulesSearch.status === "succeeded" && safeFareRules.length === 0 ? (
+              <EmptyState title="No fare rules found" description="Try different search terms." />
             ) : null}
-
-            {safeFareRules.length > 0 ? (
-              <div className="pt-6">
-                <PaginationToolbar
-                  page={fareRulesMeta.page}
-                  perPage={fareRulesMeta.perPage}
-                  totalCount={fareRulesMeta.totalCount || safeFareRules.length}
-                  totalPages={fareRulesMeta.totalPages}
-                  onPageChange={setPage}
-                  onPerPageChange={setPerPage}
-                  disabled={fareRulesStatus === "loading"}
-                  loading={fareRulesStatus === "loading"}
-                />
-              </div>
+            {!isSearchMode && safeFareRules.length === 0 && fareRulesStatus !== "loading" ? (
+              <EmptyState title="No fare rules configured yet" />
             ) : null}
           </PageSection>
 

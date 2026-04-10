@@ -1,6 +1,10 @@
 class Admin::FareRulesController < Admin::BaseController
   def index
-    result = Admin::FareRule::Operation::Index.run(params: merged_params(paginated_params))
+    if search_requested?
+      result = Admin::FareRule::Operation::Search.run(params: merged_params(search_params))
+    else
+      result = Admin::FareRule::Operation::Index.run(params: merged_params(paginated_params))
+    end
     render_result(result)
   end
 
@@ -33,5 +37,13 @@ class Admin::FareRulesController < Admin::BaseController
       :valid_from,
       :valid_to
     )
+  end
+
+  def search_params
+    params.permit(:page, :per_page, :train_name, :train_number).to_h.symbolize_keys
+  end
+
+  def search_requested?
+    params[:train_name].present? || params[:train_number].present?
   end
 end

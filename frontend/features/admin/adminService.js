@@ -145,3 +145,45 @@ export async function deleteAdminSchedule(id) {
   const response = await api.delete(`/admin/schedules/${id}`);
   return response.data;
 }
+
+// ─── Search functions ────────────────────────────────────────────────────────
+
+export async function searchAdminBookings(params = {}) {
+  const query = { ...buildPaginationQuery(params) };
+  if (params.user_email) query.user_email = params.user_email;
+  const response = await api.get("/admin/bookings", { params: query });
+  return response.data;
+}
+
+export async function searchAdminTrains(params = {}) {
+  const query = { ...buildPaginationQuery(params) };
+  if (params.train_name) query.train_name = params.train_name;
+  if (params.train_number) query.train_number = params.train_number;
+  const response = await api.get("/admin/trains", { params: query });
+  return response.data;
+}
+
+export async function searchAdminSchedules(params = {}) {
+  const query = { ...buildPaginationQuery(params) };
+  if (params.train_name) query.train_name = params.train_name;
+  if (params.travel_date) query.travel_date = params.travel_date;
+  const response = await api.get("/admin/schedules", { params: query });
+  return response.data;
+}
+
+export async function searchAdminCoaches(params = {}) {
+  const query = { ...buildPaginationQuery(params) };
+  if (params.train_name) query.train_name = params.train_name;
+  if (params.train_number) query.train_number = params.train_number;
+  if (params.coach_type) query.coach_type = params.coach_type;
+  const response = await api.get("/admin/coaches", { params: query });
+  return response.data;
+}
+
+export async function searchAdminFareRules(params = {}) {
+  const query = { ...buildPaginationQuery(params) };
+  if (params.train_name) query.train_name = params.train_name;
+  if (params.train_number) query.train_number = params.train_number;
+  const response = await api.get("/admin/fare_rules", { params: query });
+  return response.data;
+}

@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import PageHero from "@/components/layout/page-hero";
 import PageSection from "@/components/layout/page-section";
 import Button from "@/components/ui/button";
@@ -10,6 +12,7 @@ import EmptyState from "@/components/ui/empty-state";
 import Input from "@/components/ui/input";
 import LoadingState from "@/components/loading-state";
 import PaginationToolbar from "@/components/ui/pagination-toolbar";
+import SearchPagination from "@/components/ui/search-pagination";
 import { ADMIN_COACH_CONFIGS } from "@/utils/admin-coach-config";
 import { formatCoachType, normalizeCoachType } from "@/utils/coach-formatters";
 import {
@@ -18,8 +21,10 @@ import {
   fetchAdminTrainCatalogThunk,
   fetchAdminCoachesThunk,
   updateAdminCoachThunk,
+  searchAdminCoachesThunk,
+  clearCoachesSearch,
 } from "@/features/admin/adminSlice";
-import { coachSchema } from "@/features/admin/schemas";
+import { coachSchema, coachSearchSchema } from "@/features/admin/schemas";
 import { sanitizeUsernameInput } from "@/features/validation/constants";
 import {
   AdminErrorBox,
@@ -34,12 +39,25 @@ import { toastError, toastInfo, toastSuccess } from "@/utils/toast";
 
 export default function AdminCoachesPage() {
   const dispatch = useDispatch();
-  const { coaches, coachesMeta, trainCatalog, trainCatalogStatus, trainCatalogError, resources } = useSelector((state) => state.admin);
+  const { coaches, coachesMeta, coachesSearch, trainCatalog, trainCatalogStatus, trainCatalogError, resources } = useSelector((state) => state.admin);
   const coachesStatus = resources.coaches.status;
   const coachesError = resources.coaches.error;
   const [editingCoach, setEditingCoach] = useState(null);
   const [formError, setFormError] = useState("");
   const [coachToDelete, setCoachToDelete] = useState(null);
+  const [searchPage, setSearchPage] = useState(1);
+
+  const isSearchMode = coachesSearch.status === "succeeded" || coachesSearch.status === "loading";
+  const displayRecords = isSearchMode ? (Array.isArray(coachesSearch.results) ? coachesSearch.results.filter(Boolean) : []) : (Array.isArray(coaches) ? coaches.filter(Boolean) : []);
+  const displayMeta = isSearchMode ? coachesSearch.meta : coachesMeta;
+
+  const {
+    register: registerSearch,
+    handleSubmit: handleSearchSubmit,
+    reset: resetSearch,
+    formState: { errors: searchErrors },
+  } = useForm({ resolver: zodResolver(coachSearchSchema), defaultValues: { train_name: "", train_number: "", coach_type: "" } });
+
   const { currentPage, currentPerPage, setPage, setPerPage } = usePaginatedRouteState({
     totalPages: coachesMeta.totalPages,
     status: coachesStatus,
@@ -49,6 +67,22 @@ export default function AdminCoachesPage() {
     dispatch(fetchAdminCoachesThunk({ page: currentPage, perPage: currentPerPage }));
     dispatch(fetchAdminTrainCatalogThunk());
   }, [currentPage, currentPerPage, dispatch]);
+
+  function onSearch(data) {
+    const params = Object.fromEntries(Object.entries(data).filter(([, v]) => v && v.length > 0));
+    setSearchPage(1);
+    dispatch(searchAdminCoachesThunk({ ...params, page: 1, perPage: 10 }));
+  }
+
+  function onSearchPageChange(nextPage) {
+    setSearchPage(nextPage);
+    dispatch(searchAdminCoachesThunk({ ...coachesSearch.searchParams, page: nextPage, perPage: 10 }));
+  }
+
+  function handleClearSearch() {
+    resetSearch();
+    dispatch(clearCoachesSearch());
+  }
 
   const coachLayouts = useMemo(
     () => Object.fromEntries(ADMIN_COACH_CONFIGS.map((item) => [item.key, item])),
@@ -126,7 +160,11 @@ export default function AdminCoachesPage() {
         <PageHero
           eyebrow="Coach management"
           title="Coaches"
-          meta={[`${coachesMeta.totalCount || coaches.length} coaches`, `Page ${coachesMeta.page}`]}
+          meta={[
+            isSearchMode
+              ? `${displayMeta.totalCount ?? displayRecords.length} results`
+              : `${coachesMeta.totalCount || coaches.length} coaches`,
+          ]}
         />
 
         <PageSection className="p-6 sm:p-8">
@@ -137,17 +175,63 @@ export default function AdminCoachesPage() {
           </div>
         </PageSection>
 
+        {/* ── Search panel ── */}
+        <PageSection className="p-6 sm:p-8">
+          <div className="mb-5 border-b border-[var(--color-line)] pb-5">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[var(--color-accent)]">Search coaches</p>
+            <h2 className="mt-2 text-xl font-semibold tracking-tight text-[var(--color-ink)]">Find by train or coach type</h2>
+          </div>
+          <form id="coach-search-form" onSubmit={handleSearchSubmit(onSearch)} className="flex flex-col gap-4 sm:flex-row sm:items-end sm:flex-wrap">
+            <Input id="coach-search-train-name" label="Train name" placeholder="e.g. Rajdhani" {...registerSearch("train_name")} />
+            <Input id="coach-search-train-number" label="Train number" placeholder="e.g. 12431" {...registerSearch("train_number")} />
+            <div>
+              <label className="field-label" htmlFor="coach-search-type">Coach type</label>
+              <select id="coach-search-type" className="field-input" {...registerSearch("coach_type")}>
+                <option value="">Any type</option>
+                {ADMIN_COACH_CONFIGS.map((c) => (<option key={c.key} value={c.key}>{c.label}</option>))}
+              </select>
+            </div>
+            <div className="flex gap-3">
+              <Button id="coach-search-submit" type="submit" disabled={coachesSearch.status === "loading"} className="shrink-0">
+                {coachesSearch.status === "loading" ? "Searching…" : "Search"}
+              </Button>
+              {isSearchMode ? (
+                <Button id="coach-search-clear" type="button" variant="secondary" onClick={handleClearSearch} className="shrink-0">Clear</Button>
+              ) : null}
+            </div>
+          </form>
+          {searchErrors[""] ? <AdminErrorBox message={searchErrors[""]?.message} className="mt-4" /> : null}
+          {coachesSearch.error ? <AdminErrorBox message={Array.isArray(coachesSearch.error) ? coachesSearch.error.join(", ") : coachesSearch.error} className="mt-4" /> : null}
+        </PageSection>
+
+        {/* ── Pagination strip — always between search form and results — */}
+        {displayRecords.length > 0 ? (
+          <div className="rounded-[1.4rem] border border-[var(--color-line)] bg-[var(--color-panel-strong)] px-6 py-4 shadow-[0_2px_8px_rgba(15,23,42,0.04)]">
+            <SearchPagination
+              page={displayMeta.page ?? 1}
+              totalPages={displayMeta.totalPages ?? 1}
+              totalCount={displayMeta.totalCount ?? displayRecords.length}
+              onPrev={() => isSearchMode
+                ? onSearchPageChange((displayMeta.page ?? 1) - 1)
+                : setPage((displayMeta.page ?? 1) - 1)}
+              onNext={() => isSearchMode
+                ? onSearchPageChange((displayMeta.page ?? 1) + 1)
+                : setPage((displayMeta.page ?? 1) + 1)}
+              disabled={isSearchMode ? coachesSearch.status === "loading" : coachesStatus === "loading"}
+              loading={isSearchMode ? coachesSearch.status === "loading" : coachesStatus === "loading"}
+            />
+          </div>
+        ) : null}
+
         <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
           <PageSection className="p-6 sm:p-8">
-            {coachesStatus === "loading" && coaches.length === 0 ? <LoadingState label="Loading coaches..." /> : null}
-            {coachesStatus === "loading" && coaches.length > 0 ? (
-              <div className="pb-4 text-sm font-medium text-[var(--color-muted)]">Loading page {currentPage}...</div>
-            ) : null}
-            <AdminErrorBox message={Array.isArray(coachesError) ? coachesError.join(", ") : coachesError} />
+            {!isSearchMode && coachesStatus === "loading" && coaches.length === 0 ? <LoadingState label="Loading coaches..." /> : null}
+            {isSearchMode && coachesSearch.status === "loading" ? <LoadingState label="Searching coaches…" /> : null}
+            {!isSearchMode ? <AdminErrorBox message={Array.isArray(coachesError) ? coachesError.join(", ") : coachesError} /> : null}
 
-            {safeCoaches.length > 0 ? (
+            {displayRecords.length > 0 && coachesSearch.status !== "loading" ? (
               <div className="space-y-4">
-                {safeCoaches.map((coach) => {
+                {displayRecords.map((coach) => {
                   const normalizedCoachType = normalizeCoachType(coach.coach_type);
                   const layout = coachLayouts[normalizedCoachType];
 
@@ -178,52 +262,23 @@ export default function AdminCoachesPage() {
 
                       {layout ? <div className="mt-4"><CoachLayoutPreview coach={layout} compact /></div> : null}
 
-                      <div className="mt-5 flex flex-wrap gap-3">
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          size="sm"
-                          onClick={() => {
-                            setEditingCoach(coach);
-                            setFormError("");
-                          }}
-                        >
-                          Edit coach
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="danger"
-                          size="sm"
-                          onClick={() => setCoachToDelete(coach)}
-                        >
-                          Delete coach
-                        </Button>
-                      </div>
+                      {!isSearchMode ? (
+                        <div className="mt-5 flex flex-wrap gap-3">
+                          <Button type="button" variant="secondary" size="sm" onClick={() => { setEditingCoach(coach); setFormError(""); }}>Edit coach</Button>
+                          <Button type="button" variant="danger" size="sm" onClick={() => setCoachToDelete(coach)}>Delete coach</Button>
+                        </div>
+                      ) : null}
                     </Card>
                   );
                 })}
               </div>
             ) : null}
 
-            {safeCoaches.length === 0 && coachesStatus !== "loading" ? (
-              <EmptyState
-                title="No coaches configured yet"
-              />
+            {isSearchMode && coachesSearch.status === "succeeded" && displayRecords.length === 0 ? (
+              <EmptyState title="No coaches found" description="Try different search terms." />
             ) : null}
-
-            {safeCoaches.length > 0 ? (
-              <div className="pt-6">
-                <PaginationToolbar
-                  page={coachesMeta.page}
-                  perPage={coachesMeta.perPage}
-                  totalCount={coachesMeta.totalCount || coaches.length}
-                  totalPages={coachesMeta.totalPages}
-                  onPageChange={setPage}
-                  onPerPageChange={setPerPage}
-                  disabled={coachesStatus === "loading"}
-                  loading={coachesStatus === "loading"}
-                />
-              </div>
+            {!isSearchMode && displayRecords.length === 0 && coachesStatus !== "loading" ? (
+              <EmptyState title="No coaches configured yet" />
             ) : null}
           </PageSection>
 
