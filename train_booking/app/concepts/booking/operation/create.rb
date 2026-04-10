@@ -1,53 +1,55 @@
 module Booking::Operation
   class Create < Trailblazer::Operation
-    require 'pry'
     class BookingError < StandardError; end
 
-    step :validate_authorization, Output(:failure) => Track(:failure)
-    step :validate_params, Output(:failure) => Track(:failure)
-    step :find_schedule, Output(:failure) => Track(:failure)
-    step :find_stops, Output(:failure) => Track(:failure)
-    step :find_requested_seats, Output(:failure) => Track(:failure)
-    step :calculate_fare, Output(:failure) => Track(:failure)
-    step :create_booking_in_transaction, Output(:failure) => Track(:failure)
-    step :serialize_result, Output(:failure) => Track(:failure)
-    fail :normalize_failure
+    step :validate_authorization
+    step :validate_presence
+    step :validate_seats_and_passengers
+    step :find_schedule
+    step :find_stops
+    step :find_requested_seats
+    step :calculate_fare
+    step :create_booking_in_transaction
+    step :serialize_result
+    fail :collect_errors
 
     def validate_authorization(ctx, current_user:, **)
       unless current_user.present?
-        ctx[:error] = "Not authorized"
+        ctx[:errors] = ["Not authorized"]
         return false
       end
       true
     end
 
-    def validate_params(ctx, params:, **)
-      required_fields = %i[user_id schedule_id src_station_id dst_station_id]
-      missing_fields = required_fields.select { |field| params[field].blank? }
+    def validate_presence(ctx, params:, **)
+      missing_fields = %i[user_id schedule_id src_station_id dst_station_id].select { |field| params[field].blank? }
       if missing_fields.any?
-        ctx[:error] = "Missing required fields: #{missing_fields.join(', ')}"
+        ctx[:errors] = ["Missing required fields: #{missing_fields.join(', ')}"]
         return false
       end
+      true
+    end
 
+    def validate_seats_and_passengers(ctx, params:, **)
       unless params[:passengers].is_a?(Array) && params[:passengers].any?
-        ctx[:error] = "At least one passenger is required"
+        ctx[:errors] = ["At least one passenger is required"]
         return false
       end
 
       requested_seat_ids = Array(params[:seat_ids].presence || params[:seat_id]).flatten.compact_blank
 
       if requested_seat_ids.blank?
-        ctx[:error] = "At least one seat must be selected"
+        ctx[:errors] = ["At least one seat must be selected"]
         return false
       end
 
       if requested_seat_ids.uniq.length != requested_seat_ids.length
-        ctx[:error] = "Duplicate seat selections are not allowed"
+        ctx[:errors] = ["Duplicate seat selections are not allowed"]
         return false
       end
 
       if requested_seat_ids.length != params[:passengers].length
-        ctx[:error] = "Selected seats must match the passenger count"
+        ctx[:errors] = ["Selected seats must match the passenger count"]
         return false
       end
 
@@ -59,12 +61,12 @@ module Booking::Operation
       ctx[:schedule] = Schedule.find_by(id: params[:schedule_id])
 
       if ctx[:schedule].blank?
-        ctx[:error] = "Schedule not found"
+        ctx[:errors] = ["Schedule not found"]
         return false
       end
 
       if ctx[:schedule].cancelled?
-        ctx[:error] = "Schedule is cancelled"
+        ctx[:errors] = ["Schedule is cancelled"]
         return false
       end
 
@@ -82,12 +84,12 @@ module Booking::Operation
       dst_stop = segment.dst_stop
 
       unless src_stop && dst_stop
-        ctx[:error] = "Both source and destination stations must belong to the train route"
+        ctx[:errors] = ["Both source and destination stations must belong to the train route"]
         return false
       end
 
       unless src_stop.stop_order < dst_stop.stop_order
-        ctx[:error] = "Destination must come after source on the route"
+        ctx[:errors] = ["Destination must come after source on the route"]
         return false
       end
 
@@ -105,18 +107,18 @@ module Booking::Operation
       ordered_seats = requested_seat_ids.filter_map { |seat_id| seats_by_id[seat_id] }
 
       if ordered_seats.length != requested_seat_ids.length
-        ctx[:error] = "One or more selected seats are invalid for this train or inactive"
+        ctx[:errors] = ["One or more selected seats are invalid for this train or inactive"]
         return false
       end
 
       coach_types = ordered_seats.map { |seat| seat.coach.api_coach_type }.uniq
       if coach_types.length != 1
-        ctx[:error] = "All selected seats must belong to the same coach class"
+        ctx[:errors] = ["All selected seats must belong to the same coach class"]
         return false
       end
 
       if params[:coach_type].present? && Coach.normalize_coach_type(params[:coach_type]) != coach_types.first
-        ctx[:error] = "Selected seats do not match the requested coach class"
+        ctx[:errors] = ["Selected seats do not match the requested coach class"]
         return false
       end
 
@@ -132,7 +134,7 @@ module Booking::Operation
                      .first
 
       unless rule
-        ctx[:error] = "No fare rule configured for the selected train, coach type, and travel date"
+        ctx[:errors] = ["No fare rule configured for the selected train, coach type, and travel date"]
         return false
       end
 
@@ -202,8 +204,12 @@ module Booking::Operation
 
       true
     rescue BookingError, ActiveRecord::RecordInvalid => e
-      ctx[:error] = e.message
+      ctx[:errors] = [e.message]
       false
+    end
+
+    def collect_errors(ctx, model: nil, **)
+      ctx[:errors] ||= model&.errors&.full_messages.presence || ['Operation failed']
     end
 
     private
@@ -247,28 +253,11 @@ module Booking::Operation
     def serialize_result(ctx, booking:, fare_per_seat:, total_fare:, **)
       ctx[:model] = {
         message: "Booking confirmed successfully.",
-        booking: booking.as_json(include: {
-          user: { only: %i[id email phone role] },
-          schedule: {
-            include: { train: { only: %i[id train_number name train_type] } }
-          },
-          src_station: { only: %i[id name code] },
-          dst_station: { only: %i[id name code] },
-          passengers: {},
-          ticket_allocations: {
-            include: { seat: { only: %i[id seat_number seat_type coach_id] } }
-          },
-          payment: {},
-          cancellations: {}
-        }),
+        booking: BookingSerializer.serialize(booking),
         fare_per_seat: fare_per_seat,
         total_fare: total_fare
       }
       true
-    end
-
-    def normalize_failure(ctx, **)
-      ctx[:errors] = Array(ctx[:errors] || ctx[:error] || "Operation failed")
     end
   end
 end

@@ -21,7 +21,7 @@ import {
 import { usePaginatedRouteState } from "@/hooks/use-paginated-route-state";
 import { cn } from "@/utils/cn";
 import { formatErrorMessage } from "@/utils/errors";
-import { formatCurrency, formatDateTime, formatScheduleDateTime } from "@/utils/formatters";
+import { formatCurrency, formatDate, formatDateTime, formatScheduleDateTimeWithOffset } from "@/utils/formatters";
 import { toastError, toastSuccess } from "@/utils/toast";
 
 export default function BookingsPage() {
@@ -64,6 +64,7 @@ export default function BookingsPage() {
       (allocation) => allocation.status !== "cancelled",
     );
 
+    const segmentTiming = booking.segment_timing || {};
     setCancelReason("Change of plan");
     setCancelIntent({
       kind: "booking",
@@ -73,12 +74,13 @@ export default function BookingsPage() {
       subtitle: "This will cancel all active passengers in the booking.",
       amount: activeAllocations.reduce((sum, allocation) => sum + Number(allocation.fare || 0), 0),
       travelDate: booking.schedule?.travel_date,
-      departureTime: booking.schedule?.departure_time,
+      departureTime: segmentTiming.departure_time || booking.schedule?.departure_time,
       items: activeAllocations.map((allocation) => allocation.seat?.seat_number).filter(Boolean),
     });
   }
 
   function openTicketCancelDialog(booking, allocation) {
+    const segmentTiming = booking.segment_timing || {};
     setCancelReason("Passenger not travelling");
     setCancelIntent({
       kind: "ticket",
@@ -89,7 +91,7 @@ export default function BookingsPage() {
       subtitle: "Only this ticket will be cancelled. Remaining passengers will stay on the booking.",
       amount: allocation.fare,
       travelDate: booking.schedule?.travel_date,
-      departureTime: booking.schedule?.departure_time,
+      departureTime: segmentTiming.departure_time || booking.schedule?.departure_time,
       items: [allocation.seat?.seat_number].filter(Boolean),
     });
   }
@@ -214,6 +216,17 @@ export default function BookingsPage() {
 
           <div className="space-y-4">
             {bookings.map((booking) => {
+              const segmentTiming = booking.segment_timing || {};
+              const departureLabel = formatScheduleDateTimeWithOffset(
+                booking.schedule?.travel_date,
+                segmentTiming.departure_time || booking.schedule?.departure_time,
+                segmentTiming.departure_day_offset || 0,
+              );
+              const arrivalLabel = formatScheduleDateTimeWithOffset(
+                booking.schedule?.travel_date,
+                segmentTiming.arrival_time || booking.schedule?.expected_arrival_time,
+                segmentTiming.arrival_day_offset || 0,
+              );
               const activeAllocations = (booking.ticket_allocations || []).filter(
                 (allocation) => allocation.status !== "cancelled",
               );
@@ -241,29 +254,61 @@ export default function BookingsPage() {
                         ) : null}
                       </div>
 
-                      <div className="grid gap-3 sm:grid-cols-4">
+                      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
                         <InfoBlock label="Booked on" value={formatDateTime(booking.booked_at)} />
+                        <InfoBlock label="Travel date" value={formatDate(booking.schedule?.travel_date)} />
                         <InfoBlock label="Passengers" value={String(booking.passengers?.length || 0)} />
                         <InfoBlock label="Paid amount" value={formatCurrency(booking.payment?.amount)} />
                         <InfoBlock label="Refunded" value={formatCurrency(cancellationTotal)} />
                       </div>
 
-                      <div className="rounded-[1.25rem] bg-[var(--color-surface-soft)] px-4 py-4">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--color-muted)]">
-                          Journey
-                        </p>
-                        <p className="mt-2 text-sm font-medium text-[var(--color-ink)]">
+                      <div className="rounded-[1.4rem] border border-[var(--color-line)] bg-[linear-gradient(180deg,_color-mix(in_srgb,var(--color-surface-soft)_96%,transparent)_0%,_color-mix(in_srgb,var(--color-surface-strong)_98%,transparent)_100%)] p-5 shadow-[0_16px_36px_rgba(15,23,42,0.05)]">
+                        <div className="flex flex-wrap items-center gap-3">
+                          <Badge variant="primary" className="px-3 py-1.5 text-[11px]">
+                            {booking.schedule?.train?.train_number || "Train"}
+                          </Badge>
+                          <Badge variant="neutral" className="px-3 py-1.5 text-[11px]">
+                            {booking.schedule?.train?.train_type || "Service"}
+                          </Badge>
+                        </div>
+
+                        <p className="mt-3 text-lg font-semibold text-[var(--color-ink)]">
                           {booking.schedule?.train?.name || "Train details unavailable"}
                         </p>
-                        <p className="mt-1 text-sm text-[var(--color-muted)]">
-                          {booking.src_station?.name || "Source"} to {booking.dst_station?.name || "Destination"}
-                        </p>
-                        <p className="mt-1 text-sm text-[var(--color-muted)]">
-                          {formatScheduleDateTime(
-                            booking.schedule?.travel_date,
-                            booking.schedule?.departure_time,
-                          )}
-                        </p>
+
+                        <div className="mt-4 grid gap-3 md:grid-cols-[1fr_auto_1fr] md:items-center">
+                          <JourneyStopCard
+                            title="From"
+                            stationName={booking.src_station?.name || "Source"}
+                            stationCode={booking.src_station?.code}
+                            timeLabel={departureLabel}
+                          />
+                          <div className="flex items-center justify-center">
+                            <div className="rounded-full bg-[var(--color-accent-soft)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-panel-dark)]">
+                              Your trip
+                            </div>
+                          </div>
+                          <JourneyStopCard
+                            title="To"
+                            stationName={booking.dst_station?.name || "Destination"}
+                            stationCode={booking.dst_station?.code}
+                            timeLabel={arrivalLabel}
+                            align="right"
+                          />
+                        </div>
+
+                        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                          <InfoBlock label="Departure" value={departureLabel} />
+                          <InfoBlock label="Arrival" value={arrivalLabel} />
+                          <InfoBlock
+                            label="Active seats"
+                            value={
+                              activeAllocations.length
+                                ? activeAllocations.map((allocation) => allocation.seat?.seat_number).filter(Boolean).join(", ")
+                                : "No active seats"
+                            }
+                          />
+                        </div>
                       </div>
 
                       <div className="space-y-3">
@@ -487,6 +532,27 @@ function InfoBlock({ label, value }) {
         {label}
       </p>
       <p className="mt-2 text-sm font-semibold text-[var(--color-ink)]">{value}</p>
+    </div>
+  );
+}
+
+function JourneyStopCard({ title, stationName, stationCode, timeLabel, align = "left" }) {
+  const alignmentClass = align === "right" ? "md:text-right" : "";
+
+  return (
+    <div className={cn("rounded-[1.2rem] bg-[var(--color-surface-soft)] px-4 py-4", alignmentClass)}>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--color-muted)]">
+        {title}
+      </p>
+      <p className="mt-2 text-base font-semibold text-[var(--color-ink)]">
+        {stationName}
+      </p>
+      <p className="mt-1 text-xs font-medium uppercase tracking-[0.16em] text-[var(--color-muted)]">
+        {stationCode || "N/A"}
+      </p>
+      <p className="mt-3 text-sm font-semibold text-[var(--color-panel-dark)]">
+        {timeLabel}
+      </p>
     </div>
   );
 }

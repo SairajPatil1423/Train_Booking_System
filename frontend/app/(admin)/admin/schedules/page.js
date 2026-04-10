@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import PageHero from "@/components/layout/page-hero";
 import PageSection from "@/components/layout/page-section";
 import Button from "@/components/ui/button";
@@ -11,16 +13,20 @@ import Input from "@/components/ui/input";
 import Badge from "@/components/ui/badge";
 import LoadingState from "@/components/loading-state";
 import PaginationToolbar from "@/components/ui/pagination-toolbar";
+import SearchPagination from "@/components/ui/search-pagination";
 import {
   createAdminScheduleThunk,
   deleteAdminScheduleThunk,
   fetchAdminTrainCatalogThunk,
   fetchAdminSchedulesThunk,
   updateAdminScheduleThunk,
+  searchAdminSchedulesThunk,
+  clearSchedulesSearch,
 } from "@/features/admin/adminSlice";
 import {
   createScheduleSchema,
   updateScheduleSchema,
+  scheduleSearchSchema,
 } from "@/features/admin/schemas";
 import AdminConfirmDialog from "@/components/admin/admin-confirm-dialog";
 import { AdminErrorBox, AdminInfoBlock, AdminInfoPill } from "@/components/admin/admin-ui";
@@ -37,12 +43,25 @@ const SCHEDULE_STATUS_OPTIONS = [
 
 export default function AdminSchedulesPage() {
   const dispatch = useDispatch();
-  const { schedules, schedulesMeta, trainCatalog, trainCatalogStatus, trainCatalogError, resources } = useSelector((state) => state.admin);
+  const { schedules, schedulesMeta, schedulesSearch, trainCatalog, trainCatalogStatus, trainCatalogError, resources } = useSelector((state) => state.admin);
   const schedulesStatus = resources.schedules.status;
   const schedulesError = resources.schedules.error;
   const [editingSchedule, setEditingSchedule] = useState(null);
   const [formError, setFormError] = useState("");
   const [scheduleToDelete, setScheduleToDelete] = useState(null);
+  const [searchPage, setSearchPage] = useState(1);
+
+  const isSearchMode = schedulesSearch.status === "succeeded" || schedulesSearch.status === "loading";
+  const displayRecords = isSearchMode ? schedulesSearch.results : schedules;
+  const displayMeta = isSearchMode ? schedulesSearch.meta : schedulesMeta;
+
+  const {
+    register: registerSearch,
+    handleSubmit: handleSearchSubmit,
+    reset: resetSearch,
+    formState: { errors: searchErrors },
+  } = useForm({ resolver: zodResolver(scheduleSearchSchema), defaultValues: { train_name: "", travel_date: "" } });
+
   const { currentPage, currentPerPage, setPage, setPerPage } = usePaginatedRouteState({
     totalPages: schedulesMeta.totalPages,
     status: schedulesStatus,
@@ -52,6 +71,21 @@ export default function AdminSchedulesPage() {
     dispatch(fetchAdminSchedulesThunk({ page: currentPage, perPage: currentPerPage }));
     dispatch(fetchAdminTrainCatalogThunk());
   }, [currentPage, currentPerPage, dispatch]);
+
+  function onSearch(data) {
+    setSearchPage(1);
+    dispatch(searchAdminSchedulesThunk({ ...data, page: 1, perPage: 10 }));
+  }
+
+  function onSearchPageChange(nextPage) {
+    setSearchPage(nextPage);
+    dispatch(searchAdminSchedulesThunk({ ...schedulesSearch.searchParams, page: nextPage, perPage: 10 }));
+  }
+
+  function handleClearSearch() {
+    resetSearch();
+    dispatch(clearSchedulesSearch());
+  }
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -140,22 +174,75 @@ export default function AdminSchedulesPage() {
         <PageHero
           eyebrow="Schedules"
           title="Schedules"
-          meta={[`${schedulesMeta.totalCount || schedules.length} schedules`, `Page ${schedulesMeta.page}`]}
+          meta={[
+            isSearchMode
+              ? `${displayMeta.totalCount ?? displayRecords.length} results`
+              : `${schedulesMeta.totalCount || schedules.length} schedules`,
+          ]}
         />
+
+        {/* ── Search panel ── */}
+        <PageSection className="p-6 sm:p-8">
+          <div className="mb-5 border-b border-[var(--color-line)] pb-5">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[var(--color-accent)]">Search schedules</p>
+            <h2 className="mt-2 text-xl font-semibold tracking-tight text-[var(--color-ink)]">Find by train or date</h2>
+          </div>
+          <form id="schedule-search-form" onSubmit={handleSearchSubmit(onSearch)} className="flex flex-col gap-4 sm:flex-row sm:items-end">
+            <Input
+              id="schedule-search-train-name"
+              label="Train name"
+              placeholder="e.g. Rajdhani"
+              error={searchErrors.train_name?.message || (!searchErrors.train_name && searchErrors[""]) ? searchErrors[""]?.message : undefined}
+              {...registerSearch("train_name")}
+            />
+            <Input
+              id="schedule-search-date"
+              label="Travel date"
+              type="date"
+              error={searchErrors.travel_date?.message}
+              {...registerSearch("travel_date")}
+            />
+            <div className="flex gap-3">
+              <Button id="schedule-search-submit" type="submit" disabled={schedulesSearch.status === "loading"} className="shrink-0">
+                {schedulesSearch.status === "loading" ? "Searching…" : "Search"}
+              </Button>
+              {isSearchMode ? (
+                <Button id="schedule-search-clear" type="button" variant="secondary" onClick={handleClearSearch} className="shrink-0">Clear</Button>
+              ) : null}
+            </div>
+          </form>
+          {searchErrors[""] ? <AdminErrorBox message={searchErrors[""]?.message} className="mt-4" /> : null}
+          {schedulesSearch.error ? <AdminErrorBox message={Array.isArray(schedulesSearch.error) ? schedulesSearch.error.join(", ") : schedulesSearch.error} className="mt-4" /> : null}
+        </PageSection>
+
+        {/* ── Pagination strip — always between search form and results — */}
+        {displayRecords.length > 0 ? (
+          <div className="rounded-[1.4rem] border border-[var(--color-line)] bg-[var(--color-panel-strong)] px-6 py-4 shadow-[0_2px_8px_rgba(15,23,42,0.04)]">
+            <SearchPagination
+              page={displayMeta.page ?? 1}
+              totalPages={displayMeta.totalPages ?? 1}
+              totalCount={displayMeta.totalCount ?? displayRecords.length}
+              onPrev={() => isSearchMode
+                ? onSearchPageChange((displayMeta.page ?? 1) - 1)
+                : setPage((displayMeta.page ?? 1) - 1)}
+              onNext={() => isSearchMode
+                ? onSearchPageChange((displayMeta.page ?? 1) + 1)
+                : setPage((displayMeta.page ?? 1) + 1)}
+              disabled={isSearchMode ? schedulesSearch.status === "loading" : schedulesStatus === "loading"}
+              loading={isSearchMode ? schedulesSearch.status === "loading" : schedulesStatus === "loading"}
+            />
+          </div>
+        ) : null}
 
         <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
           <PageSection className="p-6 sm:p-8">
-            {schedulesStatus === "loading" && schedules.length === 0 ? <LoadingState label="Loading schedules..." /> : null}
-            {schedulesStatus === "loading" && schedules.length > 0 ? (
-              <div className="pb-4 text-sm font-medium text-[var(--color-muted)]">Loading page {currentPage}...</div>
-            ) : null}
-            <AdminErrorBox message={Array.isArray(schedulesError) ? schedulesError.join(", ") : schedulesError} />
+            {!isSearchMode && schedulesStatus === "loading" && schedules.length === 0 ? <LoadingState label="Loading schedules..." /> : null}
+            {isSearchMode && schedulesSearch.status === "loading" ? <LoadingState label="Searching schedules…" /> : null}
+            {!isSearchMode ? <AdminErrorBox message={Array.isArray(schedulesError) ? schedulesError.join(", ") : schedulesError} /> : null}
 
-            {schedules.length > 0 ? null : null}
-
-            {schedules.length > 0 ? (
+            {displayRecords.length > 0 && schedulesSearch.status !== "loading" ? (
               <div className="space-y-4">
-                {schedules.map((schedule) => {
+                {displayRecords.map((schedule) => {
                   const statusConfig = SCHEDULE_STATUS_OPTIONS.find((item) => item.value === schedule.status);
 
                   return (
@@ -186,47 +273,23 @@ export default function AdminSchedulesPage() {
                         <AdminInfoBlock label="Status" value={statusConfig?.label || schedule.status} accent />
                       </div>
 
-                      <div className="mt-5 flex flex-wrap gap-3">
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          size="sm"
-                          onClick={() => {
-                            setEditingSchedule(schedule);
-                            setFormError("");
-                          }}
-                        >
-                          Edit schedule
-                        </Button>
-                        <Button type="button" variant="danger" size="sm" onClick={() => setScheduleToDelete(schedule)}>
-                          Delete schedule
-                        </Button>
-                      </div>
+                      {!isSearchMode ? (
+                        <div className="mt-5 flex flex-wrap gap-3">
+                          <Button type="button" variant="secondary" size="sm" onClick={() => { setEditingSchedule(schedule); setFormError(""); }}>Edit schedule</Button>
+                          <Button type="button" variant="danger" size="sm" onClick={() => setScheduleToDelete(schedule)}>Delete schedule</Button>
+                        </div>
+                      ) : null}
                     </Card>
                   );
                 })}
               </div>
             ) : null}
 
-            {schedules.length === 0 && schedulesStatus !== "loading" ? (
-              <EmptyState
-                title="No schedules created yet"
-              />
+            {isSearchMode && schedulesSearch.status === "succeeded" && displayRecords.length === 0 ? (
+              <EmptyState title="No schedules found" description="Try different search terms." />
             ) : null}
-
-            {schedules.length > 0 ? (
-              <div className="pt-6">
-                <PaginationToolbar
-                  page={schedulesMeta.page}
-                  perPage={schedulesMeta.perPage}
-                  totalCount={schedulesMeta.totalCount || schedules.length}
-                  totalPages={schedulesMeta.totalPages}
-                  onPageChange={setPage}
-                  onPerPageChange={setPerPage}
-                  disabled={schedulesStatus === "loading"}
-                  loading={schedulesStatus === "loading"}
-                />
-              </div>
+            {!isSearchMode && schedules.length === 0 && schedulesStatus !== "loading" ? (
+              <EmptyState title="No schedules created yet" />
             ) : null}
           </PageSection>
 

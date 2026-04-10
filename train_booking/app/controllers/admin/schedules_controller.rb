@@ -1,6 +1,10 @@
 class Admin::SchedulesController < Admin::BaseController
   def index
-    result = Admin::Schedule::Operation::Index.run(params: merged_params(paginated_params))
+    if search_requested?
+      result = Admin::Schedule::Operation::Search.run(params: merged_params(search_params))
+    else
+      result = Admin::Schedule::Operation::Index.run(params: merged_params(paginated_params))
+    end
     render_result(result)
   end
 
@@ -35,5 +39,13 @@ class Admin::SchedulesController < Admin::BaseController
 
   def schedule_update_params
     permitted_resource_params(:schedule, :departure_time, :expected_arrival_time, :status, :delay_minutes)
+  end
+
+  def search_params
+    params.permit(:page, :per_page, :train_name, :travel_date).to_h.symbolize_keys
+  end
+
+  def search_requested?
+    params[:train_name].present? || params[:travel_date].present?
   end
 end

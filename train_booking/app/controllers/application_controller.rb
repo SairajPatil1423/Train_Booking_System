@@ -13,13 +13,8 @@ class ApplicationController < ActionController::API
       status_code = request.post? ? :created : :ok
       render json: result[:model], status: status_code
     else
-      error_payload = result[:errors] ? { errors: result[:errors] } : { error: result[:error] }
-      render json: error_payload, status: :unprocessable_content
+      render json: { errors: Array(result[:errors]) }, status: :unprocessable_content
     end
-  end
-
-  def render_operation_error(result)
-    render json: { errors: Array(result[:errors]) }, status: :unprocessable_content
   end
 
   def not_found(exception)

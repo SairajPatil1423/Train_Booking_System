@@ -1,10 +1,10 @@
 module Admin::Train::Operation
   class Destroy < Trailblazer::Operation
     step :authorize!
-    step :find_model, Output(:failure) => Track(:failure)
-    step :destroy_model, Output(:failure) => Track(:failure)
+    step :find_model
+    step :destroy_model
     step :serialize_result
-    fail :normalize_failure
+    fail :collect_errors
 
     def authorize!(ctx, current_user:, **)
       current_user && current_user.admin?
@@ -31,8 +31,8 @@ module Admin::Train::Operation
       ctx[:model] = { message: 'Train deleted successfully' }
     end
 
-    def normalize_failure(ctx, **)
-      ctx[:errors] = Array(ctx[:errors] || ctx[:error] || "Operation failed")
+    def collect_errors(ctx, model: nil, **)
+      ctx[:errors] ||= model&.errors&.full_messages.presence || ['Operation failed']
     end
   end
 end

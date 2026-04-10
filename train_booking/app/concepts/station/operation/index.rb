@@ -3,6 +3,7 @@ module Station::Operation
     step :fetch_scope
     step :paginate!
     step :serialize!
+    fail :collect_errors
 
     def fetch_scope(ctx, **)
       ctx[:scope] = ::Station.includes(:city).order(:name)
@@ -32,6 +33,10 @@ module Station::Operation
           total_count: records.total_count
         }
       }
+    end
+
+    def collect_errors(ctx, model: nil, **)
+      ctx[:errors] ||= model&.errors&.full_messages.presence || ['Operation failed']
     end
   end
 end

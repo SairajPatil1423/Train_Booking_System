@@ -1,26 +1,51 @@
 module Admin::Booking::Operation
-  class Index < Trailblazer::Operation
+  class Search < Trailblazer::Operation
     step :authorize!
-    step :fetch_scope
+    step :validate_params!
+    step :build_scope
+    step :apply_filters!
     step :paginate!
     step :serialize!
-    fail :collect_errors
+    fail :handle_errors
 
     def authorize!(ctx, current_user:, **)
       return false unless current_user&.admin?
       true
     end
 
-    def fetch_scope(ctx, params:, **)
+    def validate_params!(ctx, params:, **)
+      user_email = params[:user_email].to_s.strip
+
+      unless user_email.present?
+        ctx[:errors] = ['At least one search parameter is required']
+        return false
+      end
+
+      ctx[:search_params] = { user_email: user_email }
+      true
+    end
+
+    def build_scope(ctx, **)
       ctx[:scope] = Booking.includes(
         :user, :passengers, :payment, :src_station, :dst_station,
         :cancellations, { ticket_allocations: :seat }, { schedule: :train }
       ).order(booked_at: :desc)
     end
 
+    def apply_filters!(ctx, **)
+      search = ctx[:search_params]
+
+      if search[:user_email].present?
+        ctx[:scope] = ctx[:scope].joins(:user)
+                                 .where("users.email ILIKE ?", "%#{search[:user_email]}%")
+      end
+
+      true
+    end
+
     def paginate!(ctx, params:, **)
       page = [(params[:page] || 1).to_i, 1].max
-      per_page = [(params[:per_page] || 20).to_i, 100].min
+      per_page = [(params[:per_page] || 10).to_i, 100].min
 
       ctx[:records] = Paginatable::PaginatedCollection.new(
         ctx[:scope],
@@ -55,8 +80,8 @@ module Admin::Booking::Operation
       }
     end
 
-    def collect_errors(ctx, model: nil, **)
-      ctx[:errors] ||= model&.errors&.full_messages.presence || ['Operation failed']
+    def handle_errors(ctx, **)
+      ctx[:errors] ||= ['Search operation failed']
     end
   end
 end

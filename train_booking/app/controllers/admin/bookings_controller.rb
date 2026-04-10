@@ -1,6 +1,10 @@
 class Admin::BookingsController < Admin::BaseController
   def index
-    result = Admin::Booking::Operation::Index.run(params: index_params.merge(current_user: current_user))
+    if search_requested?
+      result = Admin::Booking::Operation::Search.run(params: search_params.merge(current_user: current_user))
+    else
+      result = Admin::Booking::Operation::Index.run(params: index_params.merge(current_user: current_user))
+    end
     render_result(result)
   end
 
@@ -18,6 +22,14 @@ class Admin::BookingsController < Admin::BaseController
 
   def index_params
     params.permit(:page, :per_page, :with_cancellations).to_h.symbolize_keys
+  end
+
+  def search_params
+    params.permit(:page, :per_page, :user_email).to_h.symbolize_keys
+  end
+
+  def search_requested?
+    params[:user_email].present?
   end
 
   def show_params

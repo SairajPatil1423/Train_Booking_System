@@ -26,6 +26,11 @@ import {
   createAdminSchedule,
   updateAdminSchedule,
   deleteAdminSchedule,
+  searchAdminBookings,
+  searchAdminTrains,
+  searchAdminSchedules,
+  searchAdminCoaches,
+  searchAdminFareRules,
 } from "./adminService";
 import { normalizeAdminError } from "./adminErrorUtils";
 
@@ -71,6 +76,42 @@ const initialState = {
   },
   trainsMeta: {
     ...createPaginationState(),
+  },
+  // ─── Search state ──────────────────────────────────────────────────────────
+  bookingsSearch: {
+    results: [],
+    meta: createPaginationState(),
+    searchParams: {},
+    status: "idle",
+    error: null,
+  },
+  trainsSearch: {
+    results: [],
+    meta: createPaginationState(),
+    searchParams: {},
+    status: "idle",
+    error: null,
+  },
+  schedulesSearch: {
+    results: [],
+    meta: createPaginationState(),
+    searchParams: {},
+    status: "idle",
+    error: null,
+  },
+  coachesSearch: {
+    results: [],
+    meta: createPaginationState(),
+    searchParams: {},
+    status: "idle",
+    error: null,
+  },
+  fareRulesSearch: {
+    results: [],
+    meta: createPaginationState(),
+    searchParams: {},
+    status: "idle",
+    error: null,
   },
   resources: {
     users: createResourceState(),
@@ -491,7 +532,13 @@ export const fetchAdminTrainStopsThunk = createAsyncThunk(
     }
   },
   {
-    condition: (_, { getState }) => shouldFetchAdminResource(getState(), "trainStops"),
+    condition: (payload, { getState }) => {
+      if (payload?.force) {
+        return true;
+      }
+
+      return shouldFetchAdminResource(getState(), "trainStops");
+    },
   }
 );
 
@@ -739,6 +786,88 @@ export const deleteAdminScheduleThunk = createAsyncThunk(
   }
 );
 
+// ─── Search thunks ────────────────────────────────────────────────────────────
+
+export const searchAdminBookingsThunk = createAsyncThunk(
+  "admin/searchBookings",
+  async (payload = {}, { rejectWithValue }) => {
+    try {
+      const data = await searchAdminBookings(payload);
+      return {
+        results: data.data || [],
+        meta: data.meta || {},
+        searchParams: payload,
+      };
+    } catch (error) {
+      return rejectWithValue(normalizeAdminError(error, "Booking search failed."));
+    }
+  }
+);
+
+export const searchAdminTrainsThunk = createAsyncThunk(
+  "admin/searchTrains",
+  async (payload = {}, { rejectWithValue }) => {
+    try {
+      const data = await searchAdminTrains(payload);
+      return {
+        results: data.data || [],
+        meta: data.meta || {},
+        searchParams: payload,
+      };
+    } catch (error) {
+      return rejectWithValue(normalizeAdminError(error, "Train search failed."));
+    }
+  }
+);
+
+export const searchAdminSchedulesThunk = createAsyncThunk(
+  "admin/searchSchedules",
+  async (payload = {}, { rejectWithValue }) => {
+    try {
+      const data = await searchAdminSchedules(payload);
+      return {
+        results: data.data || [],
+        meta: data.meta || {},
+        searchParams: payload,
+      };
+    } catch (error) {
+      return rejectWithValue(normalizeAdminError(error, "Schedule search failed."));
+    }
+  }
+);
+
+export const searchAdminCoachesThunk = createAsyncThunk(
+  "admin/searchCoaches",
+  async (payload = {}, { rejectWithValue }) => {
+    try {
+      const data = await searchAdminCoaches(payload);
+      return {
+        results: data.data || [],
+        meta: data.meta || {},
+        searchParams: payload,
+      };
+    } catch (error) {
+      return rejectWithValue(normalizeAdminError(error, "Coach search failed."));
+    }
+  }
+);
+
+export const searchAdminFareRulesThunk = createAsyncThunk(
+  "admin/searchFareRules",
+  async (payload = {}, { rejectWithValue }) => {
+    try {
+      const data = await searchAdminFareRules(payload);
+      return {
+        results: data.data || [],
+        meta: data.meta || {},
+        searchParams: payload,
+      };
+    } catch (error) {
+      return rejectWithValue(normalizeAdminError(error, "Fare rule search failed."));
+    }
+  }
+);
+
 const adminSlice = createSlice({
   name: "admin",
   initialState,
@@ -748,6 +877,21 @@ const adminSlice = createSlice({
         state.resources[key].status = "idle";
         state.resources[key].error = null;
       });
+    },
+    clearBookingsSearch: (state) => {
+      state.bookingsSearch = { results: [], meta: createPaginationState(), searchParams: {}, status: "idle", error: null };
+    },
+    clearTrainsSearch: (state) => {
+      state.trainsSearch = { results: [], meta: createPaginationState(), searchParams: {}, status: "idle", error: null };
+    },
+    clearSchedulesSearch: (state) => {
+      state.schedulesSearch = { results: [], meta: createPaginationState(), searchParams: {}, status: "idle", error: null };
+    },
+    clearCoachesSearch: (state) => {
+      state.coachesSearch = { results: [], meta: createPaginationState(), searchParams: {}, status: "idle", error: null };
+    },
+    clearFareRulesSearch: (state) => {
+      state.fareRulesSearch = { results: [], meta: createPaginationState(), searchParams: {}, status: "idle", error: null };
     },
   },
   extraReducers: (builder) => {
@@ -1084,9 +1228,92 @@ const adminSlice = createSlice({
       })
       .addCase(deleteAdminScheduleThunk.rejected, (state, action) => {
         setRejected(state, "schedules", action);
+      })
+      // ─── Search extra reducers ──────────────────────────────────────────────
+      .addCase(searchAdminBookingsThunk.pending, (state) => {
+        state.bookingsSearch.status = "loading";
+        state.bookingsSearch.error = null;
+      })
+      .addCase(searchAdminBookingsThunk.fulfilled, (state, action) => {
+        state.bookingsSearch.status = "succeeded";
+        state.bookingsSearch.results = action.payload.results;
+        state.bookingsSearch.searchParams = action.payload.searchParams;
+        state.bookingsSearch.meta = normalizeMeta(action.payload.meta);
+        state.bookingsSearch.error = null;
+      })
+      .addCase(searchAdminBookingsThunk.rejected, (state, action) => {
+        state.bookingsSearch.status = "failed";
+        state.bookingsSearch.error = action.payload;
+      })
+      .addCase(searchAdminTrainsThunk.pending, (state) => {
+        state.trainsSearch.status = "loading";
+        state.trainsSearch.error = null;
+      })
+      .addCase(searchAdminTrainsThunk.fulfilled, (state, action) => {
+        state.trainsSearch.status = "succeeded";
+        state.trainsSearch.results = action.payload.results;
+        state.trainsSearch.searchParams = action.payload.searchParams;
+        state.trainsSearch.meta = normalizeMeta(action.payload.meta);
+        state.trainsSearch.error = null;
+      })
+      .addCase(searchAdminTrainsThunk.rejected, (state, action) => {
+        state.trainsSearch.status = "failed";
+        state.trainsSearch.error = action.payload;
+      })
+      .addCase(searchAdminSchedulesThunk.pending, (state) => {
+        state.schedulesSearch.status = "loading";
+        state.schedulesSearch.error = null;
+      })
+      .addCase(searchAdminSchedulesThunk.fulfilled, (state, action) => {
+        state.schedulesSearch.status = "succeeded";
+        state.schedulesSearch.results = action.payload.results;
+        state.schedulesSearch.searchParams = action.payload.searchParams;
+        state.schedulesSearch.meta = normalizeMeta(action.payload.meta);
+        state.schedulesSearch.error = null;
+      })
+      .addCase(searchAdminSchedulesThunk.rejected, (state, action) => {
+        state.schedulesSearch.status = "failed";
+        state.schedulesSearch.error = action.payload;
+      })
+      .addCase(searchAdminCoachesThunk.pending, (state) => {
+        state.coachesSearch.status = "loading";
+        state.coachesSearch.error = null;
+      })
+      .addCase(searchAdminCoachesThunk.fulfilled, (state, action) => {
+        state.coachesSearch.status = "succeeded";
+        state.coachesSearch.results = action.payload.results;
+        state.coachesSearch.searchParams = action.payload.searchParams;
+        state.coachesSearch.meta = normalizeMeta(action.payload.meta);
+        state.coachesSearch.error = null;
+      })
+      .addCase(searchAdminCoachesThunk.rejected, (state, action) => {
+        state.coachesSearch.status = "failed";
+        state.coachesSearch.error = action.payload;
+      })
+      .addCase(searchAdminFareRulesThunk.pending, (state) => {
+        state.fareRulesSearch.status = "loading";
+        state.fareRulesSearch.error = null;
+      })
+      .addCase(searchAdminFareRulesThunk.fulfilled, (state, action) => {
+        state.fareRulesSearch.status = "succeeded";
+        state.fareRulesSearch.results = action.payload.results;
+        state.fareRulesSearch.searchParams = action.payload.searchParams;
+        state.fareRulesSearch.meta = normalizeMeta(action.payload.meta);
+        state.fareRulesSearch.error = null;
+      })
+      .addCase(searchAdminFareRulesThunk.rejected, (state, action) => {
+        state.fareRulesSearch.status = "failed";
+        state.fareRulesSearch.error = action.payload;
       });
   },
 });
 
-export const { resetAdminState } = adminSlice.actions;
+export const {
+  resetAdminState,
+  clearBookingsSearch,
+  clearTrainsSearch,
+  clearSchedulesSearch,
+  clearCoachesSearch,
+  clearFareRulesSearch,
+} = adminSlice.actions;
 export default adminSlice.reducer;

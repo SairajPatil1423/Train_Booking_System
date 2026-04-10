@@ -4,6 +4,7 @@ module Admin::City::Operation
     step :find_model
     step :destroy_model
     step :serialize_result
+    fail :collect_errors
 
     def authorize!(ctx, current_user:, **)
       current_user && current_user.admin?
@@ -28,6 +29,10 @@ module Admin::City::Operation
 
     def serialize_result(ctx, **)
       ctx[:model] = { message: "City deleted successfully" }
+    end
+
+    def collect_errors(ctx, model: nil, **)
+      ctx[:errors] ||= model&.errors&.full_messages.presence || ['Operation failed']
     end
   end
 end

@@ -93,7 +93,14 @@ function BookingPageContent() {
   const [isBooked, setIsBooked] = useState(false);
   const [seatSelectionNote, setSeatSelectionNote] = useState("");
   const [passengerCountNote, setPassengerCountNote] = useState("");
-  const today = new Date().toISOString().slice(0, 10);
+  const today = useMemo(() => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+
+    return `${year}-${month}-${day}`;
+  }, []);
 
   const {
     control,

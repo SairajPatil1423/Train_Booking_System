@@ -63,6 +63,7 @@ export function buildScheduleViewModel(schedule, context = {}) {
 export function buildBookingViewModel(booking) {
   const passengers = booking?.passengers || [];
   const allocations = booking?.ticket_allocations || [];
+  const segmentTiming = booking?.segment_timing || {};
 
   return {
     id: booking?.id,
@@ -78,5 +79,6 @@ export function buildBookingViewModel(booking) {
     pnrLabels: allocations.map((allocation) => allocation?.pnr).filter(Boolean),
     paymentAmountLabel: formatCurrency(booking?.payment?.amount),
     paymentStatusLabel: formatBookingStatus(booking?.payment?.status),
+    segmentTiming,
   };
 }
