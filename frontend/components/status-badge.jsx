@@ -2,6 +2,7 @@ import { formatBookingStatus } from "@/utils/formatters";
 import Badge from "@/components/ui/badge";
 
 const badgeVariants = {
+  booked: "success",
   confirmed: "success",
   pending: "primary",
   cancelled: "danger",

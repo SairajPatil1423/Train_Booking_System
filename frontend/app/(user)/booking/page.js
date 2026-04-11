@@ -47,6 +47,8 @@ import {
   sanitizePhoneInput,
 } from "@/features/validation/constants";
 import { toastError, toastSuccess } from "@/utils/toast";
+import BookingSuccess from "@/components/animations/booking-success";
+import PageFade from "@/components/animations/page-fade";
 
 const stepLabels = ["Review", "Passengers", "Seats", "Confirmation"];
 const paymentOptions = [
@@ -588,6 +590,12 @@ function BookingPageContent() {
 
   return (
     <PageShell>
+      {/* Booking success celebration overlay */}
+      <BookingSuccess
+        show={isBooked}
+        pnrList={(confirmation?.booking?.ticket_allocations || []).map((a) => a.pnr).filter(Boolean)}
+        onDismiss={() => { window.location.href = "/bookings"; }}
+      />
       <div className="grid w-full gap-6 lg:grid-cols-[1.2fr_0.8fr]">
         <div className="space-y-6">
           <PageHero
@@ -688,16 +696,61 @@ function BookingPageContent() {
                     </div>
 
                     <div className="rounded-[1.5rem] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-5 shadow-[var(--shadow-soft)]">
-                      <p className="text-sm font-semibold text-[var(--color-ink)]">Route overview</p>
-                      <div className="mt-4 flex flex-wrap gap-2">
-                        {routeStops.map((stop) => (
-                          <div
-                            key={stop.id}
-                            className="rounded-full border border-[var(--color-line)] bg-[var(--color-surface-strong)] px-4 py-2 text-sm text-[var(--color-muted-strong)] shadow-[0_8px_20px_rgba(15,23,42,0.04)]"
-                          >
-                            {stop.station?.name}
-                          </div>
-                        ))}
+                      <p className="text-sm font-semibold text-[var(--color-ink)]">Route — all stops</p>
+                      <div className="mt-4 overflow-hidden rounded-[1.2rem] border border-[var(--color-line)] bg-[var(--color-panel-strong)]">
+                        {routeStops.map((stop, index) => {
+                          const isFirst = index === 0;
+                          const isLast = index === routeStops.length - 1;
+                          const arrTime = fmtStopTime(stop.arrival_time);
+                          const depTime = fmtStopTime(stop.departure_time);
+                          return (
+                            <div
+                              key={stop.id}
+                              className={`flex items-center gap-4 px-4 py-3 ${
+                                index < routeStops.length - 1 ? "border-b border-[var(--color-line)]" : ""
+                              }`}
+                            >
+                              {/* Timeline dot */}
+                              <div className="flex shrink-0 items-center justify-center">
+                                <div
+                                  className={`h-3 w-3 rounded-full border-2 ${
+                                    isFirst || isLast
+                                      ? "border-[var(--color-accent)] bg-[var(--color-accent)]"
+                                      : "border-[var(--color-muted)] bg-transparent"
+                                  }`}
+                                />
+                              </div>
+
+                              {/* Station name */}
+                              <p className={`flex-1 text-sm font-semibold ${
+                                isFirst || isLast
+                                  ? "text-[var(--color-ink)]"
+                                  : "text-[var(--color-muted-strong)]"
+                              }`}>
+                                {stop.station?.name || stop.station_name}
+                                {stop.station?.code ? (
+                                  <span className="ml-2 text-xs font-normal text-[var(--color-muted)]">({stop.station.code})</span>
+                                ) : null}
+                              </p>
+
+                              {/* Timings */}
+                              <div className="flex shrink-0 gap-5 text-right">
+                                {arrTime ? (
+                                  <div>
+                                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--color-muted)]">Arr</p>
+                                    <p className="text-sm font-bold text-[var(--color-ink)]">{arrTime}</p>
+                                  </div>
+                                ) : null}
+                                {depTime ? (
+                                  <div>
+                                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--color-muted)]">Dep</p>
+                                    <p className="text-sm font-bold text-[var(--color-panel-dark)]">{depTime}</p>
+                                  </div>
+                                ) : null}
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
 
@@ -894,11 +947,6 @@ function BookingPageContent() {
                     {seatSelectionNote ? (
                       <p className="mt-3 text-sm font-medium text-[var(--color-panel-dark)]">
                         {seatSelectionNote}
-                      </p>
-                    ) : null}
-                    {selectedSeatLabels.length === passengerCount ? (
-                      <p className="mt-2 text-xs uppercase tracking-[0.16em] text-[var(--color-success)]">
-                        Seats ready
                       </p>
                     ) : null}
                   </div>
@@ -1259,4 +1307,38 @@ function SelectField({ label, error, options, className = "", ...props }) {
       {error ? <p className="field-error">{error}</p> : null}
     </div>
   );
+}
+
+/**
+ * Robustly format a stop time value from the Rails API.
+ * Rails can serialize a `time` column as:
+ *   - "HH:MM:SS"           → most common
+ *   - "HH:MM"              → trimmed
+ *   - "2000-01-01T08:30:00.000Z" → when serialized as datetime
+ * Always returns "H:MM AM/PM" string or null.
+ */
+function fmtStopTime(value) {
+  if (!value) return null;
+  const str = String(value).trim();
+
+  let hours, minutes;
+
+  if (str.includes("T")) {
+    // ISO datetime: "2000-01-01T08:30:00.000Z"
+    const timePart = str.split("T")[1] || "";
+    [hours, minutes] = timePart.split(":").map(Number);
+  } else if (/^\d{1,2}:\d{2}/.test(str)) {
+    // "HH:MM:SS" or "HH:MM"
+    [hours, minutes] = str.split(":").map(Number);
+  } else {
+    return null;
+  }
+
+  if (isNaN(hours) || isNaN(minutes)) return null;
+
+  const period = hours >= 12 ? "PM" : "AM";
+  const displayHour = hours % 12 === 0 ? 12 : hours % 12;
+  const displayMin = String(minutes).padStart(2, "0");
+
+  return `${displayHour}:${displayMin} ${period}`;
 }

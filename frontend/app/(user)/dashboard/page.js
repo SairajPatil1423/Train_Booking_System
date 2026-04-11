@@ -3,6 +3,7 @@
 import { useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useDispatch, useSelector } from "react-redux";
+import { motion } from "framer-motion";
 import PageShell from "@/components/page-shell";
 import PageSection from "@/components/layout/page-section";
 import LoadingState from "@/components/loading-state";
@@ -10,6 +11,11 @@ import Badge from "@/components/ui/badge";
 import Button from "@/components/ui/button";
 import Card from "@/components/ui/card";
 import Skeleton from "@/components/ui/skeleton";
+import PageFade from "@/components/animations/page-fade";
+import { StaggerList, StaggerItem } from "@/components/animations/stagger-list";
+import DashboardTrainHero from "@/components/animations/dashboard-train-hero";
+import AnimatedCounter from "@/components/animations/animated-counter";
+import BoardingPassCard from "@/components/animations/boarding-pass-card";
 import { fetchUserBookingsThunk } from "@/features/booking/bookingSlice";
 import { getUserDisplayName } from "@/utils/user-formatters";
 import { buildBookingViewModel } from "@/utils/view-models";
@@ -100,158 +106,224 @@ export default function Home() {
 
   return (
     <PageShell className="mx-auto max-w-7xl px-6 py-8 sm:px-10 lg:px-12">
-      <section className="grid gap-6 xl:grid-cols-[1.25fr_0.75fr]">
-        <Card tone="panel" className="overflow-hidden rounded-[2.2rem] p-6 sm:p-8 lg:p-10">
-          <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-[radial-gradient(circle_at_top_left,_rgba(59,130,246,0.22),_transparent_52%)]" />
-          <div className="relative z-10">
-            <div className="mt-6 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-              <div className="max-w-3xl">
-                <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[var(--color-muted)]">
-                  {isAuthenticated ? `Hi, ${displayName}` : "Welcome to RailYatra"}
-                </p>
-                <h1 className="mt-3 text-4xl font-semibold leading-[1.02] tracking-tight text-[var(--color-ink)] sm:text-[3.4rem]">
-                  Dashboard
-                </h1>
+      <PageFade>
+      <section className="grid gap-6 xl:grid-cols-[1.4fr_0.6fr]">
+
+        {/* ── HERO CARD ── */}
+        <Card tone="panel" className="overflow-hidden rounded-[2.4rem] p-0">
+          {/* Gradient header area */}
+          <div className="relative overflow-hidden rounded-t-[2.4rem] bg-[linear-gradient(135deg,_#1e40af_0%,_#3b82f6_45%,_#6366f1_100%)] px-8 pt-8 pb-0">
+            {/* Glow orbs */}
+            <div className="pointer-events-none absolute -top-8 -right-8 h-48 w-48 rounded-full bg-white/10 blur-2xl" />
+            <div className="pointer-events-none absolute bottom-0 left-12 h-32 w-32 rounded-full bg-blue-400/20 blur-xl" />
+
+            <div className="relative z-10 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between pb-6">
+              <div>
+                <motion.p
+                  className="text-sm font-semibold uppercase tracking-[0.28em] text-blue-200"
+                  initial={{ opacity: 0, x: -12 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.15, duration: 0.4 }}
+                >
+                  {isAuthenticated ? `Welcome back, ${displayName} 👋` : "Welcome to RailYatra 🚆"}
+                </motion.p>
+                <motion.h1
+                  className="mt-2 text-4xl font-bold leading-tight tracking-tight text-white sm:text-5xl"
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.22, duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+                >
+                  Your Journey <br className="hidden sm:block" />Starts Here
+                </motion.h1>
+                <motion.p
+                  className="mt-2 text-blue-200 text-sm"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.4, duration: 0.4 }}
+                >
+                  Book, track, and manage all your train trips in one place.
+                </motion.p>
               </div>
 
-              <div className="flex flex-wrap gap-3">
-                <Button as={Link} href="/search" size="lg">
-                  Search trains
-                </Button>
-                <Button as={Link} href={isAuthenticated ? "/bookings" : "/register"} variant="secondary" size="lg">
-                  {isAuthenticated ? "View bookings" : "Create account"}
-                </Button>
-              </div>
+              <motion.div
+                className="flex flex-wrap gap-3"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.38, duration: 0.4 }}
+              >
+                <Link href="/search">
+                  <motion.button
+                    className="rounded-full bg-white px-6 py-3 text-sm font-bold text-blue-700 shadow-[0_8px_24px_rgba(0,0,0,0.18)] hover:shadow-[0_12px_32px_rgba(0,0,0,0.22)]"
+                    whileHover={{ scale: 1.04, y: -2 }}
+                    whileTap={{ scale: 0.97 }}
+                    transition={{ duration: 0.18 }}
+                  >
+                    🔍 Search Trains
+                  </motion.button>
+                </Link>
+                <Link href={isAuthenticated ? "/bookings" : "/register"}>
+                  <motion.button
+                    className="rounded-full border border-white/30 bg-white/10 px-6 py-3 text-sm font-bold text-white backdrop-blur-sm hover:bg-white/20"
+                    whileHover={{ scale: 1.04, y: -2 }}
+                    whileTap={{ scale: 0.97 }}
+                    transition={{ duration: 0.18 }}
+                  >
+                    {isAuthenticated ? "🎫 My Bookings" : "✨ Create Account"}
+                  </motion.button>
+                </Link>
+              </motion.div>
             </div>
 
-            <div className="mt-8 grid gap-4 md:grid-cols-3">
-              {stats.map((stat) => (
-                <Card key={stat.label} className="rounded-[1.6rem] border border-[var(--color-line)] p-5 ui-card-hover">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--color-muted)]">
-                    {stat.label}
-                  </p>
-                  <p className="mt-3 text-3xl font-semibold tracking-tight text-[var(--color-ink)]">
-                    {status === "loading" ? "--" : stat.value}
-                  </p>
-                </Card>
-              ))}
-            </div>
+            {/* Train animation strip inside the gradient */}
+            <DashboardTrainHero />
+          </div>
+
+          {/* Stats below the hero gradient */}
+          <div className="p-6 sm:p-8">
+            <StaggerList className="grid gap-4 md:grid-cols-3">
+              {stats.map((stat, i) => {
+                const icons = ["🎫", "🚆", "❌"];
+                const accents = [
+                  "bg-[color-mix(in_srgb,var(--color-accent)_10%,transparent)]",
+                  "bg-[color-mix(in_srgb,var(--color-success)_10%,transparent)]",
+                  "bg-[color-mix(in_srgb,var(--color-danger)_8%,transparent)]",
+                ];
+                const textColors = ["text-[var(--color-panel-dark)]", "text-[var(--color-success)]", "text-[var(--color-danger)]"];
+                return (
+                  <StaggerItem key={stat.label}>
+                    <motion.div
+                      className={`rounded-[1.6rem] border border-[var(--color-line)] ${accents[i]} p-5`}
+                      whileHover={{ y: -3, boxShadow: "0 18px 40px rgba(15,23,42,0.1)" }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <div className="flex items-center justify-between">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--color-muted)]">{stat.label}</p>
+                        <span className="text-xl">{icons[i]}</span>
+                      </div>
+                      <p className={`mt-3 text-3xl font-bold tracking-tight ${textColors[i]}`}>
+                        {status === "loading" ? "—" : <AnimatedCounter value={stat.value} />}
+                      </p>
+                    </motion.div>
+                  </StaggerItem>
+                );
+              })}
+            </StaggerList>
           </div>
         </Card>
 
-        <PageSection className="rounded-[2.2rem] p-6 sm:p-8">
-          <h2 className="text-2xl font-semibold tracking-tight text-[var(--color-ink)]">
-            Actions
-          </h2>
+        {/* ── QUICK ACTIONS ── */}
+        <div className="rounded-[2.4rem] border border-[var(--color-line)] bg-[var(--color-panel-strong)] p-6 sm:p-7 shadow-[var(--shadow-card)]">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[var(--color-muted)]">Quick Access</p>
+          <h2 className="mt-2 text-xl font-bold tracking-tight text-[var(--color-ink)]">What would you like to do?</h2>
 
-          <div className="mt-6 space-y-4">
-            {quickLinks.map((link) => (
-              <Link key={link.href} href={link.href}>
-                <Card className="rounded-[1.5rem] p-5 ui-card-hover">
-                  <div className="flex items-center justify-between gap-4">
-                    <h3 className="text-lg font-semibold text-[var(--color-ink)]">{link.title}</h3>
-                    <span className="rounded-full bg-[var(--color-accent-soft)] px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-panel-dark)]">
-                      Open
-                    </span>
-                  </div>
-                </Card>
-              </Link>
+          <StaggerList className="mt-6 space-y-3">
+            {[
+              { title: "Search Trains", href: "/search", icon: "🔍", desc: "Find routes & schedules", color: "from-blue-500/10 to-indigo-500/5" },
+              { title: "My Bookings", href: "/bookings", icon: "🎫", desc: "View all your trips", color: "from-green-500/10 to-emerald-500/5" },
+              { title: "Profile", href: "/account", icon: "👤", desc: "Manage your account", color: "from-purple-500/10 to-violet-500/5" },
+            ].map((link) => (
+              <StaggerItem key={link.href}>
+                <Link href={link.href}>
+                  <motion.div
+                    className={`rounded-[1.4rem] border border-[var(--color-line)] bg-gradient-to-r ${link.color} p-4`}
+                    whileHover={{ y: -2, boxShadow: "0 12px 28px rgba(15,23,42,0.1)" }}
+                    whileTap={{ scale: 0.98 }}
+                    transition={{ duration: 0.18 }}
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[1rem] bg-[var(--color-panel-strong)] shadow-sm text-xl">
+                        {link.icon}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-[var(--color-ink)]">{link.title}</p>
+                        <p className="text-xs text-[var(--color-muted)]">{link.desc}</p>
+                      </div>
+                      <span className="text-[var(--color-muted)] text-lg">→</span>
+                    </div>
+                  </motion.div>
+                </Link>
+              </StaggerItem>
             ))}
-          </div>
-        </PageSection>
+          </StaggerList>
+        </div>
       </section>
 
-      <section className="mt-6 grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
-        {/* <PageSection className="rounded-[2rem] p-6 sm:p-8">
+      {/* ── RECENT BOOKINGS ── */}
+      <section className="mt-6">
+        <div className="rounded-[2.2rem] border border-[var(--color-line)] bg-[var(--color-panel-strong)] p-6 shadow-[var(--shadow-card)] sm:p-8">
           <div className="flex flex-wrap items-center justify-between gap-4">
-            <h2 className="text-2xl font-semibold tracking-tight text-[var(--color-ink)]">
-              Search
-            </h2>
-            <Button as={Link} href="/search" variant="secondary">
-              Open
-            </Button>
-          </div>
-
-          <div className="mt-6 grid gap-4 sm:grid-cols-2">
-            <div className="rounded-[1.5rem] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-5">
-              <p className="mt-3 text-lg font-semibold text-[var(--color-ink)]">
-                Search Trains
-              </p>
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[var(--color-muted)]">Travel History</p>
+              <h2 className="mt-1 text-2xl font-bold tracking-tight text-[var(--color-ink)]">Recent Bookings</h2>
             </div>
-            <div className="rounded-[1.5rem] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-5">
-              <p className="mt-3 text-lg font-semibold text-[var(--color-ink)]">
-                My Bookings
-              </p>
-            </div>
-          </div>
-        </PageSection> */}
-
-        <PageSection className="rounded-[2rem] p-6 sm:p-8">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <h2 className="text-2xl font-semibold tracking-tight text-[var(--color-ink)]">
-              Recent Bookings
-            </h2>
-            <Button as={Link} href="/bookings" variant="ghost">
-              View All
-            </Button>
+            <Link href="/bookings">
+              <motion.button
+                className="rounded-full border border-[var(--color-line)] bg-[var(--color-surface-soft)] px-5 py-2.5 text-sm font-semibold text-[var(--color-ink)]"
+                whileHover={{ scale: 1.03, y: -1 }}
+                whileTap={{ scale: 0.97 }}
+              >
+                View All →
+              </motion.button>
+            </Link>
           </div>
 
-          <div className="mt-6 space-y-4">
+          <StaggerList className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {status === "loading" ? (
               <>
-                <Skeleton className="h-36 rounded-[1.5rem]" />
-                <Skeleton className="h-36 rounded-[1.5rem]" />
+                <Skeleton className="h-40 rounded-[1.5rem]" />
+                <Skeleton className="h-40 rounded-[1.5rem]" />
+                <Skeleton className="h-40 rounded-[1.5rem]" />
               </>
             ) : recentBookings.length ? (
               recentBookings.map(({ raw, view }) => (
-                <Card key={raw.id} className="rounded-[1.6rem] p-5 ui-card-hover">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Badge variant="primary" className="px-3 py-1.5 text-[11px]">{view.reference}</Badge>
-                      <Badge variant={badgeVariant(raw.status)} className="px-3 py-1.5 text-[11px]">
-                        {view.statusLabel}
-                      </Badge>
-                    </div>
-                    <span className="text-sm font-medium text-[var(--color-muted)]">
-                      {formatDate(raw.booked_at)}
-                    </span>
-                  </div>
+                <StaggerItem key={raw.id}>
+                  <BoardingPassCard status={badgeVariant(raw.status)}>
+                    <div className="flex p-5 flex-col h-full bg-gradient-to-br from-[var(--color-surface-soft)] to-transparent">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <Badge variant="primary" className="px-3 py-1.5 text-[10px]">{view.reference}</Badge>
+                        <Badge variant={badgeVariant(raw.status)} className="px-3 py-1.5 text-[10px]">{view.statusLabel}</Badge>
+                      </div>
 
-                  <div className="mt-4 grid gap-4 md:grid-cols-[1fr_auto] md:items-end">
-                    <div>
-                      <p className="text-lg font-semibold text-[var(--color-ink)]">
+                      <p className="mt-4 font-bold text-[var(--color-ink)] leading-tight">
                         {raw.schedule?.train?.name || "Train journey"}
                       </p>
-                      <p className="mt-1 text-sm text-[var(--color-muted)]">
-                        {raw.src_station?.name || "Source"} to {raw.dst_station?.name || "Destination"}
-                      </p>
-                      <p className="mt-3 text-sm font-medium text-[var(--color-muted-strong)]">
-                        {formatScheduleDateTimeWithOffset(
-                          raw.schedule?.travel_date,
-                          raw.segment_timing?.departure_time || raw.schedule?.departure_time,
-                          raw.segment_timing?.departure_day_offset || 0,
-                        )}
-                      </p>
+
+                      {/* Route pill */}
+                      <div className="mt-3 flex items-center gap-2 text-sm">
+                        <span className="truncate font-medium text-[var(--color-muted-strong)] uppercase tracking-wider">{raw.src_station?.code || raw.src_station?.name}</span>
+                        <span className="shrink-0 rounded-full bg-[var(--color-accent-soft)] px-2 py-0.5 text-[10px] font-bold text-[var(--color-accent)]">━━━━</span>
+                        <span className="truncate font-medium text-[var(--color-muted-strong)] uppercase tracking-wider">{raw.dst_station?.code || raw.dst_station?.name}</span>
+                      </div>
+
+                      <div className="mt-4 flex items-center justify-between text-xs text-[var(--color-muted)]">
+                        <span>{formatDate(raw.booked_at)}</span>
+                        <span className="font-mono font-semibold text-[var(--color-primary)]">{view.seatLabels.length ? view.seatLabels.join(", ") : "Pending"}</span>
+                      </div>
                     </div>
-                    <div className="rounded-[1.2rem] bg-[var(--color-surface-soft)] px-4 py-3 text-right">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--color-muted)]">
-                        Seats
-                      </p>
-                      <p className="mt-2 text-sm font-semibold text-[var(--color-ink)]">
-                        {view.seatLabels.length ? view.seatLabels.join(", ") : "Pending"}
-                      </p>
-                    </div>
-                  </div>
-                </Card>
+                  </BoardingPassCard>
+                </StaggerItem>
               ))
             ) : (
-              <div className="rounded-[1.6rem] border border-dashed border-[var(--color-line)] bg-[var(--color-surface-soft)] px-5 py-10">
-                <p className="text-lg font-semibold text-[var(--color-ink)]">No recent bookings yet</p>
+              <div className="col-span-full rounded-[1.6rem] border border-dashed border-[var(--color-line)] bg-[var(--color-surface-soft)] px-6 py-14 text-center">
+                <p className="text-4xl">🚆</p>
+                <p className="mt-4 text-lg font-bold text-[var(--color-ink)]">No trips booked yet</p>
+                <p className="mt-1 text-sm text-[var(--color-muted)]">Search for trains and book your first journey!</p>
+                <Link href="/search">
+                  <motion.button
+                    className="mt-5 rounded-full bg-[var(--gradient-brand)] px-6 py-2.5 text-sm font-bold text-white shadow-[var(--shadow-button)]"
+                    whileHover={{ scale: 1.04, y: -2 }}
+                    whileTap={{ scale: 0.97 }}
+                    style={{ background: "var(--gradient-brand)" }}
+                  >
+                    Search Trains →
+                  </motion.button>
+                </Link>
               </div>
             )}
-          </div>
-        </PageSection>
+          </StaggerList>
+        </div>
       </section>
+      </PageFade>
     </PageShell>
   );
 }

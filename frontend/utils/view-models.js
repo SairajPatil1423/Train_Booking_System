@@ -57,6 +57,7 @@ export function buildScheduleViewModel(schedule, context = {}) {
     rating: schedule?.train?.rating || null,
     grade: schedule?.train?.grade || null,
     coachAvailability,
+    intermediateStops: Array.isArray(schedule?.intermediate_stops) ? schedule.intermediate_stops : [],
   };
 }
 

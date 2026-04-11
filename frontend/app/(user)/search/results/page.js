@@ -4,6 +4,7 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useDispatch, useSelector } from "react-redux";
+import { motion } from "framer-motion";
 import EmptyState from "@/components/empty-state";
 import PageSection from "@/components/layout/page-section";
 import { formatCoachType } from "@/utils/coach-formatters";
@@ -12,8 +13,11 @@ import PageShell from "@/components/page-shell";
 import Badge from "@/components/ui/badge";
 import Button from "@/components/ui/button";
 import Card from "@/components/ui/card";
-import PaginationToolbar from "@/components/ui/pagination-toolbar";
+import SearchPagination from "@/components/ui/search-pagination";
 import Skeleton from "@/components/ui/skeleton";
+import PageFade from "@/components/animations/page-fade";
+import TrainLoader from "@/components/animations/train-loader";
+import { StaggerList, StaggerItem } from "@/components/animations/stagger-list";
 import {
   setSearchError,
   searchSchedulesThunk,
@@ -118,13 +122,10 @@ function SearchResultsPageContent() {
 
         <div className="mt-6 space-y-4">
           {status === "loading" && scheduleCards.length === 0 ? (
-            <>
-              <Skeleton className="h-72 rounded-[1.8rem]" />
-              <Skeleton className="h-72 rounded-[1.8rem]" />
-            </>
+            <TrainLoader label="Searching for trains..." />
           ) : null}
           {status === "loading" && scheduleCards.length > 0 ? (
-            <div className="text-sm font-medium text-[var(--color-muted)]">Loading page {currentPage}...</div>
+            <TrainLoader label={`Loading page ${currentPage}...`} />
           ) : null}
 
           {error ? (
@@ -143,100 +144,123 @@ function SearchResultsPageContent() {
           ) : null}
 
           {scheduleCards.map((schedule) => (
-            <Card
-              as="article"
+            <motion.article
               key={schedule.id}
-              className="rounded-[1.8rem] p-5 ui-card-hover"
+              className="relative overflow-hidden rounded-[1.8rem] border border-[var(--color-line)] bg-black/40 p-1 shadow-[0_0_40px_rgba(0,0,0,0.5)] backdrop-blur-xl group"
+              whileHover={{ y: -4, scale: 1.01, boxShadow: "0 20px 60px rgba(0,0,0,0.6), 0 0 30px rgba(124,58,237,0.2)" }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
             >
-              <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+              {/* Neon accent bar on left */}
+              <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-[var(--color-accent)] opacity-80 shadow-[0_0_15px_var(--color-accent)] group-hover:opacity-100 transition-opacity" />
+              
+              {/* Speed line background texture */}
+              <div className="absolute inset-0 opacity-20 bg-[repeating-linear-gradient(-45deg,transparent,transparent_10px,rgba(255,255,255,0.04)_10px,rgba(255,255,255,0.04)_20px)] pointer-events-none" />
+
+              <div className="relative z-10 flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between bg-gradient-to-r from-[var(--color-surface-soft)] to-transparent rounded-[1.6rem] p-5 h-full">
                 <div className="space-y-4">
                   <div className="flex flex-wrap items-center gap-3">
-                    <Badge variant="primary">{schedule.trainNumber}</Badge>
-                    <span className="rounded-full bg-[var(--color-accent-soft)] px-4 py-2 text-sm font-medium text-[var(--color-panel-dark)]">
+                    <span className="rounded-full bg-white/10 px-3 py-1 font-mono text-sm font-bold text-white border border-white/20">
+                      {schedule.trainNumber}
+                    </span>
+                    <span className="rounded-full bg-[var(--color-accent-soft)] px-4 py-1.5 text-sm font-bold text-[var(--color-accent)] border border-[var(--color-accent)]/30 shadow-[0_0_10px_var(--color-accent-soft)]">
                       {schedule.trainType}
                     </span>
-                    <Badge variant="neutral" className="px-4 py-2 text-xs">
+                    <span className="rounded-full border border-[var(--color-line-strong)] bg-white/5 px-4 py-1.5 text-xs text-[var(--color-muted-strong)]">
                       {schedule.statusLabel}
-                    </Badge>
+                    </span>
                     {schedule.rating ? (
-                      <span className="rounded-full border border-[color-mix(in_srgb,var(--color-warning)_24%,var(--color-line))] bg-[color-mix(in_srgb,var(--color-warning-soft)_82%,var(--color-panel-strong))] px-4 py-2 text-sm font-bold text-[var(--color-warning)]">
+                      <span className="rounded-full border border-[var(--color-warning)]/30 bg-[var(--color-warning)]/10 px-4 py-1.5 text-sm font-bold text-[var(--color-warning)] shadow-[0_0_8px_var(--color-warning-soft)]">
                         ★ {schedule.rating}
-                      </span>
-                    ) : null}
-                    {schedule.grade ? (
-                      <span className="rounded-full border border-[color-mix(in_srgb,var(--color-accent)_24%,var(--color-line))] bg-[color-mix(in_srgb,var(--color-accent-soft)_82%,var(--color-panel-strong))] px-4 py-2 text-sm font-bold uppercase text-[var(--color-panel-dark)]">
-                        {schedule.grade}
                       </span>
                     ) : null}
                   </div>
 
                   <div>
-                    <h3 className="text-2xl font-semibold text-[var(--color-ink)]">
+                    <h3 className="text-2xl font-extrabold tracking-tight text-white drop-shadow-md">
                       {schedule.trainName}
                     </h3>
-                    <p className="mt-2 text-sm text-[var(--color-muted)]">
+                    <p className="mt-1 text-sm text-[var(--color-accent)]">
                       {schedule.routeLabel}
                     </p>
                   </div>
 
-                  <div className="grid gap-3 sm:grid-cols-4">
-                    <div className="rounded-[1.2rem] bg-[var(--color-surface-soft)] px-4 py-3">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--color-muted)]">
+                  <div className="grid gap-3 grid-cols-2 md:grid-cols-4 pt-2">
+                    <div className="rounded-[1rem] bg-black/40 border border-[var(--color-line)] px-4 py-3">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--color-muted)]">
                         Departure
                       </p>
-                      <p className="mt-2 text-sm font-semibold text-[var(--color-ink)]">
+                      <p className="mt-1 text-[15px] font-mono font-bold text-white">
                         {schedule.departureLabel}
                       </p>
                     </div>
-                    <div className="rounded-[1.2rem] bg-[var(--color-surface-soft)] px-4 py-3">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--color-muted)]">
-                        Arrival
-                      </p>
-                      <p className="mt-2 text-sm font-semibold text-[var(--color-ink)]">
-                        {schedule.arrivalLabel}
-                      </p>
+                    {/* Animated path arrow */}
+                    <div className="hidden md:flex flex-col items-center justify-center pt-3 opacity-50 relative">
+                       <p className="text-[10px] uppercase text-[var(--color-muted)]">Duration</p>
+                       <p className="font-mono text-xs">{schedule.durationLabel}</p>
+                       <div className="w-full h-px border-t border-dashed border-[var(--color-accent)] mt-1 relative">
+                          <motion.div 
+                            className="absolute -top-1 w-2 h-2 rounded-full bg-[var(--color-accent)] shadow-[0_0_8px_var(--color-accent)]"
+                            animate={{ x: ["0%", "400%"] }}
+                            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                          />
+                       </div>
                     </div>
-                    <div className="rounded-[1.2rem] bg-[var(--color-surface-soft)] px-4 py-3">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--color-muted)]">
+                    {/* Mobile fallback duration */}
+                    <div className="md:hidden rounded-[1rem] bg-black/40 border border-[var(--color-line)] px-4 py-3">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--color-muted)]">
                         Duration
                       </p>
-                      <p className="mt-2 text-sm font-semibold text-[var(--color-ink)]">
+                      <p className="mt-1 text-[15px] font-mono font-bold text-white">
                         {schedule.durationLabel}
                       </p>
                     </div>
-                    <div className="rounded-[1.2rem] bg-[var(--color-surface-soft)] px-4 py-3">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--color-muted)]">
-                        Seats
+                    <div className="rounded-[1rem] bg-black/40 border border-[var(--color-line)] px-4 py-3">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--color-muted)]">
+                        Arrival
                       </p>
-                      <p className="mt-2 text-sm font-semibold text-[var(--color-panel-dark)]">
+                      <p className="mt-1 text-[15px] font-mono font-bold text-white">
+                        {schedule.arrivalLabel}
+                      </p>
+                    </div>
+                    <div className="rounded-[1rem] bg-[var(--color-accent)]/10 border border-[var(--color-accent)]/30 px-4 py-3">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--color-accent)]">
+                        Seats Left
+                      </p>
+                      <p className="mt-1 text-[15px] font-mono font-bold text-[var(--color-accent-strong)] drop-shadow-md">
                         {schedule.availableSeats}
                       </p>
                     </div>
                   </div>
 
                   {schedule.coachAvailability.length > 0 ? (
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-2 pt-2">
                       {schedule.coachAvailability.map((coach) => (
                         <div
                           key={coach.coachType}
-                          className="rounded-full bg-[var(--color-accent-soft)] px-4 py-2 text-sm font-medium text-[var(--color-panel-dark)]"
+                          className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-mono text-[var(--color-muted-strong)] uppercase tracking-wide"
                         >
-                          {formatCoachType(coach.coachType)}: {coach.availableSeats}/{coach.totalSeats}
+                          <span className="text-white">{formatCoachType(coach.coachType)}</span>: {coach.availableSeats}/{coach.totalSeats}
                         </div>
                       ))}
                     </div>
                   ) : null}
                 </div>
 
-                <div className="flex min-w-[15rem] flex-col items-start gap-3 lg:items-end">
-                  <div className="rounded-[1.35rem] border border-[var(--color-line)] bg-[var(--color-surface-soft)] px-4 py-3.5 text-sm text-[var(--color-muted-strong)]">
+                <div className="flex min-w-[15rem] flex-col items-start gap-3 lg:items-end lg:justify-center">
+                  <div className={`rounded-full border px-4 py-2 text-sm font-bold uppercase tracking-wider shadow-lg ${
+                    schedule.statusKey === "cancelled" 
+                    ? "bg-[var(--color-danger)]/10 text-[var(--color-danger)] border-[var(--color-danger)]/30 shadow-[0_0_15px_var(--color-danger-soft)]"
+                    : schedule.availableSeats > 0
+                    ? "bg-[var(--color-success)]/10 text-[var(--color-success)] border-[var(--color-success)]/30 shadow-[0_0_15px_var(--color-success-soft)]"
+                    : "bg-[var(--color-warning)]/10 text-[var(--color-warning)] border-[var(--color-warning)]/30 shadow-[0_0_15px_var(--color-warning-soft)]"
+                  }`}>
                     {schedule.statusKey === "cancelled"
                       ? "Cancelled"
                       : schedule.availableSeats > 0
-                        ? `${schedule.availableSeats} available`
+                        ? "Available"
                         : "Waitlist"}
                   </div>
-                  <Button
+                  <motion.button
                     type="button"
                     disabled={!schedule.isBookable}
                     onClick={() =>
@@ -244,28 +268,33 @@ function SearchResultsPageContent() {
                         `/booking?schedule_id=${schedule.id}&src_station_id=${fromStationId}&dst_station_id=${toStationId}&travel_date=${encodeURIComponent(journeyDate)}&from_label=${encodeURIComponent(fromLabel)}&to_label=${encodeURIComponent(toLabel)}`,
                       )
                     }
-                    size="xl"
-                    className="min-h-[3.75rem] w-full lg:min-w-[14rem]"
+                    className="relative flex items-center justify-center min-h-[3.75rem] w-full lg:min-w-[14rem] rounded-full bg-[var(--gradient-brand)] px-6 text-base font-bold text-white overflow-hidden disabled:opacity-50 disabled:grayscale group"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
                   >
-                    {schedule.statusKey === "cancelled"
-                      ? "Unavailable"
-                      : schedule.availableSeats > 0
-                        ? "Select"
-                        : "Waitlist"}
-                  </Button>
+                    {!schedule.isBookable ? null : (
+                      <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent group-hover:animate-[shimmer_1.5s_infinite]" />
+                    )}
+                    <span className="relative z-10">
+                      {schedule.statusKey === "cancelled"
+                        ? "Unavailable"
+                        : schedule.availableSeats > 0
+                          ? "Select Train ➔"
+                          : "Join Waitlist"}
+                    </span>
+                  </motion.button>
                 </div>
               </div>
-            </Card>
+            </motion.article>
           ))}
 
           {scheduleCards.length > 0 ? (
-            <PaginationToolbar
-              page={meta.page}
-              perPage={meta.perPage}
+            <SearchPagination
+              page={meta.page ?? 1}
+              totalPages={meta.totalPages ?? 1}
               totalCount={meta.totalCount || scheduleCards.length}
-              totalPages={meta.totalPages}
-              onPageChange={setPage}
-              onPerPageChange={setPerPage}
+              onPrev={() => setPage((meta.page ?? 1) - 1)}
+              onNext={() => setPage((meta.page ?? 1) + 1)}
               disabled={status === "loading"}
               loading={status === "loading"}
             />

@@ -1,10 +1,14 @@
-import Card from "@/components/ui/card";
 import { cn } from "@/utils/cn";
 
 export default function PageSection({ className = "", children }) {
   return (
-    <Card tone="panel" className={cn("rounded-[2rem] p-6 sm:p-8", className)}>
+    <div
+      className={cn(
+        "relative rounded-[2rem] border border-[var(--color-line)] bg-black/40 p-6 sm:p-8 backdrop-blur-2xl shadow-inner",
+        className,
+      )}
+    >
       {children}
-    </Card>
+    </div>
   );
 }
