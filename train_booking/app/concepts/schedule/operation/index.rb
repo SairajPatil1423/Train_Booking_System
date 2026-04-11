@@ -110,7 +110,8 @@ module Schedule::Operation
           schedule: schedule,
           src_station_id: params[:src_station_id],
           dst_station_id: params[:dst_station_id]
-        ).call
+        ).call,
+        intermediate_stops: serialize_intermediate_stops(schedule, segment)
       }
     end
 
@@ -131,6 +132,26 @@ module Schedule::Operation
       return 0 if datetime_value.blank?
 
       (datetime_value.to_date - Date.new(2000, 1, 1)).to_i
+    end
+
+    def serialize_intermediate_stops(schedule, segment)
+      return [] unless segment.valid?
+
+      ::TrainStop
+        .includes(:station)
+        .where(train_id: schedule.train_id)
+        .where(stop_order: segment.src_stop.stop_order..segment.dst_stop.stop_order)
+        .order(:stop_order)
+        .map do |stop|
+          {
+            stop_order:      stop.stop_order,
+            station_name:    stop.station.name,
+            station_code:    stop.station.code,
+            arrival_time:    stop.arrival_time&.strftime("%H:%M"),
+            departure_time:  stop.departure_time&.strftime("%H:%M"),
+            distance_km:     stop.distance_from_origin_km
+          }
+        end
     end
   end
 end

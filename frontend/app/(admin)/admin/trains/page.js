@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { motion } from "framer-motion";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -417,92 +418,107 @@ export default function AdminTrainsPage() {
                     .sort((left, right) => Number(left.stop_order || 0) - Number(right.stop_order || 0));
 
                   return (
-                  <Card key={train.id} className="rounded-[1.6rem] p-5">
-                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                      <div>
-                        <p className="text-lg font-semibold text-[var(--color-ink)]">
-                          {train.train_number} • {train.name}
-                        </p>
-                        <p className="mt-1 text-sm text-[var(--color-muted)]">
-                          {formatTrainType(train.train_type)} service
-                        </p>
-                      </div>
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3 }}
+                    whileHover={{ y: -4, scale: 1.01, boxShadow: "0 20px 40px rgba(0,0,0,0.5), 0 0 20px rgba(124,58,237,0.15)" }}
+                    key={train.id}
+                    className="relative overflow-hidden rounded-[1.8rem] border border-[var(--color-line)] bg-black/40 p-1 backdrop-blur-xl group"
+                  >
+                    {/* Speed line background texture */}
+                    <div className="absolute inset-0 opacity-20 bg-[repeating-linear-gradient(-45deg,transparent,transparent_10px,rgba(255,255,255,0.04)_10px,rgba(255,255,255,0.04)_20px)] pointer-events-none" />
+                    
+                    {/* Neon accent bar on left */}
+                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-[var(--color-accent)] opacity-50 shadow-[0_0_15px_var(--color-accent)] group-hover:opacity-100 transition-opacity" />
 
-                      <div className="flex flex-wrap gap-2">
-                        <AdminInfoPill label={`${Number(train.rating || 0).toFixed(1)} rating`} />
-                        <AdminInfoPill label={train.grade || "No grade"} variant="neutral" />
-                        <Badge variant={train.is_active ? "success" : "danger"} className="px-4 py-2 text-xs sm:text-sm">
-                          {train.is_active ? "Active" : "Inactive"}
-                        </Badge>
-                      </div>
-                    </div>
-
-                    <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                      <AdminInfoBlock label="Train type" value={formatTrainType(train.train_type)} />
-                      <AdminInfoBlock label="Rating" value={String(train.rating || "0")} accent />
-                      <AdminInfoBlock label="Grade" value={train.grade || "-"} />
-                    </div>
-
-                    <div className="mt-4 rounded-[1.25rem] bg-[var(--color-surface-soft)] px-4 py-4">
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--color-muted)]">
-                          Route stops
-                        </p>
-                        <AdminInfoPill
-                          label={routeStops.length ? `${routeStops.length} stop(s)` : "No route yet"}
-                          variant={routeStops.length ? "primary" : "neutral"}
-                        />
-                      </div>
-                      {routeStops.length ? (
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          {routeStops.map((stop) => (
-                            <span
-                              key={stop.id}
-                              className="rounded-full border border-[var(--color-line)] bg-[var(--color-surface-strong)] px-3 py-2 text-xs font-semibold text-[var(--color-ink)] shadow-[0_8px_18px_rgba(15,23,42,0.04)]"
-                            >
-                              {stop.stop_order}. {stop.station?.code || stop.station?.name || "Station"}
-                            </span>
-                          ))}
+                    <div className="relative z-10 bg-gradient-to-tr from-[var(--color-surface-soft)] to-transparent rounded-[1.6rem] p-5 h-full">
+                      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                        <div>
+                          <p className="text-lg font-extrabold tracking-wide text-white drop-shadow-md">
+                            {train.train_number} • {train.name}
+                          </p>
+                          <p className="mt-1 text-sm font-bold uppercase tracking-[0.2em] text-[var(--color-accent)]">
+                            {formatTrainType(train.train_type)} service
+                          </p>
                         </div>
-                      ) : (
-                        <p className="mt-3 text-sm text-[var(--color-muted)]">
-                          Add the full route after creating the train so schedule generation and booking paths are accurate.
-                        </p>
-                      )}
+                        
+                        <div className="flex flex-wrap gap-2">
+                          <AdminInfoPill label={`${Number(train.rating || 0).toFixed(1)} rating`} />
+                          <AdminInfoPill label={train.grade || "No grade"} variant="neutral" />
+                          <Badge variant={train.is_active ? "success" : "danger"} className="px-4 py-2 text-xs sm:text-sm shadow-lg">
+                            {train.is_active ? "Active" : "Inactive"}
+                          </Badge>
+                        </div>
+                      </div>
 
-                      {!isSearchMode && !routeStops.length ? (
-                        <div className="mt-4">
-                          <Button
-                            type="button"
-                            variant="secondary"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedRouteTrainId(train.id);
-                              setEditingStop(null);
-                              setRouteFormError("");
-                              routeEditorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-                            }}
-                          >
-                            Add route stops
+                      <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                        <AdminInfoBlock label="Train type" value={formatTrainType(train.train_type)} />
+                        <AdminInfoBlock label="Rating" value={String(train.rating || "0")} accent />
+                        <AdminInfoBlock label="Grade" value={train.grade || "-"} />
+                      </div>
+
+                      <div className="mt-4 rounded-[1.25rem] border border-[var(--color-line)] bg-black/40 px-4 py-4 backdrop-blur-md">
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-[var(--color-muted-strong)] group-hover:text-white transition-colors">
+                            Route stops
+                          </p>
+                          <AdminInfoPill
+                            label={routeStops.length ? `${routeStops.length} stop(s)` : "No route yet"}
+                            variant={routeStops.length ? "primary" : "neutral"}
+                          />
+                        </div>
+                        {routeStops.length ? (
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            {routeStops.map((stop) => (
+                              <span
+                                key={stop.id}
+                                className="rounded-full border border-white/10 bg-[var(--color-surface-soft)] hover:bg-[var(--color-surface-strong)] px-3 py-1.5 text-xs font-mono font-bold text-[var(--color-accent-strong)] transition-colors"
+                              >
+                                {stop.stop_order}. <span className="font-sans text-white uppercase tracking-wider">{stop.station?.code || stop.station?.name || "Station"}</span>
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="mt-3 text-sm font-medium text-[var(--color-warning)] bg-[var(--color-warning)]/10 px-3 py-2 rounded-lg border border-[var(--color-warning)]/20 inline-block">
+                            Add the full route after creating the train so schedule generation and booking paths are accurate.
+                          </p>
+                        )}
+
+                        {!isSearchMode && !routeStops.length ? (
+                          <div className="mt-4">
+                            <Button
+                              type="button"
+                              className="bg-[var(--color-accent)]/20 text-[var(--color-accent)] hover:bg-[var(--color-accent)]/30 border border-[var(--color-accent)]/40 shadow-[0_0_15px_var(--color-accent-soft)]"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedRouteTrainId(train.id);
+                                setEditingStop(null);
+                                setRouteFormError("");
+                                routeEditorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+                              }}
+                            >
+                              Add route stops ➔
+                            </Button>
+                          </div>
+                        ) : null}
+                      </div>
+
+                      {!isSearchMode ? (
+                        <div className="mt-5 flex flex-wrap gap-3">
+                          <Button type="button" variant="secondary" size="sm" onClick={() => { setEditingTrain(train); setFormError(""); }}>
+                            Edit train
+                          </Button>
+                          <Button type="button" variant="secondary" size="sm" onClick={() => { setSelectedRouteTrainId(train.id); setEditingStop(null); setRouteFormError(""); routeEditorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }); }}>
+                            Manage route
+                          </Button>
+                          <Button type="button" variant="danger" size="sm" onClick={() => setDeleteTarget({ type: "train", id: train.id, label: train.name || train.train_number })}>
+                            Delete train
                           </Button>
                         </div>
                       ) : null}
                     </div>
-
-                    {!isSearchMode ? (
-                      <div className="mt-5 flex flex-wrap gap-3">
-                        <Button type="button" variant="secondary" size="sm" onClick={() => { setEditingTrain(train); setFormError(""); }}>
-                          Edit train
-                        </Button>
-                        <Button type="button" variant="secondary" size="sm" onClick={() => { setSelectedRouteTrainId(train.id); setEditingStop(null); setRouteFormError(""); routeEditorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }); }}>
-                          Manage route
-                        </Button>
-                        <Button type="button" variant="danger" size="sm" onClick={() => setDeleteTarget({ type: "train", id: train.id, label: train.name || train.train_number })}>
-                          Delete train
-                        </Button>
-                      </div>
-                    ) : null}
-                  </Card>
+                  </motion.div>
                 )})}
               </div>
             ) : null}

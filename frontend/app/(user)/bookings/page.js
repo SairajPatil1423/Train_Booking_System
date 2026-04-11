@@ -13,16 +13,15 @@ import Badge from "@/components/ui/badge";
 import Button from "@/components/ui/button";
 import Card from "@/components/ui/card";
 import PaginationToolbar from "@/components/ui/pagination-toolbar";
-import {
-  cancelBookingThunk,
-  cancelTicketThunk,
-  fetchUserBookingsThunk,
-} from "@/features/booking/bookingSlice";
+import BoardingPassCard from "@/components/animations/boarding-pass-card";
+import { cancelBookingThunk, cancelTicketThunk, fetchUserBookingsThunk } from "@/features/booking/bookingSlice";
 import { usePaginatedRouteState } from "@/hooks/use-paginated-route-state";
 import { cn } from "@/utils/cn";
 import { formatErrorMessage } from "@/utils/errors";
 import { formatCurrency, formatDate, formatDateTime, formatScheduleDateTimeWithOffset } from "@/utils/formatters";
 import { toastError, toastSuccess } from "@/utils/toast";
+import PageFade from "@/components/animations/page-fade";
+import { StaggerList, StaggerItem } from "@/components/animations/stagger-list";
 
 export default function BookingsPage() {
   const dispatch = useDispatch();
@@ -177,6 +176,7 @@ export default function BookingsPage() {
 
   return (
     <PageShell>
+      <PageFade>
       <div className="w-full space-y-6">
         <PageHero
           eyebrow="Bookings"
@@ -214,7 +214,7 @@ export default function BookingsPage() {
 
           {bookings.length > 0 ? null : null}
 
-          <div className="space-y-4">
+          <StaggerList className="space-y-4">
             {bookings.map((booking) => {
               const segmentTiming = booking.segment_timing || {};
               const departureLabel = formatScheduleDateTimeWithOffset(
@@ -241,51 +241,53 @@ export default function BookingsPage() {
                 booking.status === "partially_cancelled";
                
               return (
-                <Card as="article" key={booking.id} className="rounded-[1.8rem] p-5">
-                  <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+                <StaggerItem key={booking.id}>
+                <BoardingPassCard status={booking.status} className="h-full">
+                  <div className="flex flex-col p-5 bg-gradient-to-br from-[var(--color-surface-soft)] to-transparent h-full relative">
                     <div className="space-y-4">
+                      {/* Header — ref + status badges */}
                       <div className="flex flex-wrap items-center gap-3">
-                        <Badge variant="primary">
+                        <Badge variant="primary" className="font-mono text-[11px] px-3 py-1.5 uppercase shadow-[0_0_8px_var(--color-accent-soft)]">
                           {booking.booking_ref || booking.booking_reference || "Booking"}
                         </Badge>
                         <StatusBadge status={booking.status} />
                         {booking.payment?.status ? (
-                          <Badge variant="neutral">{booking.payment.status.replaceAll("_", " ")}</Badge>
+                          <Badge variant="neutral" className="bg-white/5 border border-white/10 text-[var(--color-muted-strong)] text-[10px] uppercase">
+                            {booking.payment.status.replaceAll("_", " ")}
+                          </Badge>
                         ) : null}
                       </div>
 
-                      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-                        <InfoBlock label="Booked on" value={formatDateTime(booking.booked_at)} />
-                        <InfoBlock label="Travel date" value={formatDate(booking.schedule?.travel_date)} />
-                        <InfoBlock label="Passengers" value={String(booking.passengers?.length || 0)} />
-                        <InfoBlock label="Paid amount" value={formatCurrency(booking.payment?.amount)} />
-                        <InfoBlock label="Refunded" value={formatCurrency(cancellationTotal)} />
-                      </div>
-
-                      <div className="rounded-[1.4rem] border border-[var(--color-line)] bg-[linear-gradient(180deg,_color-mix(in_srgb,var(--color-surface-soft)_96%,transparent)_0%,_color-mix(in_srgb,var(--color-surface-strong)_98%,transparent)_100%)] p-5 shadow-[0_16px_36px_rgba(15,23,42,0.05)]">
+                      {/* ── JOURNEY HERO — full-width, visually dominant ── */}
+                      <div className="rounded-[1.4rem] border border-[var(--color-line)] bg-[linear-gradient(135deg,_color-mix(in_srgb,var(--color-accent)_10%,transparent)_0%,_rgba(0,0,0,0.4)_100%)] p-5 shadow-inner">
                         <div className="flex flex-wrap items-center gap-3">
-                          <Badge variant="primary" className="px-3 py-1.5 text-[11px]">
+                          <Badge variant="primary" className="px-3 py-1.5 text-[11px] bg-[var(--color-accent)]/20 text-[var(--color-accent)] border-[var(--color-accent)]/30">
                             {booking.schedule?.train?.train_number || "Train"}
                           </Badge>
-                          <Badge variant="neutral" className="px-3 py-1.5 text-[11px]">
+                          <Badge variant="neutral" className="px-3 py-1.5 text-[11px] bg-white/5">
                             {booking.schedule?.train?.train_type || "Service"}
                           </Badge>
+                          <span className="text-xs font-mono text-[var(--color-accent)] shadow-sm">{formatDate(booking.schedule?.travel_date)}</span>
                         </div>
 
-                        <p className="mt-3 text-lg font-semibold text-[var(--color-ink)]">
+                        <p className="mt-3 text-2xl font-extrabold tracking-tight text-white drop-shadow-md">
                           {booking.schedule?.train?.name || "Train details unavailable"}
                         </p>
 
-                        <div className="mt-4 grid gap-3 md:grid-cols-[1fr_auto_1fr] md:items-center">
+                        {/* From → To with times */}
+                        <div className="mt-5 grid gap-3 md:grid-cols-[1fr_auto_1fr] md:items-center">
                           <JourneyStopCard
                             title="From"
                             stationName={booking.src_station?.name || "Source"}
                             stationCode={booking.src_station?.code}
                             timeLabel={departureLabel}
                           />
-                          <div className="flex items-center justify-center">
-                            <div className="rounded-full bg-[var(--color-accent-soft)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-panel-dark)]">
-                              Your trip
+                          <div className="flex flex-col items-center justify-center opacity-70">
+                            <span className="text-[10px] tracking-widest text-[var(--color-muted)] font-mono mb-1">ROUTE</span>
+                            <div className="w-full flex items-center justify-center">
+                               <div className="h-px border-t border-dashed border-[var(--color-accent)] w-12" />
+                               <span className="text-[var(--color-accent)] mx-1">✈</span>
+                               <div className="h-px border-t border-dashed border-[var(--color-accent)] w-12" />
                             </div>
                           </div>
                           <JourneyStopCard
@@ -297,21 +299,25 @@ export default function BookingsPage() {
                           />
                         </div>
 
-                        <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                          <InfoBlock label="Departure" value={departureLabel} />
-                          <InfoBlock label="Arrival" value={arrivalLabel} />
+                        {/* Journey meta chips */}
+                        <div className="mt-6 grid gap-2 sm:grid-cols-4 bg-black/40 rounded-[1rem] p-3 border border-white/5">
+                          <InfoBlock label="Passengers" value={String(booking.passengers?.length || 0)} />
+                          <InfoBlock label="Paid" value={formatCurrency(booking.payment?.amount)} />
+                          <InfoBlock label="Booked on" value={formatDate(booking.booked_at)} />
                           <InfoBlock
                             label="Active seats"
                             value={
                               activeAllocations.length
-                                ? activeAllocations.map((allocation) => allocation.seat?.seat_number).filter(Boolean).join(", ")
-                                : "No active seats"
+                                ? activeAllocations.map((a) => a.seat?.seat_number).filter(Boolean).join(", ")
+                                : "—"
                             }
                           />
                         </div>
                       </div>
 
-                      <div className="space-y-3">
+                      {/* Passenger ticket rows */}
+                      <div className="space-y-2 mt-2">
+                        <p className="text-[10px] font-bold tracking-[0.2em] text-[var(--color-muted)] uppercase mb-2">Ticket Details</p>
                         {(booking.ticket_allocations || []).map((allocation, index) => {
                           const passenger = booking.passengers?.find(
                             (item) => item.id === allocation.passenger_id,
@@ -321,32 +327,29 @@ export default function BookingsPage() {
                           return (
                             <div
                               key={allocation.id}
-                              className="flex flex-col gap-3 rounded-[1.2rem] border border-[var(--color-line)] bg-[var(--color-surface-strong)] px-4 py-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)] sm:flex-row sm:items-center sm:justify-between"
+                              className="flex flex-col gap-3 rounded-[1rem] border border-[var(--color-line)] bg-[var(--color-surface-strong)]/50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between hover:bg-white/5 transition-colors"
                             >
                               <div>
-                                <p className="font-semibold text-[var(--color-ink)]">
+                                <p className="font-bold text-white tracking-wide">
                                   {passenger
                                     ? `${passenger.first_name} ${passenger.last_name}`
                                     : `Passenger ${index + 1}`}
                                 </p>
-                                <p className="mt-1 text-sm text-[var(--color-muted)]">
-                                  Seat {allocation.seat?.seat_number || "NA"} • {allocation.pnr || "PNR pending"} • {formatCurrency(allocation.fare)}
-                                </p>
-                                <p className="mt-1 text-xs uppercase tracking-wide text-[var(--color-muted)]">
-                                  {allocation.status}
+                                <p className="mt-1 text-sm font-mono text-[var(--color-accent-strong)]">
+                                  Seat {allocation.seat?.seat_number || "NA"} <span className="text-[var(--color-muted)] mx-2">|</span> PNR: {allocation.pnr || "PENDING"} <span className="text-[var(--color-muted)] mx-2">|</span> {formatCurrency(allocation.fare)}
                                 </p>
                               </div>
-
-                              <div className="flex flex-wrap items-center gap-3">
+                              <div className="flex flex-wrap items-center gap-2">
                                 {allocation.status === "cancelled" ? (
-                                  <Badge variant="danger">Cancelled</Badge>
+                                  <Badge variant="danger" className="bg-[var(--color-danger)]/10 text-[var(--color-danger)] border border-[var(--color-danger)]/20 shadow-[0_0_10px_var(--color-danger-soft)]">Cancelled</Badge>
                                 ) : canCancelTickets ? (
                                   <Button
                                     type="button"
-                                    variant="secondary"
+                                    variant="ghost"
                                     size="sm"
-                                    onClick={() => openTicketCancelDialog(booking, allocation)}
+                                    onClick={(e) => { e.stopPropagation(); openTicketCancelDialog(booking, allocation); }}
                                     disabled={processingAction === ticketActionId}
+                                    className="text-xs text-[var(--color-danger)] hover:bg-[var(--color-danger)]/10 hover:border-transparent transition-all border border-[var(--color-danger)]/30 rounded-full h-8"
                                   >
                                     {processingAction === ticketActionId ? "Cancelling..." : "Cancel ticket"}
                                   </Button>
@@ -356,42 +359,44 @@ export default function BookingsPage() {
                           );
                         })}
                       </div>
-                    </div>
 
-                    <div className="min-w-[15rem] space-y-4 rounded-[1.25rem] border border-[var(--color-line)] bg-[var(--color-surface-strong)] px-4 py-4 text-sm text-[var(--color-muted-strong)] shadow-[0_12px_28px_rgba(15,23,42,0.05)]">
-                      <div>
-                        <p className="font-semibold text-[var(--color-ink)]">Refunds</p>
-                        <p className="mt-2">
-                          {booking.cancellations?.length
-                            ? `${booking.cancellations.length} record(s)`
-                            : "No refunds"}
-                        </p>
-                        <p className="mt-1 text-lg font-semibold text-[var(--color-panel-dark)]">
-                          {formatCurrency(cancellationTotal)}
-                        </p>
+                      {/* Footer — refund chip + cancel booking (de-emphasized) */}
+                      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--color-line)] pt-4 mt-2">
+                        <div className="flex flex-wrap items-center gap-3 text-sm text-[var(--color-muted-strong)]">
+                          {cancellationTotal > 0 ? (
+                            <span>Refunded: <span className="font-bold text-[var(--color-success)] shadow-sm drop-shadow-[0_0_8px_var(--color-success-soft)]">{formatCurrency(cancellationTotal)}</span></span>
+                          ) : (
+                            <span className="font-mono text-[10px] tracking-widest opacity-60">NO REFUNDS ISSUED</span>
+                          )}
+                          <Button as={Link} href="/cancellations" variant="ghost" size="sm" className="text-[11px] underline underline-offset-4 hover:text-[var(--color-accent)] hover:bg-transparent px-0 h-auto">
+                            View cancellations
+                          </Button>
+                        </div>
+                        {canCancelBooking && activeAllocations.length > 0 ? (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => { e.stopPropagation(); openBookingCancelDialog(booking); }}
+                            disabled={processingAction === `booking:${booking.id}`}
+                            className="text-xs text-[var(--color-muted)] hover:text-white transition-opacity opacity-50 hover:opacity-100"
+                          >
+                            {processingAction === `booking:${booking.id}` ? "Cancelling..." : "Cancel entire booking"}
+                          </Button>
+                        ) : null}
                       </div>
 
-                      {canCancelBooking && activeAllocations.length > 0 ? (
-                        <Button
-                          onClick={() => openBookingCancelDialog(booking)}
-                          disabled={processingAction === `booking:${booking.id}`}
-                          variant="danger"
-                          size="sm"
-                          className="w-full"
-                        >
-                          {processingAction === `booking:${booking.id}` ? "Cancelling..." : "Cancel full booking"}
-                        </Button>
-                      ) : null}
-
-                      <Button as={Link} href="/cancellations" variant="secondary" size="sm" className="w-full">
-                        View cancellations
-                      </Button>
+                      {/* QR Barcode illusion */}
+                      <div className="absolute right-4 bottom-4 opacity-10 blur-[0.5px] pointer-events-none hidden sm:block mix-blend-screen">
+                        <div className="w-16 h-16 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMSIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBhdGggZD0iTTMgM2g2djZIM3oiPjwvcGF0aD48cGF0aCBkPSJNMTEgM2gydiIyPjwvcGF0aD48cGF0aCBkPSJNMTUgM2g2djZIMTV6Ij48L3BhdGg+PHBhdGggZD0iTTMgMTVoNnY2SDN6Ij48L3BhdGg+PHBhdGggZD0iTTExIDEyaDJ2MnoiPjwvcGF0aD48cGF0aCBkPSJNMTUgMTVoMnY2aDEwdjJoMnoiPjwvcGF0aD48L3N2Zz4=')] bg-cover opacity-50" />
+                      </div>
                     </div>
                   </div>
-                </Card>
+                </BoardingPassCard>
+                </StaggerItem>
               );
             })}
-          </div>
+          </StaggerList>
 
           {bookings.length > 0 ? (
             <div className="pt-6">
@@ -409,6 +414,7 @@ export default function BookingsPage() {
           ) : null}
         </PageSection>
       </div>
+      </PageFade>
 
       <CancellationDrawer
         intent={cancelIntent}

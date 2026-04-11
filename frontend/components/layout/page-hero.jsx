@@ -1,4 +1,6 @@
 import { cn } from "@/utils/cn";
+import AuroraBg from "@/components/animations/aurora-bg";
+import StarField from "@/components/animations/star-field";
 
 export default function PageHero({
   eyebrow,
@@ -12,11 +14,15 @@ export default function PageHero({
   return (
     <section
       className={cn(
-        "surface-panel relative overflow-hidden rounded-[2rem] p-6 sm:p-8 lg:p-10",
+        "relative overflow-hidden rounded-[2.5rem] p-6 sm:p-8 lg:p-10 border border-[var(--color-line)] bg-black/40 shadow-[0_0_80px_rgba(124,58,237,0.08)]",
         className,
       )}
     >
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-[radial-gradient(circle_at_top_left,_rgba(37,99,235,0.12),_transparent_58%)]" />
+      <div className="absolute inset-0 z-0">
+        <AuroraBg />
+        <StarField />
+      </div>
+      <div className="absolute inset-0 z-0 bg-gradient-to-t from-black/80 via-transparent to-black/20" />
       <div className="relative z-10 flex flex-col gap-8 lg:flex-row lg:items-start lg:justify-between">
         <div className="max-w-3xl">
           {eyebrow ? <p className="eyebrow">{eyebrow}</p> : null}
